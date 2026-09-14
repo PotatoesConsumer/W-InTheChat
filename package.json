@@ -1,0 +1,13 @@
+{
+  "name": "w-inthechat",
+  "version": "0.1.0",
+  "description": "A web-based streamer simulator with a real-time, AI-powered audience.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "ai:demo": "node src/ai/demo.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
