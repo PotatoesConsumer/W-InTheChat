@@ -4,7 +4,7 @@
  * Thin wrapper around the local Ollama REST API (http://localhost:11434).
  * Owns: connecting, retrying on transient failures, and model selection.
  *
- * Model choice (per proposal v2, 2026-09-30):
+ * Model choice (per the proposal):
  *   - qwen2.5:3b — the one and only primary generation path for personas.
  *     Preliminary testing on the RTX 4050 6GB laptop showed this is faster
  *     than Qwen3 4B Instruct (which also carries a reasoning/thinking step

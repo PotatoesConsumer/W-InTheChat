@@ -10,11 +10,10 @@ included for comparison.
 
 ## Status
 
-Early-stage senior project (KMUTT, Computer Science). The current spec is
-[`W-InTheChat_proposal_2.docx`](W-InTheChat_proposal_2.docx). The original
-[`CS-project-proposal 1.docx`](<CS-project-proposal 1.docx>) and
-[`StreamerSimPresent 1.pdf`](<StreamerSimPresent 1.pdf>) are kept for reference;
-where they disagree with v2, v2 wins.
+Early-stage senior project (KMUTT, Computer Science). The spec is the
+[proposal](<CS-project-proposal 1.docx>). The
+[pitch deck](<StreamerSimPresent 1.pdf>) is from an earlier plan and is out of
+date; where it disagrees with the proposal, the proposal wins.
 
 ## Requirements
 
