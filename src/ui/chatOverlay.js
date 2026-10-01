@@ -74,25 +74,58 @@ export function createChatOverlay(root, { log = createChatLog(), onSend = () => 
   }
 
   function renderLine(message) {
+    const isPlayer = message.kind === "player";
     const line = el("li", "chat-line");
     const avatar = el("span", "chat-avatar");
     const name = el("span", "chat-viewer");
     const text = el("span", "chat-text");
-    const label = PERSONA_LABELS[message.persona];
+    const label = isPlayer ? message.viewer : PERSONA_LABELS[message.persona];
     avatar.textContent = label[0];
     avatar.title = label;
     avatar.setAttribute("aria-label", label);
     name.textContent = message.viewer;
-    line.append(avatar, name, text);
+    line.append(avatar);
+    if (isPlayer) {
+      const badge = el("span", "chat-badge");
+      badge.textContent = "ADMIN";
+      line.append(badge);
+    }
+    line.append(name, text);
     return { line, text };
   }
 
   function fill({ line, text }, message) {
-    line.className = `chat-line persona-${message.persona}`;
-    line.classList.toggle("streaming", !message.done);
-    // For the evaluation logs and debugging only; never shown to the player.
-    line.dataset.source = message.source;
+    if (message.kind === "player") {
+      line.className = "chat-line player";
+    } else {
+      line.className = `chat-line persona-${message.persona}`;
+      line.classList.toggle("streaming", !message.done);
+      // For the evaluation logs and debugging only; never shown to the player.
+      line.dataset.source = message.source;
+    }
     text.textContent = message.text;
+  }
+
+  function show(result, { stick }) {
+    if (result.type === "ignored") return result;
+
+    for (const id of result.removed) {
+      nodes.get(id)?.line.remove();
+      nodes.delete(id);
+    }
+
+    const { message } = result;
+    let entry = nodes.get(message.id);
+    if (!entry) {
+      entry = renderLine(message);
+      nodes.set(message.id, entry);
+      list.append(entry.line);
+    }
+    fill(entry, message);
+
+    if (stick) scrollToBottom();
+    else if (result.type === "added") jump.hidden = false;
+    return result;
   }
 
   list.addEventListener("scroll", () => {
@@ -115,25 +148,15 @@ export function createChatOverlay(root, { log = createChatLog(), onSend = () => 
      */
     push(message) {
       const stick = isAtBottom();
-      const result = log.apply(message);
-      if (result.type === "ignored") return result;
+      return show(log.apply(message), { stick });
+    },
 
-      for (const id of result.removed) {
-        nodes.get(id)?.line.remove();
-        nodes.delete(id);
-      }
-
-      let entry = nodes.get(message.id);
-      if (!entry) {
-        entry = renderLine(message);
-        nodes.set(message.id, entry);
-        list.append(entry.line);
-      }
-      fill(entry, message);
-
-      if (stick) scrollToBottom();
-      else if (result.type === "added") jump.hidden = false;
-      return result;
+    /**
+     * Shows the player's own message, from the chat event that was published.
+     * Always scrolls down: you want to see what you just sent.
+     */
+    pushPlayer(chatEvent) {
+      return show(log.addPlayerMessage(chatEvent), { stick: true });
     },
 
     focusInput() {

@@ -11,9 +11,17 @@
  * - Updates after the `done: true` one, older updates arriving late, and invalid
  *   messages are ignored.
  * - The oldest lines are dropped past `maxMessages`.
+ *
+ * The player's own messages are added with addPlayerMessage(). They come from the
+ * player's chat event, not from the service, so they are UI-only entries with
+ * `kind: "player"` rather than chat_messages.
  */
 
 import { validateChatMessage } from "../events/chatMessage.js";
+import { validateEvent } from "../events/schema.js";
+
+/** Display name for the player until there's login / a name setting. */
+export const PLAYER_NAME = "Player";
 
 /**
  * @param {{maxMessages?: number}} [opts]
@@ -25,6 +33,17 @@ export function createChatLog({ maxMessages = 150 } = {}) {
 
   /** Insertion order is display order; Map.set on an existing key keeps its place. */
   const byId = new Map();
+
+  function add(message) {
+    byId.set(message.id, message);
+    const removed = [];
+    for (const id of byId.keys()) {
+      if (byId.size <= maxMessages) break;
+      byId.delete(id);
+      removed.push(id);
+    }
+    return { type: "added", message, removed };
+  }
 
   return {
     /**
@@ -45,14 +64,28 @@ export function createChatLog({ maxMessages = 150 } = {}) {
         return { type: "updated", message, removed: [] };
       }
 
-      byId.set(message.id, message);
-      const removed = [];
-      for (const id of byId.keys()) {
-        if (byId.size <= maxMessages) break;
-        byId.delete(id);
-        removed.push(id);
+      return add(message);
+    },
+
+    /**
+     * @param {unknown} event - The player's chat event (from createChatEvent).
+     * @returns the same shape as apply(); the message has `kind: "player"`.
+     */
+    addPlayerMessage(event) {
+      if (event?.kind !== "chat" || !validateEvent(event).ok) {
+        return { type: "ignored", reason: "invalid" };
       }
-      return { type: "added", message, removed };
+      if (byId.has(event.id)) return { type: "ignored", reason: "duplicate" };
+      return add(
+        Object.freeze({
+          id: event.id,
+          kind: "player",
+          ts: event.ts,
+          viewer: PLAYER_NAME,
+          text: event.text,
+          done: true,
+        }),
+      );
     },
 
     /** @returns {object[]} messages, oldest first */

@@ -54,6 +54,8 @@ on the same events.
   - `devChatFeed.js`: placeholder fake chat until the service/SSE transport exists. Delete then.
 - `src/ui/`: chat overlay. `chatLog.js` is the DOM-free state (streamed updates by id),
   `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll).
+  The player's own lines are UI-only entries (`kind: "player"`, name "Player", ADMIN badge),
+  not chat_messages. No login or name setting yet.
 - `scripts/serve.js`: `npm run dev` static server on localhost:5173 (no dotfiles/node_modules)
 - `test/`: unit tests, mirroring `src/`
 

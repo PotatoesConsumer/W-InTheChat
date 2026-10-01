@@ -27,7 +27,8 @@ const bus = createEventBus({ onError: (err, event) => console.error(err, event) 
 const overlay = createChatOverlay(document.getElementById("chat"), {
   onSend(text) {
     const result = bus.publish(createChatEvent(text));
-    if (!result.ok) console.warn("Chat message rejected:", result.errors);
+    if (result.ok) overlay.pushPlayer(result.event);
+    else console.warn("Chat message rejected:", result.errors);
   },
 });
 startDevChatFeed(bus, (message) => overlay.push(message));
