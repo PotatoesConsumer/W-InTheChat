@@ -59,8 +59,8 @@ const FIELDS_BY_KIND = {
 const DATA_KEY_PATTERN = /^[a-z][a-zA-Z0-9_]*$/;
 
 export class EventValidationError extends Error {
-  constructor(errors) {
-    super(`Invalid event: ${errors.map((e) => `${e.path}: ${e.message}`).join("; ")}`);
+  constructor(errors, what = "event") {
+    super(`Invalid ${what}: ${errors.map((e) => `${e.path}: ${e.message}`).join("; ")}`);
     this.name = "EventValidationError";
     this.errors = errors;
   }
@@ -131,6 +131,20 @@ export function validateEvent(event) {
 }
 
 /**
+ * Validates raw input (e.g. JSON from the browser) and returns a frozen copy,
+ * so nothing downstream can change the caller's object or the event. Never throws.
+ * @param {unknown} raw
+ * @returns {{ok: true, event: Readonly<object>} | {ok: false, errors: {path: string, message: string}[]}}
+ */
+export function parseEvent(raw) {
+  const result = validateEvent(raw);
+  if (!result.ok) return result;
+  const event = { ...raw };
+  if (event.data) event.data = Object.freeze({ ...event.data });
+  return { ok: true, event: Object.freeze(event) };
+}
+
+/**
  * @param {{kind: "game", name: string}} event - A valid game event.
  * @returns {"minor" | "major"}
  */
@@ -184,13 +198,13 @@ function validateChatFields(event, fail) {
 }
 
 function finalize(event) {
-  const result = validateEvent(event);
+  const result = parseEvent(event);
   if (!result.ok) throw new EventValidationError(result.errors);
-  if (event.data) event.data = Object.freeze({ ...event.data });
-  return Object.freeze(event);
+  return result.event;
 }
 
-function isPlainObject(value) {
+/** True for `{}`-style objects (including parsed JSON), false for arrays, null, Dates, etc. */
+export function isPlainObject(value) {
   if (value === null || typeof value !== "object") return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;

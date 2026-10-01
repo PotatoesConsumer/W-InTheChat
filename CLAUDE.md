@@ -38,8 +38,13 @@ on the same events.
 - `src/ai/personas/`: one file per persona (system prompt, prompt builder, response parser).
   Only `fan.js` exists; Hater, Backseat Gamer and Lurker are still to come.
 - `src/ai/demo.js`: latency smoke test
-- `src/events/schema.js`: event schema (game + chat events, catalog, validation). Spec in
-  `docs/events.md`. The game catalog is a draft until the mini-game is chosen.
+- `src/events/`: the event contract, spec in `docs/events.md`
+  - `schema.js`: inbound game + chat events, catalog, validation. The game catalog is a draft
+    until the mini-game is chosen.
+  - `context.js`: `toContext(event)`, the context builder's input. Only its `facts` may go
+    into a prompt.
+  - `bus.js`: in-process event bus (validates on publish, synchronous dispatch)
+  - `chatMessage.js`: outbound service -> UI chat messages (persona, source, streamed updates)
 - `test/`: unit tests, mirroring `src/`
 
 ## Rules from the proposal
