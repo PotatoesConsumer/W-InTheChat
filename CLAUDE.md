@@ -2,7 +2,7 @@
 
 Browser streamer simulator (KMUTT CS senior project). Viewers in the chat are generated live by a
 local LLM reacting to game events and player messages. The spec is proposal v2
-(`W-InTheChat_proposal_2.docx`, 2026-09-30; not in the repo yet). It overrides the older
+(`W-InTheChat_proposal_2.docx` in the repo root, 2026-09-30). It overrides the older
 `CS-project-proposal 1.docx` / `StreamerSimPresent 1.pdf` wherever they disagree.
 
 The MVP needs a switch to a scripted-chat baseline: the evaluation compares AI chat against it
