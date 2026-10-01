@@ -35,6 +35,13 @@ Sends sample events through the Fan persona and prints the replies with p50/p95
 latency. Send one request first if the model isn't loaded yet; a cold load can
 exceed the client's 15 s timeout.
 
+```bash
+npm test
+```
+
+Runs the unit tests (no Ollama needed). The event schema is documented in
+[docs/events.md](docs/events.md).
+
 ## Tech stack
 
 - HTML5 Canvas + JS for the game loop, running in Chrome on localhost
