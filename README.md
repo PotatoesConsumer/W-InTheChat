@@ -3,36 +3,44 @@
 A web-based streamer simulator with a real-time, AI-powered audience.
 
 Instead of scripted/random chat messages, viewers are driven by a local LLM
-(Qwen 2.5 / Qwen3 via [Ollama](https://ollama.com)) that reacts in real time to
-the player's in-game actions, voice (Web Speech API), and facial expression
-(webcam + a vision model), through distinct viewer personas: **Fan**, **Hater**,
-**Backseat Gamer**, and **Lurker**.
+(`qwen2.5:3b` via [Ollama](https://ollama.com)) that reacts to key in-game events
+and to messages the player types, through distinct viewer personas: **Fan**,
+**Hater**, **Backseat Gamer**, and **Lurker**. A scripted-chat baseline mode is
+included for comparison.
 
 ## Status
 
-Early-stage senior project (KMUTT, Computer Science). See
-[`CS-project-proposal 1.docx`](<CS-project-proposal 1.docx>) and
-[`StreamerSimPresent 1.pdf`](<StreamerSimPresent 1.pdf>) for the full proposal
-and pitch deck.
+Early-stage senior project (KMUTT, Computer Science). The spec is the
+[proposal](<CS-project-proposal 1.docx>). The
+[pitch deck](<StreamerSimPresent 1.pdf>) is from an earlier plan and is out of
+date; where it disagrees with the proposal, the proposal wins.
 
 ## Requirements
 
-- [Ollama](https://ollama.com) installed locally, with a model pulled, e.g.:
+- [Ollama](https://ollama.com) installed locally, with the model pulled:
   ```bash
   ollama pull qwen2.5:3b
-  ollama pull moondream   # for facial/vision reactions
   ```
-- Google Chrome (for Web Speech API support)
-- Node.js
-- A webcam and microphone (for voice/vision features)
+  Model weights are not included in this repo (Qwen Research License).
+- Node.js >= 20
+- Google Chrome
+
+## Running
+
+```bash
+npm run ai:demo
+```
+
+Sends sample events through the Fan persona and prints the replies with p50/p95
+latency. Send one request first if the model isn't loaded yet; a cold load can
+exceed the client's 15 s timeout.
 
 ## Tech stack
 
-- HTML5 Canvas + JS for the game loop
+- HTML5 Canvas + JS for the game loop, running in Chrome on localhost
 - Ollama REST API (`http://localhost:11434`) for chat generation
-- Web Speech API for speech-to-text
-- A local vision model (e.g. Moondream2) for facial reaction analysis
-- Deploy target: Vercel / GitHub Pages
+- Optional extensions (opt-in, off by default): MediaPipe Face Landmarker for
+  expression signals from the webcam, Chrome Web Speech for voice input
 
 ## Team
 
