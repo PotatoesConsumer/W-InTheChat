@@ -21,6 +21,7 @@ on the same events.
 
 - `npm run ai:demo`: sends sample events through the Fan persona, prints the replies and
   p50/p95 latency.
+- `npm test`: runs `test/**/*.test.js` with Node's built-in test runner. Doesn't need Ollama.
 
 ## Model
 
@@ -37,6 +38,9 @@ on the same events.
 - `src/ai/personas/`: one file per persona (system prompt, prompt builder, response parser).
   Only `fan.js` exists; Hater, Backseat Gamer and Lurker are still to come.
 - `src/ai/demo.js`: latency smoke test
+- `src/events/schema.js`: event schema (game + chat events, catalog, validation). Spec in
+  `docs/events.md`. The game catalog is a draft until the mini-game is chosen.
+- `test/`: unit tests, mirroring `src/`
 
 ## Rules from the proposal
 
