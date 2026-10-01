@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>W-InTheChat</title>
+    <link rel="stylesheet" href="src/ui/overlay.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <span class="live">LIVE</span>
+      <span class="title">W-InTheChat</span>
+    </header>
+    <main class="broadcast">
+      <section class="stage">
+        <canvas id="game" aria-label="Game"></canvas>
+      </section>
+      <aside id="chat" aria-label="Stream chat"></aside>
+    </main>
+    <script type="module" src="src/game/main.js"></script>
+  </body>
+</html>

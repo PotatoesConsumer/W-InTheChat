@@ -48,6 +48,13 @@ on the same events.
     into a prompt.
   - `bus.js`: in-process event bus (validates on publish, synchronous dispatch)
   - `chatMessage.js`: outbound service -> UI chat messages (persona, source, streamed updates)
+- `src/game/`: browser game (`index.html` loads `main.js`)
+  - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
+  - `input.js`: keyboard -> actions; ignores keys typed into the chat box
+  - `devChatFeed.js`: placeholder fake chat until the service/SSE transport exists. Delete then.
+- `src/ui/`: chat overlay. `chatLog.js` is the DOM-free state (streamed updates by id),
+  `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll).
+- `scripts/serve.js`: `npm run dev` static server on localhost:5173 (no dotfiles/node_modules)
 - `test/`: unit tests, mirroring `src/`
 
 ## Rules from the proposal

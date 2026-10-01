@@ -1,0 +1,208 @@
+/* Broadcast layout: game on the left, chat on the right. */
+
+:root {
+  --bg: #0e0d13;
+  --panel: #18161f;
+  --border: #2a2735;
+  --text: #e8e6ee;
+  --muted: #8a8599;
+  --accent: #ff7a59;
+
+  --fan: #ff6fae;
+  --hater: #ef4444;
+  --backseat: #f5b942;
+  --lurker: #7c8aa5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    14px/1.4 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.live {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #e5323b;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.broadcast {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  min-width: 0;
+}
+
+#game {
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #14121c;
+}
+
+/* Chat panel (built by src/ui/chatOverlay.js) */
+
+.chat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+}
+
+.chat-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 8px 0;
+  list-style: none;
+}
+
+.chat-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 12px;
+  overflow-wrap: anywhere;
+}
+
+.chat-avatar {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--persona, var(--muted));
+  color: #111;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chat-viewer {
+  flex: none;
+  font-weight: 700;
+  color: var(--persona, var(--muted));
+}
+
+.chat-text {
+  min-width: 0;
+}
+
+.chat-line.streaming .chat-text::after {
+  content: "▍";
+  margin-left: 1px;
+  color: var(--muted);
+  animation: blink 0.8s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.persona-fan {
+  --persona: var(--fan);
+}
+.persona-hater {
+  --persona: var(--hater);
+}
+.persona-backseat {
+  --persona: var(--backseat);
+}
+.persona-lurker {
+  --persona: var(--lurker);
+}
+
+.chat-jump {
+  position: absolute;
+  left: 50%;
+  bottom: 60px;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #111;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.chat-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.chat-send {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #111;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
