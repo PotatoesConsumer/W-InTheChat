@@ -4,15 +4,20 @@
  * Thin wrapper around the local Ollama REST API (http://localhost:11434).
  * Owns: connecting, retrying on transient failures, and model selection.
  *
- * Model choice (settled 2026-09-14, see rundown "PROD NOTE"):
- *   - qwen3:4b-instruct — chat/persona generation. The default `qwen3:4b`
- *     tag reasons before every reply and blows the <1s latency budget;
- *     -instruct skips that and is just as fast as qwen2.5:3b in testing.
- *   - moondream — vision persona-trigger (facial expression from webcam).
+ * Model choice (per proposal v2, 2026-09-30):
+ *   - qwen2.5:3b — the one and only primary generation path for personas.
+ *     Preliminary testing on the RTX 4050 6GB laptop showed this is faster
+ *     than Qwen3 4B Instruct (which also carries a reasoning/thinking step
+ *     that blows the latency budget), so Qwen3 is not used in this project.
+ *     Model weights are NOT bundled with the repo (Qwen Research License) —
+ *     each dev must `ollama pull qwen2.5:3b` locally.
+ *   - A hosted LLM API is the documented contingency fallback if local
+ *     latency is unacceptable after tuning, but it is NOT implemented yet
+ *     (out of scope for the MVP) and must stay opt-in/disclosed when it is.
  */
 
 const DEFAULT_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
-const DEFAULT_MODEL = process.env.OLLAMA_MODEL || "qwen3:4b-instruct";
+const DEFAULT_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:3b";
 
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
