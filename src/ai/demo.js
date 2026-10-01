@@ -57,12 +57,16 @@ async function main() {
 
     console.log(`Event: ${event}`);
     console.log(`  → ${parseFanResponse(text)}`);
-    console.log(`  (${evalTokens} tokens, ${totalMs ?? wallMs}ms server-reported, ${wallMs}ms wall)\n`);
+    console.log(
+      `  (${evalTokens} tokens, ${totalMs ?? wallMs}ms server-reported, ${wallMs}ms wall)\n`,
+    );
   }
 
   const sorted = [...wallTimes].sort((a, b) => a - b);
   console.log("--- Latency summary (wall-clock, this run only) ---");
-  console.log(`  n=${sorted.length}  p50=${percentile(sorted, 50)}ms  p95=${percentile(sorted, 95)}ms  max=${sorted[sorted.length - 1]}ms`);
+  console.log(
+    `  n=${sorted.length}  p50=${percentile(sorted, 50)}ms  p95=${percentile(sorted, 95)}ms  max=${sorted[sorted.length - 1]}ms`,
+  );
 }
 
 main().catch((err) => {

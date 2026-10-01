@@ -44,15 +44,23 @@ test("streamed updates share an id and carry the full text so far", () => {
   const updates = ["LETS", "LETS GO", "LETS GOOO 🔥"].map((text, i, all) =>
     createChatMessage({ ...BASE, text, done: i === all.length - 1 }),
   );
-  assert.deepEqual(updates.map((u) => u.id), ["msg-1", "msg-1", "msg-1"]);
-  assert.deepEqual(updates.map((u) => u.done), [false, false, true]);
+  assert.deepEqual(
+    updates.map((u) => u.id),
+    ["msg-1", "msg-1", "msg-1"],
+  );
+  assert.deepEqual(
+    updates.map((u) => u.done),
+    [false, false, true],
+  );
   assert.equal(updates.at(-1).text, "LETS GOOO 🔥");
 });
 
 test("accepts every persona and source", () => {
   for (const persona of PERSONAS) {
     for (const source of MESSAGE_SOURCES) {
-      assert.deepEqual(validateChatMessage(createChatMessage({ ...BASE, persona, source })), { ok: true });
+      assert.deepEqual(validateChatMessage(createChatMessage({ ...BASE, persona, source })), {
+        ok: true,
+      });
     }
   }
 });
@@ -76,14 +84,21 @@ test("rejects bad fields", () => {
   assert.deepEqual(errorPaths({ ...base, kind: "chat" }), ["kind"]);
   assert.deepEqual(errorPaths({ ...base, id: "" }), ["id"]);
   assert.deepEqual(errorPaths({ ...base, eventId: "" }), ["eventId"]);
-  assert.deepEqual(errorPaths({ ...base, eventId: "x".repeat(LIMITS.maxIdLength + 1) }), ["eventId"]);
+  assert.deepEqual(errorPaths({ ...base, eventId: "x".repeat(LIMITS.maxIdLength + 1) }), [
+    "eventId",
+  ]);
   assert.deepEqual(errorPaths({ ...base, ts: -1 }), ["ts"]);
   assert.deepEqual(errorPaths({ ...base, persona: "troll" }), ["persona"]);
   assert.deepEqual(errorPaths({ ...base, source: "gpt" }), ["source"]);
   assert.deepEqual(errorPaths({ ...base, viewer: "  " }), ["viewer"]);
-  assert.deepEqual(errorPaths({ ...base, viewer: "x".repeat(MESSAGE_LIMITS.maxViewerLength + 1) }), ["viewer"]);
+  assert.deepEqual(
+    errorPaths({ ...base, viewer: "x".repeat(MESSAGE_LIMITS.maxViewerLength + 1) }),
+    ["viewer"],
+  );
   assert.deepEqual(errorPaths({ ...base, text: "" }), ["text"]);
-  assert.deepEqual(errorPaths({ ...base, text: "x".repeat(MESSAGE_LIMITS.maxTextLength + 1) }), ["text"]);
+  assert.deepEqual(errorPaths({ ...base, text: "x".repeat(MESSAGE_LIMITS.maxTextLength + 1) }), [
+    "text",
+  ]);
   assert.deepEqual(errorPaths({ ...base, done: "yes" }), ["done"]);
   assert.deepEqual(errorPaths({ ...base, donation: 5 }), ["donation"]);
 });

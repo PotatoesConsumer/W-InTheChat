@@ -19,7 +19,9 @@ const ALL = "*";
  * @param {object} [opts]
  * @param {(err: unknown, event: object) => void} [opts.onError] - Called when a handler throws.
  */
-export function createEventBus({ onError = (err) => console.error("Event handler failed:", err) } = {}) {
+export function createEventBus({
+  onError = (err) => console.error("Event handler failed:", err),
+} = {}) {
   /** @type {Map<string, Set<Function>>} */
   const handlers = new Map([ALL, ...EVENT_KINDS].map((kind) => [kind, new Set()]));
 
@@ -49,7 +51,9 @@ export function createEventBus({ onError = (err) => console.error("Event handler
      */
     subscribe(kind, handler) {
       if (!handlers.has(kind)) {
-        throw new TypeError(`unknown event kind "${kind}"; use one of ${[...EVENT_KINDS, ALL].join(", ")}`);
+        throw new TypeError(
+          `unknown event kind "${kind}"; use one of ${[...EVENT_KINDS, ALL].join(", ")}`,
+        );
       }
       if (typeof handler !== "function") throw new TypeError("handler must be a function");
       handlers.get(kind).add(handler);

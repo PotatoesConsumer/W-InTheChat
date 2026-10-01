@@ -1,0 +1,5 @@
+# Markdown is left as written; Prettier's table padding makes doc diffs noisy.
+*.md
+package-lock.json
+*.docx
+*.pdf

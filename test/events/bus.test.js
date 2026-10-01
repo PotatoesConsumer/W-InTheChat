@@ -25,7 +25,10 @@ test("rejects invalid input without calling any handler", () => {
 
   const result = bus.publish({ v: 1, id: "x", kind: "game", ts: 0, name: "headshot", data: {} });
   assert.equal(result.ok, false);
-  assert.deepEqual(result.errors.map((e) => e.path), ["name"]);
+  assert.deepEqual(
+    result.errors.map((e) => e.path),
+    ["name"],
+  );
   assert.equal(calls, 0);
 });
 

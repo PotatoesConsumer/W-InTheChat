@@ -36,11 +36,13 @@ latency. Send one request first if the model isn't loaded yet; a cold load can
 exceed the client's 15 s timeout.
 
 ```bash
-npm test
+npm install
+npm run check
 ```
 
-Runs the unit tests (no Ollama needed). The event schema is documented in
-[docs/events.md](docs/events.md).
+Installs the dev tools, then runs lint, the format check and the unit tests (no Ollama needed).
+The event schema is documented in [docs/events.md](docs/events.md). See
+[CONTRIBUTING.md](CONTRIBUTING.md) for branch and PR conventions.
 
 ## Tech stack
 

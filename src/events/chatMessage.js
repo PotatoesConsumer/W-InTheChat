@@ -28,7 +28,18 @@ export const MESSAGE_LIMITS = Object.freeze({
   maxViewerLength: 25,
 });
 
-const FIELDS = new Set(["v", "id", "kind", "ts", "eventId", "persona", "viewer", "source", "text", "done"]);
+const FIELDS = new Set([
+  "v",
+  "id",
+  "kind",
+  "ts",
+  "eventId",
+  "persona",
+  "viewer",
+  "source",
+  "text",
+  "done",
+]);
 
 /**
  * @param {object} fields
@@ -53,7 +64,18 @@ export function createChatMessage({
   id = globalThis.crypto.randomUUID(),
   ts = Date.now(),
 }) {
-  const message = { v: SCHEMA_VERSION, id, kind: "chat_message", ts, eventId, persona, viewer, source, text, done };
+  const message = {
+    v: SCHEMA_VERSION,
+    id,
+    kind: "chat_message",
+    ts,
+    eventId,
+    persona,
+    viewer,
+    source,
+    text,
+    done,
+  };
   const result = validateChatMessage(message);
   if (!result.ok) throw new EventValidationError(result.errors, "chat message");
   return Object.freeze(message);
@@ -73,11 +95,11 @@ export function validateChatMessage(message) {
   }
 
   for (const key of Object.keys(message)) {
-    if (!FIELDS.has(key)) fail(key, "unknown field for kind \"chat_message\"");
+    if (!FIELDS.has(key)) fail(key, 'unknown field for kind "chat_message"');
   }
 
   if (message.v !== SCHEMA_VERSION) fail("v", `unsupported schema version ${message.v}`);
-  if (message.kind !== "chat_message") fail("kind", "must be \"chat_message\"");
+  if (message.kind !== "chat_message") fail("kind", 'must be "chat_message"');
   checkId(message.id, "id", fail);
   if (message.eventId !== null) checkId(message.eventId, "eventId", fail);
 
