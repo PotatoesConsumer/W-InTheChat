@@ -143,7 +143,9 @@ test("rejects chat text that is missing, empty or too long", () => {
   assert.deepEqual(errorPaths({ ...base, text: 5 }), ["text"]);
   assert.deepEqual(errorPaths({ ...base, text: " \n\t " }), ["text"]);
   assert.deepEqual(errorPaths({ ...base, text: "x".repeat(LIMITS.maxChatLength + 1) }), ["text"]);
-  assert.deepEqual(validateEvent({ ...base, text: "x".repeat(LIMITS.maxChatLength) }), { ok: true });
+  assert.deepEqual(validateEvent({ ...base, text: "x".repeat(LIMITS.maxChatLength) }), {
+    ok: true,
+  });
 });
 
 test("reports every problem at once", () => {

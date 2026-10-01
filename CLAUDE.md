@@ -12,7 +12,8 @@ on the same events.
 
 - Ollama must be running (`http://localhost:11434`) with the model pulled:
   `ollama pull qwen2.5:3b`
-- Node >= 20. No dependencies yet.
+- Node >= 20, then `npm install`. Dev dependencies only (ESLint, Prettier); the runtime
+  code has no dependencies.
 - Model weights are never committed (Qwen Research License).
 - `OLLAMA_HOST` / `OLLAMA_MODEL` are read from the shell environment. Nothing loads `.env`
   yet, so copying `.env.example` to `.env` has no effect.
@@ -22,6 +23,8 @@ on the same events.
 - `npm run ai:demo`: sends sample events through the Fan persona, prints the replies and
   p50/p95 latency.
 - `npm test`: runs `test/**/*.test.js` with Node's built-in test runner. Doesn't need Ollama.
+- `npm run lint` / `npm run format`: ESLint and Prettier.
+- `npm run check`: lint + format check + tests, the same as CI. Run it before opening a PR.
 
 ## Model
 
@@ -67,5 +70,5 @@ on the same events.
 
 ## Git
 
-Current practice: work on `feature/*` branches and open a PR into `master`. Prin owns the
-branch conventions, so follow theirs once written.
+Follow `CONTRIBUTING.md`: branch as `feature/` / `fix/` / `docs/` / `chore/` from `master`,
+never push to `master`, run `npm run check`, then open a PR for a teammate to review.
