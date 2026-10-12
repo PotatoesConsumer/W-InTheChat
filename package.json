@@ -7,6 +7,9 @@
   "scripts": {
     "dev": "node scripts/serve.js",
     "ai:demo": "node src/ai/demo.js",
+    "service": "node scripts/service.js",
+    "e2e": "node scripts/e2e.js",
+    "harness": "node scripts/harness.js",
     "test": "node --test",
     "lint": "eslint .",
     "format": "prettier --write .",

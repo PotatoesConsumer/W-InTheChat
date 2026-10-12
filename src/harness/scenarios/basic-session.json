@@ -1,0 +1,19 @@
+{
+  "name": "basic-session",
+  "description": "One ordinary round: routine events, a close call, player chat, a win, then a loss.",
+  "steps": [
+    { "at": 0, "game": "round_start", "data": { "round": 1 } },
+    { "at": 1500, "game": "kill" },
+    { "at": 3200, "game": "item_pickup", "data": { "item": "shield" } },
+    { "at": 5000, "game": "damage_taken", "data": { "hp": 40 } },
+    { "at": 6500, "game": "close_call", "data": { "hp": 5 } },
+    { "at": 8000, "chat": "that was way too close" },
+    { "at": 10000, "game": "kill", "data": { "combo": 2 } },
+    { "at": 12000, "game": "streak", "data": { "count": 3 } },
+    { "at": 15000, "game": "win", "data": { "round": 1, "score": 12 } },
+    { "at": 17000, "chat": "gg chat, one more?" },
+    { "at": 19000, "game": "round_start", "data": { "round": 2 } },
+    { "at": 22000, "game": "damage_taken", "data": { "hp": 10 } },
+    { "at": 24000, "game": "loss", "data": { "round": 2, "score": 4 } }
+  ]
+}

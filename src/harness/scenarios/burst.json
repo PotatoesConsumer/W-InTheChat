@@ -1,0 +1,42 @@
+{
+  "name": "burst",
+  "description": "Event bursts: a kill spree, a repeated major event, player chat spam and stacked major events, then a calm single event. Run at real-time speed.",
+  "steps": [
+    { "at": 0, "game": "round_start", "data": { "round": 1 } },
+    { "at": 100, "game": "kill", "note": "kill spree: 12 minor events in 1.1 s" },
+    { "at": 200, "game": "kill" },
+    { "at": 300, "game": "kill" },
+    { "at": 400, "game": "kill" },
+    { "at": 500, "game": "kill" },
+    { "at": 600, "game": "kill" },
+    { "at": 700, "game": "kill" },
+    { "at": 800, "game": "kill" },
+    { "at": 900, "game": "kill" },
+    { "at": 1000, "game": "kill" },
+    { "at": 1100, "game": "kill" },
+    { "at": 1200, "game": "kill" },
+    {
+      "at": 1500,
+      "game": "streak",
+      "data": { "count": 5 },
+      "note": "same major event 4x in 0.9 s"
+    },
+    { "at": 1800, "game": "streak", "data": { "count": 6 } },
+    { "at": 2100, "game": "streak", "data": { "count": 7 } },
+    { "at": 2400, "game": "streak", "data": { "count": 8 } },
+    { "at": 2600, "chat": "LETS GO", "note": "player spams chat: 5 messages in 0.8 s" },
+    { "at": 2800, "chat": "LETS GO" },
+    { "at": 3000, "chat": "chat are you seeing this" },
+    { "at": 3200, "chat": "LETS GOOOO" },
+    { "at": 3400, "chat": "unreal" },
+    {
+      "at": 3600,
+      "game": "close_call",
+      "data": { "hp": 1 },
+      "note": "different major events stacked"
+    },
+    { "at": 3700, "game": "new_best", "data": { "score": 30 } },
+    { "at": 3800, "game": "win", "data": { "round": 1, "score": 30 } },
+    { "at": 7000, "game": "round_start", "data": { "round": 2 }, "note": "calm again" }
+  ]
+}

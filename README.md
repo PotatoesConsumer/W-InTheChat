@@ -37,6 +37,14 @@ event, Enter focuses the chat box and Escape leaves it. Chat replies come from a
 placeholder feed (`src/game/devChatFeed.js`) until the service is connected.
 
 ```bash
+npm run service
+```
+
+Runs the local chat service on <http://127.0.0.1:8787>: the game posts events to
+`/events` and reads replies from `/stream`. `npm run e2e` measures end-to-end latency with
+the real model. See [docs/service.md](docs/service.md).
+
+```bash
 npm run ai:demo
 ```
 
