@@ -8,6 +8,11 @@ is out of date (Qwen3, vision model, Vercel deploy); where it disagrees, the pro
 The MVP needs a switch to a scripted-chat baseline: the evaluation compares AI chat against it
 on the same events.
 
+**Before starting a task, read `docs/team-status.md`.** It says what changed recently, what
+each of us is doing next, and which design decisions are settled (whole replies instead of
+streamed partials, one generation at a time, no timing-based routing). When a task changes
+any of that, update the file in the same PR.
+
 ## Setup
 
 - Ollama must be running (`http://localhost:11434`) with the model pulled:
