@@ -40,8 +40,11 @@ on the same events.
 ## Layout
 
 - `src/ai/ollamaClient.js`: Ollama REST wrapper (health, retry/backoff, timeout, model select)
-- `src/ai/personas/`: one file per persona (system prompt, prompt builder, response parser).
-  Only `fan.js` exists; Hater, Backseat Gamer and Lurker are still to come.
+- `src/ai/contextBuilder.js`: `buildPrompt(ctx, {persona, streamerName, history})`, the
+  context payload -> `{system, prompt}` for one persona reply. Uses only `ctx.facts`.
+- `src/ai/personas/`: one file per persona (system prompt, prompt builder, response parser),
+  registered in `index.js`. Only `fan.js` exists; Hater, Backseat Gamer and Lurker are still
+  to come.
 - `src/ai/demo.js`: latency smoke test
 - `src/events/`: the event contract, spec in `docs/events.md`
   - `schema.js`: inbound game + chat events, catalog, validation. The game catalog is a draft

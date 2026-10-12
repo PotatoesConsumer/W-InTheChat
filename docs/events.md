@@ -128,6 +128,9 @@ toContext(createChatEvent("is this boss hard?"))
   and measuring latency from `ts`.
 - `facts.event` is the catalog phrase, so it plugs straight into the existing persona
   prompts: `buildFanPrompt({ event: ctx.facts.event })`.
+- The context builder, `buildPrompt(ctx, {persona, streamerName, history})` in
+  [`src/ai/contextBuilder.js`](../src/ai/contextBuilder.js), turns the payload into the
+  persona's system prompt and the user prompt.
 
 The context builder may add things that aren't part of the event, such as the persona,
 streamer name or recent chat history. Those are its own inputs, not part of this payload.
