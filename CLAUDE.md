@@ -28,6 +28,8 @@ on the same events.
 - `npm test`: runs `test/**/*.test.js` with Node's built-in test runner. Doesn't need Ollama.
 - `npm run lint` / `npm run format`: ESLint and Prettier.
 - `npm run check`: lint + format check + tests, the same as CI. Run it before opening a PR.
+- `npm run harness -- <scenario>`: plays a scenario into the pipeline headless with a fake
+  model (no game, no Ollama). `--list` shows scenarios. Guide: `docs/harness.md`.
 
 ## Model
 
@@ -63,7 +65,19 @@ on the same events.
   - `replyCheck.js`: rejects malformed replies. Not the safety filter yet (W07).
   - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
     every `GAME_EVENTS` name (a test checks).
-- `test/`: unit tests, mirroring `src/`
+- `src/harness/`: mock-event harness (Node only). `scenario.js` (format), `runner.js`
+  (plays a scenario, returns a JSON run record), `fakeGenerator.js` (OllamaClient stand-in
+  with normal/slow/error/garbage/unsafe modes), `stubPipeline.js` (deliberately naive
+  stand-in until the real pipeline exists; never use it in the game), `checks.js`
+  (deterministic checks over a run record; rules in `docs/pipeline-contract.md`),
+  `scenarios/*.json`.
+  CLI in `scripts/harness.js`.
+- `eval/`: fixed evaluation event sets (scenario format), the output filter test set
+  `safety-cases-v1.json` (no slurs in the repo: the filter tests its own blocklist), and
+  `manifest.json` (draft/frozen, sha256). Never edit a frozen set; make a new version.
+  Guides: `docs/evaluation.md`, `docs/pipeline-contract.md`.
+- `test/`: unit tests, mirroring `src/`. `test/contracts/` runs the checks against the real
+  pipeline / stats model once they're registered in `implementations.js` (TODO until then).
 
 ## Rules from the proposal
 

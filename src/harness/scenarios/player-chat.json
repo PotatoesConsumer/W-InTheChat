@@ -1,0 +1,27 @@
+{
+  "name": "player-chat",
+  "description": "Typed player messages, including irrelevant, empty and oversized input.",
+  "steps": [
+    { "at": 0, "chat": "hey chat, welcome in", "note": "greeting" },
+    { "at": 1500, "chat": "should I go left or right here?", "note": "question about the game" },
+    {
+      "at": 3000,
+      "chat": "what is everyone eating tonight",
+      "note": "irrelevant: valid, still gets a reply"
+    },
+    { "at": 4500, "chat": "😂😂😂", "note": "emoji only" },
+    { "at": 6000, "chat": "", "note": "empty: rejected by the schema" },
+    { "at": 6500, "chat": "    ", "note": "whitespace only: rejected by the schema" },
+    {
+      "at": 8000,
+      "chat": "this message is exactly two hundred characters long so it sits right at the limit of what the player is allowed to send to chat in one go and it must still be accepted by the schema okay done!!!!!!!!!",
+      "note": "200 characters: the longest accepted message"
+    },
+    {
+      "at": 9500,
+      "chat": "this message is exactly two hundred and one characters long so it goes one past the limit of what the player is allowed to send to chat in one go and the schema has to reject it, nothing else!!!!!!!!!!",
+      "note": "201 characters: rejected by the schema"
+    },
+    { "at": 11000, "chat": "ok back to the game", "note": "normal input after rejections" }
+  ]
+}
