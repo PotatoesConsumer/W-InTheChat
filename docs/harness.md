@@ -22,7 +22,7 @@ npm run harness -- my-scenario.json --pipeline src/service/pipeline.js
 | `--speed` | Playback speed. `max` publishes every step at once. |
 | `--seed` | Seed for the pipeline's random choices, so runs are reproducible |
 | `--settle` | Longest wait (ms) for replies still in flight after the last step |
-| `--json` | Print the run record instead of the readable report |
+| `--json` | Print the run record and check results instead of the readable report |
 
 Code: [`src/harness/`](../src/harness), CLI: [`scripts/harness.js`](../scripts/harness.js).
 
@@ -92,6 +92,13 @@ generated reply for everything else. It is **deliberately naive**: no coalescing
 filter, no timeout, no limits. Running the edge-case scenarios against it shows exactly the
 failures the real pipeline has to handle. It is not used by the game.
 
+## Checks
+
+After every run the harness applies the deterministic checks from
+[`docs/pipeline-contract.md`](pipeline-contract.md) (routing, response limits, stream
+integrity, prompt boundary and more), prints PASS/FAIL for each, and **exits 1 if any
+fail**. That makes a harness run usable as a CI step.
+
 ## The run record
 
 `--json` prints the record that the report and the checks are built from:
@@ -105,6 +112,7 @@ failures the real pipeline has to handle. It is not used by the game.
 | `generatorCalls[]` | `prompt`, `start`, `end`, `outcome` (`ok` / `error` / `aborted`), `text` or `error`, `unsafe` |
 | `handlerErrors[]` | Pipeline handlers that threw |
 | `lateMessages` | Messages emitted after the run ended (they are not recorded) |
+| `stats[]` | Only with a stats model (`runScenario(…, { stats })`): the state after each accepted event |
 
 `t` is ms since the run started. Every event and message also has `seq`, one counter across
 both, which gives the exact order even within a millisecond.

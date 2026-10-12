@@ -26,6 +26,8 @@ import { startStubPipeline } from "./stubPipeline.js";
  * @param {number} [opts.seed] - Seeds `deps.random`.
  * @param {number} [opts.speed] - Playback speed; Infinity publishes every step at once.
  * @param {number} [opts.settleMs] - Longest wait for in-flight replies after the last step.
+ * @param {{initial: () => object, reduce: (state: object, event: object) => object}} [opts.stats]
+ *   Stats model: the runner applies it to every accepted event and records each state.
  * @returns {Promise<object>} the run record
  */
 export async function runScenario(
@@ -37,6 +39,7 @@ export async function runScenario(
     seed = 1,
     speed = 1,
     settleMs = 10_500,
+    stats,
   } = {},
 ) {
   if (!(speed > 0)) throw new RangeError("speed must be greater than 0");
@@ -59,6 +62,7 @@ export async function runScenario(
     lateMessages: 0,
     durationMs: 0,
   };
+  if (stats) record.stats = [];
 
   const bus = createEventBus({
     onError: (err, event) =>
@@ -88,6 +92,18 @@ export async function runScenario(
       throw err;
     }
   };
+
+  if (stats) {
+    let state = stats.initial();
+    bus.subscribe("*", (event) => {
+      try {
+        state = stats.reduce(state, event);
+      } catch (err) {
+        throw new Error(`stats: ${describe(err)}`, { cause: err });
+      }
+      record.stats.push({ eventId: event.id, state: toPlain(state) });
+    });
+  }
 
   const started = pipeline(bus, emit, {
     generate,
