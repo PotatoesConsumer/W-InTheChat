@@ -13,8 +13,10 @@ something here no longer matches the code, trust the code and say so.
 - PR #11 adds the real chat pipeline and the local service: events in over HTTP, replies out
   over SSE, using `qwen2.5:3b`. It runs end to end without the browser (`npm run e2e`):
   model replies reach the client in 211 / 430 ms at p50 / p95 on the RTX 4050.
-- The game (branch `tawan`) isn't on `master` yet and isn't connected to the service.
-  That's the main thing between us and the Month-1 demo.
+- The game loop and chat overlay (Shapphanyu's branch `tawan`) are in review as a PR from
+  `feature/game-loop-chat-overlay`, a copy of `tawan` with `master` merged in. Once merged,
+  the game still needs connecting to the service; that's the main thing between us and
+  the Month-1 demo.
 - **The mini-game hasn't been chosen.** The event catalog (`GAME_EVENTS` in
   `src/events/schema.js`) is still a placeholder until it is.
 
@@ -32,8 +34,9 @@ Don't change these without talking to the team first. The reasons are in the lin
 
 ## Shapphanyu (frontend / game): what's next
 
-1. **Get the game onto `master`.** Open a PR from `tawan`. Rename the branch to the
-   `feature/...` pattern and write commit subjects the way `CONTRIBUTING.md` describes.
+1. **Get the game onto `master`.** Done for you: `feature/game-loop-chat-overlay` is
+   `tawan` plus `master`, open as a PR. Review it, and keep working on that branch (or a
+   new `feature/...` one) instead of `tawan`.
 2. **Connect the game to the service.** Replace `src/game/devChatFeed.js` with
    `connectToService` from `src/service/client.js` (example in `docs/service.md`). Run
    `npm run service` next to `npm run dev`; the service already allows the
@@ -84,4 +87,4 @@ service first.
 |------|------------|
 | Reviewing and merging PR #11 | a teammate's review on GitHub |
 | Choosing the mini-game (fixes the event catalog, unblocks the M1 demo) | the whole team |
-| Game PR from `tawan` | Shapphanyu |
+| Reviewing the game PR (`feature/game-loop-chat-overlay`) | Shapphanyu, Prin |
