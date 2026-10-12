@@ -1,0 +1,99 @@
+{
+  "name": "event-set-v1",
+  "description": "Fixed evaluation event set v1 (DRAFT until the mini-game is chosen). Four rounds, every catalog event, 14 typed player messages. Both chat conditions play exactly this file. See docs/evaluation.md.",
+  "steps": [
+    { "at": 0, "game": "round_start", "data": { "round": 1 } },
+    {
+      "at": 2000,
+      "chat": "hey chat, we're live! let's get this first win",
+      "note": "greeting: stream start"
+    },
+    { "at": 4500, "game": "item_pickup", "data": { "item": "shield" } },
+    { "at": 7000, "game": "kill" },
+    { "at": 9500, "game": "damage_taken", "data": { "hp": 70 } },
+    {
+      "at": 12000,
+      "chat": "which way do I go, left path or the bridge?",
+      "note": "advice-request: asks chat for directions"
+    },
+    { "at": 15000, "game": "kill", "data": { "combo": 2 } },
+    { "at": 18000, "game": "close_call", "data": { "hp": 4 } },
+    {
+      "at": 21000,
+      "chat": "I was ONE hit from dying there",
+      "note": "reaction: to the close call at 18s"
+    },
+    { "at": 24000, "game": "item_pickup", "data": { "item": "medkit" } },
+    { "at": 27000, "game": "streak", "data": { "count": 3 } },
+    { "at": 30000, "game": "damage_taken", "data": { "hp": 55 } },
+    { "at": 33000, "game": "kill" },
+    { "at": 36000, "game": "win", "data": { "round": 1, "score": 14 } },
+    {
+      "at": 39000,
+      "chat": "thank you chat, you guys carried me",
+      "note": "thanks: after the round-1 win"
+    },
+
+    { "at": 45000, "game": "round_start", "data": { "round": 2 } },
+    {
+      "at": 48000,
+      "chat": "anyone else hungry? I could go for some noodles",
+      "note": "irrelevant: off-topic, mid-round"
+    },
+    { "at": 51000, "game": "damage_taken", "data": { "hp": 60 } },
+    { "at": 53000, "game": "damage_taken", "data": { "hp": 25 } },
+    { "at": 56000, "game": "close_call", "data": { "hp": 2 } },
+    { "at": 59000, "chat": "is this level always this hard?", "note": "question: about the game" },
+    { "at": 62000, "game": "kill" },
+    { "at": 65000, "game": "damage_taken", "data": { "hp": 8 } },
+    { "at": 68000, "game": "loss", "data": { "round": 2, "score": 6 } },
+    {
+      "at": 71000,
+      "chat": "ok chat, who jinxed that? be honest",
+      "note": "banter: after the round-2 loss"
+    },
+
+    { "at": 78000, "game": "round_start", "data": { "round": 3 } },
+    { "at": 81000, "chat": "😤😤", "note": "minimal: emoji only" },
+    { "at": 84000, "game": "kill" },
+    { "at": 86000, "game": "kill", "data": { "combo": 2 } },
+    { "at": 89000, "game": "item_pickup", "data": { "item": "speed boots" } },
+    { "at": 92000, "game": "streak", "data": { "count": 5 } },
+    {
+      "at": 95000,
+      "chat": "five in a row, I'm actually locked in",
+      "note": "reaction: to the streak at 92s"
+    },
+    { "at": 98000, "game": "kill" },
+    { "at": 101000, "game": "damage_taken", "data": { "hp": 40 } },
+    { "at": 104000, "game": "close_call", "data": { "hp": 6 } },
+    { "at": 107000, "game": "kill" },
+    { "at": 110000, "game": "new_best", "data": { "score": 22 } },
+    { "at": 113000, "game": "win", "data": { "round": 3, "score": 22 } },
+    {
+      "at": 116000,
+      "chat": "should I try hard mode next round?",
+      "note": "question: asks for a decision"
+    },
+
+    { "at": 123000, "game": "round_start", "data": { "round": 4 } },
+    {
+      "at": 126000,
+      "chat": "backseaters, now's your chance, what am I doing wrong",
+      "note": "advice-request: invites criticism"
+    },
+    { "at": 129000, "game": "damage_taken", "data": { "hp": 30 } },
+    { "at": 132000, "game": "loss", "data": { "round": 4, "score": 3 } },
+    {
+      "at": 135000,
+      "chat": "my cat just walked across the keyboard lol",
+      "note": "irrelevant: blames the cat"
+    },
+    { "at": 138000, "chat": "lol", "note": "minimal: one word" },
+    {
+      "at": 141000,
+      "chat": "thanks for watching everyone, see you next stream",
+      "note": "thanks: stream end"
+    }
+  ]
+}
