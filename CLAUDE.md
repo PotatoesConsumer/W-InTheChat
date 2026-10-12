@@ -60,8 +60,10 @@ on the same events.
   (deterministic checks over a run record; rules in `docs/pipeline-contract.md`),
   `scenarios/*.json`.
   CLI in `scripts/harness.js`.
-- `eval/`: fixed evaluation event sets (scenario format) + `manifest.json` (draft/frozen,
-  sha256). Never edit a frozen set; make a new version. Guide: `docs/evaluation.md`.
+- `eval/`: fixed evaluation event sets (scenario format), the output filter test set
+  `safety-cases-v1.json` (no slurs in the repo: the filter tests its own blocklist), and
+  `manifest.json` (draft/frozen, sha256). Never edit a frozen set; make a new version.
+  Guides: `docs/evaluation.md`, `docs/pipeline-contract.md`.
 - `test/`: unit tests, mirroring `src/`. `test/contracts/` runs the checks against the real
   pipeline / stats model once they're registered in `implementations.js` (TODO until then).
 

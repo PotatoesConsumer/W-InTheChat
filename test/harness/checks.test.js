@@ -54,15 +54,18 @@ function clean() {
   };
 }
 
+// The W06 core checks; the W07 edge-case checks are tested in edgeCaseChecks.test.js.
+const CORE = CHECKS.filter((c) => !c.group).map((c) => c.name);
+
 function failures(record, limits) {
   return Object.fromEntries(
-    runChecks(record, { limits })
+    runChecks(record, { limits, only: CORE })
       .filter((c) => !c.ok)
       .map((c) => [c.name, c.violations.map((v) => v.message)]),
   );
 }
 
-test("a clean record passes every check", () => {
+test("a clean record passes every core check", () => {
   assert.deepEqual(failures(clean()), {});
 });
 
@@ -190,7 +193,7 @@ test("runChecks can run a subset and rejects unknown names", () => {
 const fast = { speed: Infinity, settleMs: 2_000 };
 const { scenario: session } = await loadScenario("basic-session");
 
-test("the stub passes every check in the AI condition", async () => {
+test("the stub passes every core check in the AI condition", async () => {
   const record = await runScenario(session, fast);
   assert.deepEqual(failures(record), {});
 });

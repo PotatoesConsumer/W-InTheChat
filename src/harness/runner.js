@@ -55,6 +55,7 @@ export async function runScenario(
     scenario: { name: scenario.name, description: scenario.description },
     condition,
     seed,
+    speed: speed === Infinity ? "max" : speed,
     events: [],
     messages: [],
     generatorCalls: [],
