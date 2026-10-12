@@ -113,6 +113,20 @@ test("the CLI runs a bundled scenario end to end", async () => {
   assert.match(stdout, /10 published, 1 accepted, 9 rejected/);
 });
 
+test("the CLI exits 1 and names the check when a check fails", async () => {
+  await assert.rejects(
+    promisify(execFile)(process.execPath, [
+      "scripts/harness.js",
+      "malformed",
+      "--speed",
+      "max",
+      "--condition",
+      "scripted",
+    ]),
+    (err) => err.code === 1 && /FAIL {2}routing/.test(err.stdout),
+  );
+});
+
 test("the CLI rejects bad options with exit code 2", async () => {
   await assert.rejects(
     promisify(execFile)(process.execPath, ["scripts/harness.js", "malformed", "--speed", "0"]),

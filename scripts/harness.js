@@ -1,6 +1,7 @@
 /**
  * Mock-event harness CLI: plays a scenario into a pipeline, headless, and prints what
- * the chat did. No game, no browser, no Ollama. Guide: docs/harness.md.
+ * the chat did, then runs the deterministic checks (docs/pipeline-contract.md).
+ * Exits 1 if a check fails. No game, no browser, no Ollama. Guide: docs/harness.md.
  *
  *   npm run harness -- --list
  *   npm run harness -- basic-session
@@ -15,6 +16,7 @@ import { loadScenario, listScenarios } from "../src/harness/load.js";
 import { runScenario } from "../src/harness/runner.js";
 import { createFakeGenerator, FAKE_MODES } from "../src/harness/fakeGenerator.js";
 import { formatRun } from "../src/harness/report.js";
+import { runChecks } from "../src/harness/checks.js";
 
 const USAGE = `Usage: npm run harness -- <scenario | file.json> [options]
 
@@ -26,7 +28,7 @@ Options:
   --speed <n|max>    playback speed, max = no waiting between steps (default 1)
   --seed <n>         seed for the pipeline's random choices (default 1)
   --settle <ms>      longest wait for in-flight replies at the end (default 10500)
-  --json             print the full run record as JSON
+  --json             print the run record and check results as JSON
   --list             list bundled scenarios`;
 
 async function main() {
@@ -71,7 +73,11 @@ async function main() {
   record.scenario.file = { path, sha256 };
   record.generatorMode = values.mode;
 
-  console.log(values.json ? JSON.stringify(record, null, 2) : formatRun(record));
+  const checks = runChecks(record);
+  console.log(
+    values.json ? JSON.stringify({ ...record, checks }, null, 2) : formatRun(record, { checks }),
+  );
+  if (checks.some((c) => !c.ok)) process.exitCode = 1;
 }
 
 async function loadPipeline(file) {

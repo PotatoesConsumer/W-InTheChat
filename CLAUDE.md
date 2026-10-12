@@ -53,11 +53,14 @@ on the same events.
 - `src/harness/`: mock-event harness (Node only). `scenario.js` (format), `runner.js`
   (plays a scenario, returns a JSON run record), `fakeGenerator.js` (OllamaClient stand-in
   with normal/slow/error/garbage/unsafe modes), `stubPipeline.js` (deliberately naive
-  stand-in until the real pipeline exists; never use it in the game), `scenarios/*.json`.
+  stand-in until the real pipeline exists; never use it in the game), `checks.js`
+  (deterministic checks over a run record; rules in `docs/pipeline-contract.md`),
+  `scenarios/*.json`.
   CLI in `scripts/harness.js`.
 - `eval/`: fixed evaluation event sets (scenario format) + `manifest.json` (draft/frozen,
   sha256). Never edit a frozen set; make a new version. Guide: `docs/evaluation.md`.
-- `test/`: unit tests, mirroring `src/`
+- `test/`: unit tests, mirroring `src/`. `test/contracts/` runs the checks against the real
+  pipeline / stats model once they're registered in `implementations.js` (TODO until then).
 
 ## Rules from the proposal
 
