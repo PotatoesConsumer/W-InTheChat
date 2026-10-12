@@ -28,6 +28,15 @@ date; where it disagrees with the proposal, the proposal wins.
 ## Running
 
 ```bash
+npm run dev
+```
+
+Serves the game on <http://localhost:5173> (open it in Chrome). The scene is a
+placeholder until the mini-game is chosen: WASD/arrows move, Space sends a test game
+event, Enter focuses the chat box and Escape leaves it. Chat replies come from a dev
+placeholder feed (`src/game/devChatFeed.js`) until the service is connected.
+
+```bash
 npm run service
 ```
 

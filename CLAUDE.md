@@ -72,6 +72,16 @@ any of that, update the file in the same PR.
   - `replyCheck.js`: rejects malformed replies. Not the safety filter yet (W07).
   - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
     every `GAME_EVENTS` name (a test checks).
+- `src/game/`: browser game (`index.html` loads `main.js`)
+  - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
+  - `input.js`: keyboard -> actions; ignores keys typed into the chat box
+  - `devChatFeed.js`: placeholder fake chat. Replace it with `connectToService`
+    (`src/service/client.js`, see `docs/service.md`), then delete it.
+- `src/ui/`: chat overlay. `chatLog.js` is the DOM-free state (streamed updates by id),
+  `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll).
+  The player's own lines are UI-only entries (`kind: "player"`, name "Player", ADMIN badge),
+  not chat_messages. No login or name setting yet.
+- `scripts/serve.js`: `npm run dev` static server on localhost:5173 (no dotfiles/node_modules)
 - `src/harness/`: mock-event harness (Node only). `scenario.js` (format), `runner.js`
   (plays a scenario, returns a JSON run record), `fakeGenerator.js` (OllamaClient stand-in
   with normal/slow/error/garbage/unsafe modes), `stubPipeline.js` (deliberately naive
