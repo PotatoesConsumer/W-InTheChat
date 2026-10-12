@@ -8,6 +8,7 @@ relevance, persona and variety ratings compare like with like.
 |------|------|
 | [`eval/event-set-v1.json`](../eval/event-set-v1.json) | The set: scenario format (`docs/harness.md`), 46 steps over 141 s |
 | [`eval/manifest.json`](../eval/manifest.json) | Status (`draft` / `frozen`) and hash of each set |
+| [`eval/safety-cases-v1.json`](../eval/safety-cases-v1.json) | Output filter test set (block / allow / review), see `docs/pipeline-contract.md` |
 | [`test/eval/eventSet.test.js`](../test/eval/eventSet.test.js) | Coverage rules below, plus the freeze check |
 
 > **v1 is a draft.** It uses the placeholder event catalog. When the mini-game is chosen

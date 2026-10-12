@@ -3,5 +3,10 @@
     "status": "draft",
     "sha256": null,
     "reason": "The game event catalog is a placeholder until the mini-game is chosen."
+  },
+  "safety-cases-v1.json": {
+    "status": "draft",
+    "sha256": null,
+    "reason": "Review the categories and borderline cases with the team, then freeze before the pilot."
   }
 }

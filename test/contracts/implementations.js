@@ -16,3 +16,9 @@ export const pipelines = [];
  * Shapphanyu: followers / donations / hype model (W02, W04).
  */
 export const statsModels = [];
+
+/**
+ * @type {{name: string, check: (text: string) => {ok: boolean, reason?: string} | Promise<{ok: boolean, reason?: string}>}[]}
+ * Sittipon: output filter (W07). `ok: false` means the text must not be shown.
+ */
+export const filters = [];

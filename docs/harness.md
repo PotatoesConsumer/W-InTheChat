@@ -16,7 +16,7 @@ npm run harness -- my-scenario.json --pipeline src/service/pipeline.js
 
 | Option | Meaning |
 |--------|---------|
-| `--mode` | Fake model: `normal`, `slow` (answers after 15 s), `error` (rejects), `garbage` (empty, markdown, multi-line, too long, "As an AI…"), `unsafe` (text the filter must block) |
+| `--mode` | Fake model: `normal`, `slow` (answers after 15 s), `error` (rejects), `garbage` (empty, markdown, multi-line, too long, "As an AI…"), `unsafe` (the `block` cases of `eval/safety-cases-v1.json`) |
 | `--condition` | `ai` or `scripted`, passed to the pipeline |
 | `--pipeline` | Module whose default export (or `start`) is the pipeline. Default: the naive stub, see below. |
 | `--speed` | Playback speed. `max` publishes every step at once. |
@@ -61,6 +61,7 @@ be found across runs. `ts` is set when the step is published.
 | `basic-session` | An ordinary round: minor and major events, player chat, a win, a loss |
 | `player-chat` | Typed input: greeting, question, irrelevant, emoji, empty, whitespace, 200 and 201 chars |
 | `malformed` | Nine malformed events the bus must drop, then one valid event that must still get a reply |
+| `burst` | A 12-kill spree, the same major event 4× in 0.9 s, chat spam, stacked major events. Run at `--speed 1`. |
 
 ## Pipeline contract
 

@@ -9,6 +9,10 @@
  * Two kinds:
  *   - CHECKS judge one run.
  *   - COMPARISONS judge two runs of the same scenario (e.g. same seed twice).
+ *
+ * A check returns null to say "not applicable to this run" (reported as SKIP). The
+ * timing checks do that unless the run played at real-time speed, because a sped-up
+ * scenario is a burst by construction.
  */
 
 import { validateChatMessage } from "../events/chatMessage.js";
@@ -21,9 +25,21 @@ import { isPlainObject } from "../events/schema.js";
 export const QA_LIMITS = Object.freeze({
   /** Distinct chat messages that may answer one event. */
   maxMessagesPerEvent: 3,
+  /** Longest an event may wait for its completed reply, fallback included. */
+  replyTimeoutMs: 10_000,
+  /** Slack on top of replyTimeoutMs for the fallback itself to be sent. */
+  timeoutGraceMs: 500,
+  /** Generations running at once (one 6 GB GPU). */
+  maxGenerationsInFlight: 1,
+  /** New chat messages in any one-second window. */
+  maxMessagesPerSecond: 5,
+  /** Same-name game events closer together than this count as one repeated run. */
+  coalesceWindowMs: 2_000,
 });
 
 /** @typedef {{message: string, eventId?: string, messageId?: string}} Violation */
+
+// Checks without a `group` are the W06 core checks; `group: "edge-case"` marks W07 ones.
 
 export const CHECKS = Object.freeze([
   {
@@ -207,6 +223,203 @@ export const CHECKS = Object.freeze([
       return out;
     },
   },
+
+  // --- W07: edge cases ---
+  {
+    name: "reply-timeout",
+    group: "edge-case",
+    description: "every reply, fallback included, completes within replyTimeoutMs of its event",
+    run(record, limits) {
+      const out = [];
+      const events = new Map(record.events.map((e) => [e.id, e]));
+      const budget = limits.replyTimeoutMs + limits.timeoutGraceMs;
+      for (const [id, updates] of groupUpdates(record)) {
+        const entry = events.get(updates[0].message.eventId);
+        const done = updates.find((u) => u.message.done === true);
+        if (!entry || !done) continue;
+        const took = Math.round(done.t - entry.t);
+        if (took > budget) {
+          out.push({
+            messageId: id,
+            eventId: entry.id,
+            message: `${id}: completed ${took} ms after ${entry.id} (limit ${budget})`,
+          });
+        }
+      }
+      return out;
+    },
+  },
+  {
+    name: "fallback-on-failure",
+    group: "edge-case",
+    description: "when generation fails, is too slow or unsafe, chat shows a fallback instead",
+    run(record, limits) {
+      const failed = record.generatorCalls.filter(
+        (c) =>
+          c.outcome !== "ok" ||
+          c.unsafe ||
+          (c.end ?? record.durationMs) - c.start > limits.replyTimeoutMs,
+      );
+      if (failed.length === 0) return [];
+      const fallbacks = [...groupUpdates(record).values()].filter(
+        (updates) => updates[0].message.source === "fallback",
+      );
+      if (fallbacks.length > 0) return [];
+      return [
+        {
+          message: `${failed.length} generations failed, timed out or were unsafe, but no fallback was sent`,
+        },
+      ];
+    },
+  },
+  {
+    name: "ai-text-from-model",
+    group: "edge-case",
+    description: 'every "ai" reply is text from a generation that succeeded and wasn\'t unsafe',
+    run(record) {
+      const good = record.generatorCalls
+        .filter((c) => c.outcome === "ok" && !c.unsafe)
+        .map((c) => normalize(c.text));
+      const out = [];
+      for (const [id, updates] of groupUpdates(record)) {
+        const m = updates.at(-1).message;
+        if (m.source !== "ai" || typeof m.text !== "string") continue;
+        const text = normalize(m.text);
+        if (text && !good.some((g) => g.includes(text) || text.includes(g))) {
+          out.push({
+            messageId: id,
+            message: `${id}: "ai" text matches no successful, safe generation`,
+          });
+        }
+      }
+      return out;
+    },
+  },
+  {
+    name: "unsafe-blocked",
+    group: "edge-case",
+    description: "text from an unsafe generation never reaches chat",
+    run(record) {
+      const unsafe = record.generatorCalls.filter((c) => c.unsafe).map((c) => normalize(c.text));
+      const out = [];
+      for (const [id, updates] of groupUpdates(record)) {
+        for (const { message } of updates) {
+          const text = normalize(message.text);
+          const hit = unsafe.find((u) => u && text.includes(u));
+          if (hit) {
+            out.push({ messageId: id, message: `${id}: shows unsafe output "${hit}"` });
+            break;
+          }
+        }
+      }
+      return out;
+    },
+  },
+  {
+    name: "plain-text",
+    group: "edge-case",
+    description: "chat text is one plain line: no newlines, markdown, JSON or AI disclosures",
+    run(record) {
+      const out = [];
+      for (const [id, updates] of groupUpdates(record)) {
+        const { text } = updates.at(-1).message;
+        if (typeof text !== "string") continue;
+        const problems = [
+          /\n/.test(text) && "a newline",
+          /```|\*\*|^#+\s/.test(text) && "markdown",
+          /^\s*[[{]/.test(text) && "JSON",
+          /\bas an ai\b|language model/i.test(text) && "an AI disclosure",
+        ].filter(Boolean);
+        if (problems.length > 0) {
+          out.push({ messageId: id, message: `${id}: text contains ${problems.join(", ")}` });
+        }
+      }
+      return out;
+    },
+  },
+  {
+    name: "generation-concurrency",
+    group: "edge-case",
+    description: "no more than maxGenerationsInFlight generations run at once",
+    run(record, limits) {
+      const edges = record.generatorCalls.flatMap((c) => [
+        [c.start, 1],
+        [c.end ?? record.durationMs, -1],
+      ]);
+      // At equal times, ends come before starts: back-to-back calls don't overlap.
+      edges.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      let running = 0;
+      let peak = { n: 0, t: 0 };
+      for (const [t, delta] of edges) {
+        running += delta;
+        if (running > peak.n) peak = { n: running, t };
+      }
+      if (peak.n <= limits.maxGenerationsInFlight) return [];
+      return [
+        {
+          message: `${peak.n} generations in flight at +${Math.round(peak.t)} ms (limit ${limits.maxGenerationsInFlight})`,
+        },
+      ];
+    },
+  },
+  {
+    name: "burst-rate",
+    group: "edge-case",
+    description: "at most maxMessagesPerSecond new messages in any second (real-time runs only)",
+    run(record, limits) {
+      if (record.speed !== 1) return null;
+      const starts = [...groupUpdates(record).values()].map((u) => u[0].t).sort((a, b) => a - b);
+      let peak = { n: 0, t: 0 };
+      for (let i = 0, j = 0; j < starts.length; j++) {
+        while (starts[j] - starts[i] >= 1_000) i++;
+        if (j - i + 1 > peak.n) peak = { n: j - i + 1, t: starts[i] };
+      }
+      if (peak.n <= limits.maxMessagesPerSecond) return [];
+      return [
+        {
+          message: `${peak.n} new messages within 1 s from +${Math.round(peak.t)} ms (limit ${limits.maxMessagesPerSecond})`,
+        },
+      ];
+    },
+  },
+  {
+    name: "repeat-coalescing",
+    group: "edge-case",
+    description: "the same event repeated quickly is answered like one event (real-time runs only)",
+    run(record, limits) {
+      if (record.speed !== 1) return null;
+      const replies = new Map();
+      for (const [, updates] of groupUpdates(record)) {
+        const { eventId } = updates[0].message;
+        replies.set(eventId, (replies.get(eventId) ?? 0) + 1);
+      }
+
+      const byName = new Map();
+      for (const e of record.events) {
+        if (!e.accepted || e.event.kind !== "game") continue;
+        byName.set(e.event.name, [...(byName.get(e.event.name) ?? []), e]);
+      }
+
+      const out = [];
+      for (const [name, events] of byName) {
+        const runs = [[events[0]]];
+        for (const e of events.slice(1)) {
+          const run = runs.at(-1);
+          if (e.t - run.at(-1).t < limits.coalesceWindowMs) run.push(e);
+          else runs.push([e]);
+        }
+        for (const run of runs) {
+          const n = run.reduce((sum, e) => sum + (replies.get(e.id) ?? 0), 0);
+          if (run.length > 1 && n > limits.maxMessagesPerEvent) {
+            out.push({
+              message: `${run.length} "${name}" events in quick succession got ${n} messages (limit ${limits.maxMessagesPerEvent})`,
+            });
+          }
+        }
+      }
+      return out;
+    },
+  },
 ]);
 
 export const COMPARISONS = Object.freeze([
@@ -274,8 +487,25 @@ function evaluate(list, only, run) {
     .filter((c) => !only || only.includes(c.name))
     .map((c) => {
       const violations = run(c);
+      if (violations === null) {
+        return {
+          name: c.name,
+          description: c.description,
+          ok: true,
+          skipped: true,
+          violations: [],
+        };
+      }
       return { name: c.name, description: c.description, ok: violations.length === 0, violations };
     });
+}
+
+/** Lowercase letters and digits separated by single spaces, for loose text matching. */
+function normalize(text) {
+  return String(text ?? "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 /** Updates grouped by message id, in emission order. Non-objects are left to messages-valid. */

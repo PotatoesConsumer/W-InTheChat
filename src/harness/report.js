@@ -115,7 +115,8 @@ export function formatRun(record, { checks } = {}) {
     const failed = checks.filter((c) => !c.ok);
     lines.push("", `--- Checks: ${checks.length - failed.length}/${checks.length} passed ---`);
     for (const check of checks) {
-      lines.push(`  ${check.ok ? "PASS" : "FAIL"}  ${check.name}`);
+      const status = check.skipped ? "SKIP" : check.ok ? "PASS" : "FAIL";
+      lines.push(`  ${status}  ${check.name}${check.skipped ? " (real-time runs only)" : ""}`);
       for (const v of check.violations.slice(0, 5)) lines.push(`          - ${v.message}`);
       if (check.violations.length > 5)
         lines.push(`          ... ${check.violations.length - 5} more`);

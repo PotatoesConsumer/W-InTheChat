@@ -24,7 +24,9 @@ function failed(results) {
 
 if (pipelines.length === 0) {
   describe("pipeline contract (no pipeline registered yet)", () => {
-    for (const c of [...CHECKS, ...COMPARISONS].filter((c) => !c.name.includes("stats"))) {
+    for (const c of [...CHECKS, ...COMPARISONS].filter(
+      (c) => !c.group && !c.name.includes("stats"),
+    )) {
       test.todo(`${c.name}: ${c.description}`);
     }
   });
