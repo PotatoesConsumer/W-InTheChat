@@ -1,0 +1,55 @@
+{
+  "name": "malformed",
+  "description": "Malformed events that the bus must drop, followed by a valid one that must still work.",
+  "steps": [
+    { "at": 0, "raw": null, "note": "not an object" },
+    { "at": 100, "raw": "win", "note": "a bare string" },
+    { "at": 200, "raw": [1, 2, 3], "note": "an array" },
+    {
+      "at": 300,
+      "raw": { "v": 1, "id": "m-1", "kind": "game", "ts": 0, "name": "headshot", "data": {} },
+      "note": "unknown game event"
+    },
+    {
+      "at": 400,
+      "raw": { "v": 1, "id": "m-2", "kind": "camera", "ts": 0 },
+      "note": "unknown kind"
+    },
+    {
+      "at": 500,
+      "raw": { "v": 2, "id": "m-3", "kind": "game", "ts": 0, "name": "win", "data": {} },
+      "note": "wrong schema version"
+    },
+    {
+      "at": 600,
+      "raw": {
+        "v": 1,
+        "id": "m-4",
+        "kind": "game",
+        "ts": 0,
+        "name": "win",
+        "data": {},
+        "importance": "major"
+      },
+      "note": "extra field (the emitter can't set importance)"
+    },
+    {
+      "at": 700,
+      "raw": {
+        "v": 1,
+        "id": "m-5",
+        "kind": "game",
+        "ts": 0,
+        "name": "kill",
+        "data": { "pos": { "x": 1 } }
+      },
+      "note": "nested data"
+    },
+    {
+      "at": 800,
+      "raw": { "v": 1, "id": "m-6", "kind": "chat", "ts": 0, "text": 42 },
+      "note": "chat text is not a string"
+    },
+    { "at": 1500, "game": "win", "note": "valid: the pipeline must still answer this" }
+  ]
+}

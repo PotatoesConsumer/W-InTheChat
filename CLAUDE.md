@@ -25,6 +25,8 @@ on the same events.
 - `npm test`: runs `test/**/*.test.js` with Node's built-in test runner. Doesn't need Ollama.
 - `npm run lint` / `npm run format`: ESLint and Prettier.
 - `npm run check`: lint + format check + tests, the same as CI. Run it before opening a PR.
+- `npm run harness -- <scenario>`: plays a scenario into the pipeline headless with a fake
+  model (no game, no Ollama). `--list` shows scenarios. Guide: `docs/harness.md`.
 
 ## Model
 
@@ -48,6 +50,11 @@ on the same events.
     into a prompt.
   - `bus.js`: in-process event bus (validates on publish, synchronous dispatch)
   - `chatMessage.js`: outbound service -> UI chat messages (persona, source, streamed updates)
+- `src/harness/`: mock-event harness (Node only). `scenario.js` (format), `runner.js`
+  (plays a scenario, returns a JSON run record), `fakeGenerator.js` (OllamaClient stand-in
+  with normal/slow/error/garbage/unsafe modes), `stubPipeline.js` (deliberately naive
+  stand-in until the real pipeline exists; never use it in the game), `scenarios/*.json`.
+  CLI in `scripts/harness.js`.
 - `test/`: unit tests, mirroring `src/`
 
 ## Rules from the proposal
