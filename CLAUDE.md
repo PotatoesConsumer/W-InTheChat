@@ -22,6 +22,9 @@ on the same events.
 
 - `npm run ai:demo`: sends sample events through the Fan persona, prints the replies and
   p50/p95 latency.
+- `npm run service`: the chat service on `http://127.0.0.1:8787` with the real model
+  (`--condition scripted` for the baseline). `npm run e2e`: end-to-end latency over HTTP + SSE.
+  Guide: `docs/service.md`.
 - `npm test`: runs `test/**/*.test.js` with Node's built-in test runner. Doesn't need Ollama.
 - `npm run lint` / `npm run format`: ESLint and Prettier.
 - `npm run check`: lint + format check + tests, the same as CI. Run it before opening a PR.
@@ -51,6 +54,15 @@ on the same events.
     into a prompt.
   - `bus.js`: in-process event bus (validates on publish, synchronous dispatch)
   - `chatMessage.js`: outbound service -> UI chat messages (persona, source, streamed updates)
+- `src/service/`: the chat service, spec in `docs/service.md`
+  - `pipeline.js`: bus -> chat_message updates. Minor events get templates, major events and
+    player chat get a streamed Fan reply, failures get a fallback. No timing-based routing:
+    the same seed and events must give the same chat.
+  - `server.js`: POST /events, GET /stream (SSE), /health, /stats. Localhost only.
+  - `client.js`: browser side for the game (`connectToService`)
+  - `replyCheck.js`: rejects malformed replies. Not the safety filter yet (W07).
+  - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
+    every `GAME_EVENTS` name (a test checks).
 - `test/`: unit tests, mirroring `src/`
 
 ## Rules from the proposal

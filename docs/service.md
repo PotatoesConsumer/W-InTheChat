@@ -1,0 +1,133 @@
+# Chat service and pipeline (v1)
+
+The service is the local process between the game and the model. The game posts events,
+the pipeline decides how the chat answers, and replies stream back to the browser.
+
+```
+game ──POST /events──▶ bus ──▶ pipeline ──▶ context builder ──▶ qwen2.5:3b (Ollama)
+ ▲                                  │                                  │ streamed tokens
+ └──────GET /stream (SSE)◀── chat_message updates ◀── reply check ◀────┘
+```
+
+| Piece | Code |
+|-------|------|
+| HTTP + SSE server | [`src/service/server.js`](../src/service/server.js) |
+| Pipeline (routing, streaming, fallback) | [`src/service/pipeline.js`](../src/service/pipeline.js) |
+| Reply check | [`src/service/replyCheck.js`](../src/service/replyCheck.js) |
+| Template, scripted and fallback lines | [`src/service/templates.js`](../src/service/templates.js) |
+| Browser client for the game | [`src/service/client.js`](../src/service/client.js) |
+| Context builder | [`src/ai/contextBuilder.js`](../src/ai/contextBuilder.js) |
+
+## Running it
+
+```bash
+npm run service                         # ai condition, http://127.0.0.1:8787
+npm run service -- --condition scripted # scripted baseline, never calls the model
+npm run service -- --streamer Pu        # how prompts name the streamer
+npm run e2e                             # latency run over HTTP + SSE with the real model
+npm run e2e -- --rounds 5 --gap 1500
+```
+
+Both load the model before serving, because a cold load can take longer than a reply
+timeout. `npm run service` logs every finished reply; Ctrl+C prints p50/p95.
+
+## Transport
+
+POST in, Server-Sent Events out, as proposed in [docs/events.md](events.md#transport).
+Node's `http` module only; no dependencies.
+
+| Endpoint | |
+|----------|-|
+| `POST /events` | One event as JSON. `202 {ok: true}`, `400 {ok: false, errors}` (schema errors from `bus.publish`, or a body that isn't JSON), `413` over 8 KB. |
+| `GET /stream` | SSE. Each `chat_message` update is one `event: chat_message` frame with the message as JSON `data`. A `: ping` comment every 15 s keeps it open. |
+| `GET /health` | `{ok: true, clients}` |
+| `GET /stats` | The pipeline's reply counts, failure reasons and p50/p95 latency |
+
+**Localhost only.** The server binds `127.0.0.1`, refuses requests whose `Host` isn't
+localhost (DNS rebinding), and only answers cross-origin requests from `localhost` /
+`127.0.0.1` pages, such as the game's dev server on port 5173.
+
+In the game:
+
+```js
+import { connectToService } from "./src/service/client.js";
+
+const chat = connectToService({
+  onMessage: (message) => overlay.apply(message), // every valid chat_message update
+  onStatus: (status) => console.log(status), // connected | reconnecting | closed
+});
+chat.send(createGameEvent("win", { score: 12 })); // never rejects
+```
+
+## What the pipeline does
+
+| Event | ai condition | scripted condition |
+|-------|--------------|--------------------|
+| Minor game event | `template` line | `template` line |
+| Major game event | Fan reply from the model, streamed | `scripted` line |
+| Player message | Fan reply from the model, streamed | `scripted` line |
+| Model times out, fails, or its reply is rejected | `fallback` line | (model never called) |
+
+- **One reply per event**, always linked by `eventId`.
+- **Choices come first.** Persona, viewer name and the fixed line are drawn from
+  `deps.random` when the event arrives, before the model runs. The same seed and events
+  give the same chat whatever the model returns.
+- **No timing-based routing.** Every major event and player message goes to the model,
+  even while another reply is generating. Ollama queues them, and the timeout turns a long
+  wait into a fallback. Routing on "is the model busy" made the same events get different
+  replies run to run. Bursts are the router's job (coalescing, W06).
+- **Streaming.** Partial text is shown once it has 12 characters and passes the reply
+  check, and only if it extends what's already shown. A message's text only grows and its
+  `source` never changes. If a reply goes bad after part of it was shown, the line ends at
+  the part already shown. If nothing was shown, the event gets a `fallback` line instead.
+- **Only `ctx.facts` reach the model** (via the context builder). Chat history is
+  supported but off (`historySize: 0`): in the first runs qwen2.5:3b copied the history's
+  `viewer: text` format and invented follow-ups from it.
+
+### Reply check (v1)
+
+[`replyCheck.js`](../src/service/replyCheck.js) rejects replies that are empty, over 200
+characters, talk as an AI ("As an AI…", "I cannot…") or are structured data (`{…}`,
+`[…]`). The Fan parser first keeps only the first real line and strips quotes, code fences
+and `**`.
+
+**It is not the safety filter.** Abusive or unsafe text still passes. The safety filter
+and its test set are W07 and plug in here as another rejection reason. Until then only
+the Fan persona exists, so there is no Hater output to filter.
+
+### Limits
+
+Provisional, in `PIPELINE_DEFAULTS`; the laptop pilot (W08) sets the real values.
+
+| Limit | Value |
+|-------|-------|
+| `replyTimeoutMs` | 5000 |
+| `maxTokens` (Ollama `num_predict`) | 48 |
+| `minStreamChars` | 12 |
+| `historySize` | 0 (off) |
+
+## Latency
+
+`npm run e2e` measures on the client side, from each event's `ts` to the first SSE frame
+for it and to the frame with `done: true`. The pipeline also measures from `ts` to the
+moment it emits (`GET /stats`). Neither includes drawing in the browser.
+
+First run on the RTX 4050 laptop (qwen2.5:3b loaded, 2 rounds, 16 events, 1.5 s apart):
+
+| Path | First text p50 / p95 | Completed p50 / p95 |
+|------|----------------------|---------------------|
+| Model (major events + player chat, n=10) | 92 / 379 ms | 200 / 480 ms |
+| Templates (minor events, n=6) | 1–7 ms | 1–7 ms |
+
+That's one short run, not the pilot benchmark (W08/W09). Earlier, the cold model load
+took about 60 s.
+
+## Not built yet
+
+| What | Task |
+|------|------|
+| Hater, Backseat Gamer and Lurker prompts | W05 |
+| Persona selector, coalescing, event-rate limits | W06 |
+| Safety filter, edge-case handling for bursts | W07 |
+| Full scripted baseline (scripts, UI switch) | W07 |
+| Hooking the game up (replace `devChatFeed.js` with `connectToService`) | after the game PR merges |

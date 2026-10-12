@@ -1,0 +1,284 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { createEventBus } from "../../src/events/bus.js";
+import { createGameEvent, createChatEvent } from "../../src/events/schema.js";
+import { validateChatMessage } from "../../src/events/chatMessage.js";
+import startPipeline, { PIPELINE_DEFAULTS } from "../../src/service/pipeline.js";
+import { EVENT_LINES, CHAT_LINES, FALLBACK_LINES, VIEWERS } from "../../src/service/templates.js";
+
+/**
+ * A generator that answers from `script`, one entry per call:
+ *   string        -> streamed in 3 growing parts, then resolved
+ *   Error         -> rejected
+ *   "hang"        -> never answers until aborted
+ *   {parts, text} -> streams `parts` then resolves `text`
+ */
+function scriptedGenerator(script) {
+  const calls = [];
+  const generate = async (prompt, { signal, onText, system } = {}) => {
+    const step = script[Math.min(calls.length, script.length - 1)];
+    calls.push({ prompt, system });
+    await tick();
+    if (signal?.aborted) throw signal.reason;
+    if (step instanceof Error) throw step;
+    if (step === "hang") {
+      return new Promise((_, reject) =>
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true }),
+      );
+    }
+    const { parts, text } = typeof step === "string" ? { parts: growing(step), text: step } : step;
+    for (const part of parts) {
+      if (signal?.aborted) throw signal.reason;
+      onText?.(part);
+      await tick();
+    }
+    return { text };
+  };
+  return { generate, calls };
+}
+
+const tick = () => new Promise((r) => setTimeout(r, 1));
+const growing = (s) => [1, 2, 3].map((i) => s.slice(0, Math.ceil((i * s.length) / 3)));
+
+function setup(script, deps = {}) {
+  const bus = createEventBus({
+    onError: (err) => {
+      throw err;
+    },
+  });
+  const messages = [];
+  const gen = scriptedGenerator(script);
+  const handle = startPipeline(bus, (m) => messages.push(m), {
+    generate: gen.generate,
+    random: seeded(7),
+    ...deps,
+  });
+  return { bus, messages, handle, calls: gen.calls };
+}
+
+/** Small deterministic PRNG so tests don't depend on Math.random. */
+function seeded(seed) {
+  let s = seed;
+  return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+}
+
+/** Final update of every message, in first-seen order. */
+function finals(messages) {
+  const byId = new Map();
+  for (const m of messages) byId.set(m.id, m);
+  return [...byId.values()];
+}
+
+const game = (name, data = {}, id = `evt-${name}`) =>
+  createGameEvent(name, data, { id, ts: Date.now() });
+
+test("a minor event gets one template line, without calling the model", async () => {
+  const { bus, messages, handle, calls } = setup(["unused"]);
+  bus.publish(game("kill"));
+  await handle.idle();
+
+  assert.equal(calls.length, 0);
+  assert.equal(messages.length, 1);
+  const [m] = messages;
+  assert.equal(m.source, "template");
+  assert.equal(m.eventId, "evt-kill");
+  assert.equal(m.done, true);
+  assert.ok(EVENT_LINES.kill.includes(m.text));
+  assert.ok(VIEWERS.fan.includes(m.viewer));
+});
+
+test("a major event gets a streamed AI reply: one id, growing text, done last", async () => {
+  const reply = "no way you clutched that, LETS GO";
+  const { bus, messages, handle, calls } = setup([reply]);
+  bus.publish(game("win", { score: 12 }));
+  await handle.idle();
+
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].prompt.includes("just won the round"));
+  assert.ok(calls[0].system.includes("excited fan"));
+  assert.ok(messages.length >= 2, "expected partial updates before the final one");
+  assert.equal(new Set(messages.map((m) => m.id)).size, 1);
+  for (let i = 1; i < messages.length; i++) {
+    assert.ok(messages[i].text.startsWith(messages[i - 1].text));
+    assert.equal(messages[i - 1].done, false);
+  }
+  assert.deepEqual(
+    { source: messages.at(-1).source, text: messages.at(-1).text, done: messages.at(-1).done },
+    { source: "ai", text: reply, done: true },
+  );
+  for (const m of messages) assert.deepEqual(validateChatMessage(m), { ok: true });
+});
+
+test("short partials are held back until minStreamChars", async () => {
+  const { bus, messages, handle } = setup([
+    { parts: ["GG", "GG W", "GG WWWW chat"], text: "GG WWWW chat" },
+  ]);
+  bus.publish(game("win"));
+  await handle.idle();
+  assert.ok(messages.every((m) => m.text.length >= PIPELINE_DEFAULTS.minStreamChars));
+});
+
+test("player chat is answered by the model, and kept as history when history is on", async () => {
+  const { bus, messages, handle, calls } = setup(["left is faster, trust", "WOOO what a win"], {
+    historySize: 5,
+  });
+  bus.publish(createChatEvent("chat should I go left?", { id: "c1", ts: Date.now() }));
+  await handle.idle();
+  bus.publish(game("win"));
+  await handle.idle();
+
+  assert.ok(calls[0].prompt.includes('typed in chat: "chat should I go left?"'));
+  assert.ok(!calls[0].prompt.includes("Recent chat"), "the message itself isn't history yet");
+  assert.ok(calls[1].prompt.includes("the streamer: chat should I go left?"));
+  assert.ok(calls[1].prompt.includes(": left is faster, trust"));
+  assert.deepEqual(
+    finals(messages).map((m) => [m.eventId, m.source]),
+    [
+      ["c1", "ai"],
+      ["evt-win", "ai"],
+    ],
+  );
+});
+
+test("model errors and malformed output fall back to a safe line", async () => {
+  const cases = [
+    [new Error("Ollama down"), "error"],
+    [{ parts: [], text: "" }, "empty"],
+    [{ parts: [], text: "As an AI language model, I cannot watch streams." }, "ai_disclosure"],
+    [{ parts: [], text: '{"message": "nice"}' }, "structured"],
+    [{ parts: [], text: "LETS GO ".repeat(40) }, "too_long"],
+  ];
+  for (const [step, reason] of cases) {
+    const { bus, messages, handle } = setup([step]);
+    bus.publish(game("loss"));
+    await handle.idle();
+    assert.equal(messages.length, 1, reason);
+    assert.equal(messages[0].source, "fallback", reason);
+    assert.ok(FALLBACK_LINES.includes(messages[0].text), reason);
+    assert.deepEqual(handle.stats().failures, { [reason]: 1 });
+  }
+});
+
+test("an 'As an AI' reply is never shown, even while streaming", async () => {
+  const text = "As an AI I cannot watch, but nice win";
+  const { bus, messages, handle } = setup([{ parts: growing(text), text }]);
+  bus.publish(game("win"));
+  await handle.idle();
+  assert.deepEqual(
+    messages.map((m) => m.source),
+    ["fallback"],
+  );
+});
+
+test("a reply that times out falls back after replyTimeoutMs", async () => {
+  const { bus, messages, handle } = setup(["hang"], { replyTimeoutMs: 20 });
+  bus.publish(game("streak"));
+  await handle.idle();
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].source, "fallback");
+  assert.deepEqual(handle.stats().failures, { timeout: 1 });
+});
+
+test("a bad ending after partials were shown keeps the shown text, same source", async () => {
+  const shown = "that was insane chat";
+  const { bus, messages, handle } = setup([
+    { parts: [shown], text: `${shown}\n` + "x".repeat(300) },
+  ]);
+  bus.publish(game("close_call"));
+  await handle.idle();
+  assert.deepEqual(
+    messages.map((m) => [m.source, m.text, m.done]),
+    [
+      ["ai", shown, false],
+      ["ai", shown, true],
+    ],
+  );
+});
+
+test("back-to-back major events each get a model reply (no timing-based routing)", async () => {
+  const { bus, messages, handle, calls } = setup(["first reply, nice play", "second one, PB!!"]);
+  bus.publish(game("win", {}, "e1"));
+  bus.publish(game("new_best", {}, "e2"));
+  await handle.idle();
+
+  assert.equal(calls.length, 2);
+  assert.deepEqual(
+    finals(messages)
+      .map((m) => [m.eventId, m.source])
+      .sort(),
+    [
+      ["e1", "ai"],
+      ["e2", "ai"],
+    ],
+  );
+});
+
+test("scripted condition: fixed lines for every event, the model is never called", async () => {
+  const { bus, messages, handle, calls } = setup(["unused"], { condition: "scripted" });
+  bus.publish(game("kill", {}, "minor"));
+  bus.publish(game("win", {}, "major"));
+  bus.publish(createChatEvent("hi chat", { id: "chat", ts: Date.now() }));
+  await handle.idle();
+
+  assert.equal(calls.length, 0);
+  assert.deepEqual(
+    messages.map((m) => [m.eventId, m.source]),
+    [
+      ["minor", "template"],
+      ["major", "scripted"],
+      ["chat", "scripted"],
+    ],
+  );
+  assert.ok(CHAT_LINES.includes(messages[2].text));
+});
+
+test("the same seed and events give the same chat, whatever the model returns", async () => {
+  const run = async (script) => {
+    const { bus, messages, handle } = setup(script, { random: seeded(42) });
+    for (const name of ["round_start", "kill", "win", "damage_taken", "loss"]) {
+      bus.publish(game(name));
+      await handle.idle();
+    }
+    return finals(messages).map((m) => `${m.eventId} ${m.persona} ${m.viewer}`);
+  };
+  assert.deepEqual(await run(["good reply here"]), await run([new Error("down")]));
+});
+
+test("stop() aborts replies in flight and nothing is sent afterwards", async () => {
+  const { bus, messages, handle } = setup(["hang"], { replyTimeoutMs: 10_000 });
+  bus.publish(game("win"));
+  handle.stop();
+  await handle.idle();
+  bus.publish(game("kill"));
+  assert.deepEqual(messages, []);
+});
+
+test("stats: counts by source and p50/p95 latency from the event's ts", async () => {
+  const { bus, handle } = setup(["what a round that was"]);
+  bus.publish(game("kill"));
+  bus.publish(game("win"));
+  await handle.idle();
+  const s = handle.stats();
+  assert.equal(s.condition, "ai");
+  assert.equal(s.replies.template, 1);
+  assert.equal(s.replies.ai, 1);
+  assert.equal(s.latency.all.completion.n, 2);
+  assert.ok(s.latency.bySource.ai.completion.p50 >= 0);
+});
+
+test("rejects a bad condition, and the ai condition without a model", () => {
+  const bus = createEventBus();
+  assert.throws(() => startPipeline(bus, () => {}, { condition: "both" }), /condition/);
+  assert.throws(() => startPipeline(bus, () => {}, { condition: "ai" }), /generate/);
+  assert.doesNotThrow(() => startPipeline(bus, () => {}, { condition: "scripted" }).stop());
+});
+
+test("history is off by default: prompts carry only the event", async () => {
+  const { bus, handle, calls } = setup(["first reply here", "second reply here"]);
+  bus.publish(createChatEvent("hello chat", { id: "c1", ts: Date.now() }));
+  await handle.idle();
+  bus.publish(game("win"));
+  await handle.idle();
+  assert.equal(PIPELINE_DEFAULTS.historySize, 0);
+  assert.ok(!calls[1].prompt.includes("Recent chat"));
+});

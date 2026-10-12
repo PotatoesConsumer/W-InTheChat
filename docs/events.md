@@ -17,7 +17,7 @@ chat overlay ◀─────────────────────�
 | Context payload | [`src/events/context.js`](../src/events/context.js) | [Context payload](#context-payload) |
 | Event bus | [`src/events/bus.js`](../src/events/bus.js) | [Event bus](#event-bus) |
 | Outbound chat messages | [`src/events/chatMessage.js`](../src/events/chatMessage.js) | [Chat messages](#chat-messages) |
-| Browser ↔ service | (not built yet) | [Transport](#transport-proposed) |
+| Browser ↔ service | [`src/service/server.js`](../src/service/server.js), [`client.js`](../src/service/client.js) | [Transport](#transport) |
 
 All of these are plain JS with no Node-only APIs, so the game and the service import the
 same files.
@@ -188,16 +188,17 @@ final.
 
 Text the filter rejected is never sent. The service sends a `fallback` message instead.
 
-## Transport (proposed)
+## Transport
 
-This isn't built yet. The proposal is **HTTP POST in, Server-Sent Events out**, because
+Built in [`src/service/`](../src/service); details and the browser client in
+[docs/service.md](service.md). **HTTP POST in, Server-Sent Events out**, because
 both sides then need nothing beyond Node's built-in `http` module and the browser's
 `fetch`/`EventSource`, keeping the repo dependency-free. Node has no built-in WebSocket
 server.
 
 | Direction | Endpoint | Body |
 |-----------|----------|------|
-| browser → service | `POST /events` | One event as JSON. `202 {ok: true}` or `400 {ok: false, errors}` (from `bus.publish`). |
+| browser → service | `POST /events` | One event as JSON. `202 {ok: true}` or `400 {ok: false, errors}` (from `bus.publish`, or a body that isn't JSON). `413` over 8 KB. |
 | service → browser | `GET /stream` (SSE) | `event: chat_message` with `data: <chat_message JSON>`, one per update. |
 
 Everything runs on localhost.
@@ -227,6 +228,6 @@ and will be revisited after the laptop pilot, alongside the generation limits.
    and how does a Fan donation reach the UI (a field on `chat_message`, or its own outbound
    kind)? Either way, the service decides the amount, never the model, and stats stay owned by
    the game and service.
-3. **Transport.** Confirm POST + SSE (above), or pick something else before the service is built.
+3. **Transport.** Built as POST + SSE (above). Speak up in review if the game needs something else.
 4. **Camera signal.** If the optional extension happens, it would add a third event kind (a
    coarse expression signal as text). It is deliberately not in v1.
