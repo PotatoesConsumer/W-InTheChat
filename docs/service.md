@@ -53,7 +53,7 @@ In the game:
 import { connectToService } from "./src/service/client.js";
 
 const chat = connectToService({
-  onMessage: (message) => overlay.apply(message), // every valid chat_message update
+  onMessage: (message) => overlay.push(message), // every valid chat_message update
   onStatus: (status) => console.log(status), // connected | reconnecting | closed
 });
 chat.send(createGameEvent("win", { score: 12 })); // never rejects
@@ -86,8 +86,9 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 ### Showing replies
 
 A model reply is sent as **one `chat_message` update, once it's complete and has passed
-the reply check** (`streamPartials: false`). The game should animate the line in (type
-it out) so chat still appears progressively, as the proposal asks.
+the reply check** (`streamPartials: false`). The game types the line in
+(`typeInDelay` in `src/ui/chatOverlay.js`, about 22 ms a character, at most 1.1 s a
+line) so chat still appears progressively, as the proposal asks.
 
 Why not stream partial text: a line can't be taken back once it's on screen. If a reply
 times out, fails or turns out unsafe after part of it was shown, the edge-case contract
@@ -155,4 +156,3 @@ took about 60 s.
 | Persona selector, coalescing, event-rate limits (`burst` edge case still fails) | W06 |
 | Safety filter (`unsafe` edge case still fails) | W07 |
 | Full scripted baseline (scripts, UI switch) | W07 |
-| Hooking the game up (replace `devChatFeed.js` with `connectToService`, type lines in) | after the game PR merges |
