@@ -8,6 +8,9 @@
  * - Auto-scroll follows new messages while the list is scrolled to the bottom. If
  *   the player scrolls up to read, it stops following and shows a "New messages"
  *   button instead of yanking them back down.
+ * - The service sends each model reply whole, once checked. A reply that arrives whole
+ *   is typed in (typeInDelay) so chat still appears progressively. Multi-update
+ *   (streamed) messages are shown as they come.
  */
 
 import { createChatLog } from "./chatLog.js";
@@ -23,14 +26,34 @@ export const PERSONA_LABELS = Object.freeze({
 /** How close to the bottom (px) still counts as "at the bottom". */
 const STICK_THRESHOLD = 24;
 
+/** Typing speed for whole replies: ms per character, capped so long lines don't drag. */
+export const TYPE_IN = Object.freeze({ msPerChar: 22, maxMs: 1100 });
+
+/**
+ * Delay between typed characters for a reply of this length, or 0 to show it at once.
+ * @param {string} text
+ */
+export function typeInDelay(text, { msPerChar, maxMs } = TYPE_IN) {
+  if (!text || msPerChar <= 0) return 0;
+  return Math.min(msPerChar, maxMs / text.length);
+}
+
 /**
  * @param {HTMLElement} root - Empty container; the overlay builds its own markup inside.
  * @param {object} [opts]
  * @param {ReturnType<typeof createChatLog>} [opts.log]
  * @param {(text: string) => void} [opts.onSend] - Called with the trimmed text the player typed.
+ * @param {{msPerChar: number, maxMs: number}} [opts.typeIn] - `msPerChar: 0` turns typing off.
  */
-export function createChatOverlay(root, { log = createChatLog(), onSend = () => {} } = {}) {
+export function createChatOverlay(
+  root,
+  { log = createChatLog(), onSend = () => {}, typeIn = TYPE_IN } = {},
+) {
   const doc = root.ownerDocument;
+  const win = doc.defaultView;
+  if (win?.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    typeIn = { ...typeIn, msPerChar: 0 };
+  }
   const el = (tag, className) => {
     const node = doc.createElement(tag);
     if (className) node.className = className;
@@ -62,7 +85,7 @@ export function createChatOverlay(root, { log = createChatLog(), onSend = () => 
 
   root.append(list, jump, form);
 
-  /** @type {Map<string, {line: HTMLElement, text: HTMLElement}>} */
+  /** @type {Map<string, {line: HTMLElement, text: HTMLElement, typing?: number}>} */
   const nodes = new Map();
 
   const isAtBottom = () =>
@@ -94,6 +117,29 @@ export function createChatOverlay(root, { log = createChatLog(), onSend = () => 
     return { line, text };
   }
 
+  /** Reveals `full` a character at a time, following the bottom if the list was there. */
+  function typeText(entry, text, delay) {
+    const full = Array.from(text); // by code point, so emoji aren't split in half
+    const start = win.performance.now();
+    entry.line.classList.add("streaming");
+    entry.text.textContent = "";
+    entry.typing = win.setInterval(() => {
+      const stick = isAtBottom();
+      // From elapsed time, not tick count: background tabs throttle timers.
+      const shown = Math.floor((win.performance.now() - start) / delay) + 1;
+      entry.text.textContent = full.slice(0, shown).join("");
+      if (shown >= full.length) stopTyping(entry);
+      if (stick) scrollToBottom();
+    }, delay);
+  }
+
+  function stopTyping(entry) {
+    if (entry.typing === undefined) return;
+    win.clearInterval(entry.typing);
+    entry.typing = undefined;
+    entry.line.classList.remove("streaming");
+  }
+
   function fill({ line, text }, message) {
     if (message.kind === "player") {
       line.className = "chat-line player";
@@ -110,7 +156,9 @@ export function createChatOverlay(root, { log = createChatLog(), onSend = () => 
     if (result.type === "ignored") return result;
 
     for (const id of result.removed) {
-      nodes.get(id)?.line.remove();
+      const gone = nodes.get(id);
+      if (gone) stopTyping(gone);
+      gone?.line.remove();
       nodes.delete(id);
     }
 
@@ -121,7 +169,11 @@ export function createChatOverlay(root, { log = createChatLog(), onSend = () => 
       nodes.set(message.id, entry);
       list.append(entry.line);
     }
+    stopTyping(entry);
     fill(entry, message);
+
+    const delay = message.kind !== "player" && message.done ? typeInDelay(message.text, typeIn) : 0;
+    if (result.type === "added" && delay > 0 && win) typeText(entry, message.text, delay);
 
     if (stick) scrollToBottom();
     else if (result.type === "added") jump.hidden = false;

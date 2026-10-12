@@ -43,6 +43,7 @@ body {
   gap: 10px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .live {
@@ -56,6 +57,136 @@ body {
 
 .title {
   font-weight: 600;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.latency {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.service-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.service-status::before {
+  content: "●";
+  margin-right: 5px;
+  color: var(--muted);
+}
+
+.service-status[data-status="connected"]::before {
+  color: #3ddc84;
+}
+
+.service-status[data-status="reconnecting"]::before,
+.service-status[data-status="closed"]::before {
+  color: #e5323b;
+}
+
+/* Stream stats (built by src/ui/statsHud.js) */
+
+.stats-hud {
+  display: flex;
+  align-items: center;
+  gap: 52px; /* room for the "+3" / "+$100" pop-ups */
+  margin-left: 18px;
+}
+
+.stat {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat.hype {
+  align-items: center;
+}
+
+.hype-bar {
+  width: 120px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.hype-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: #7c8aa5;
+  transition:
+    width 0.4s ease-out,
+    background-color 0.4s;
+}
+
+.hype-fill[data-level="warm"] {
+  background: #f5b942;
+}
+.hype-fill[data-level="hyped"] {
+  background: var(--accent);
+}
+.hype-fill[data-level="on-fire"] {
+  background: #e5323b;
+}
+
+.hype-label {
+  min-width: 52px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.stat-pop {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 0;
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+  animation: pop-up 1.2s ease-out forwards;
+}
+
+.stat-pop.up {
+  color: #3ddc84;
+}
+.stat-pop.money {
+  color: #f5b942;
+}
+
+@keyframes pop-up {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
 }
 
 .broadcast {
@@ -222,4 +353,14 @@ body {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Narrow windows: drop the latency readout and tighten the stats first. */
+@media (max-width: 1100px) {
+  .latency {
+    display: none;
+  }
+  .hype-bar {
+    width: 80px;
+  }
 }
