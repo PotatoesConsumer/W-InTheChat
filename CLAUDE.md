@@ -55,6 +55,8 @@ on the same events.
   with normal/slow/error/garbage/unsafe modes), `stubPipeline.js` (deliberately naive
   stand-in until the real pipeline exists; never use it in the game), `scenarios/*.json`.
   CLI in `scripts/harness.js`.
+- `eval/`: fixed evaluation event sets (scenario format) + `manifest.json` (draft/frozen,
+  sha256). Never edit a frozen set; make a new version. Guide: `docs/evaluation.md`.
 - `test/`: unit tests, mirroring `src/`
 
 ## Rules from the proposal
