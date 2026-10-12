@@ -72,10 +72,12 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 - **Choices come first.** Persona, viewer name and the fixed line are drawn from
   `deps.random` when the event arrives, before the model runs. The same seed and events
   give the same chat whatever the model returns.
-- **No timing-based routing.** Every major event and player message goes to the model,
-  even while another reply is generating. Ollama queues them, and the timeout turns a long
-  wait into a fallback. Routing on "is the model busy" made the same events get different
-  replies run to run. Bursts are the router's job (coalescing, W06).
+- **One generation at a time, first in, first out.** Model replies wait in a queue
+  (`maxGenerationsInFlight: 1`, one 6 GB GPU). Each reply's deadline counts from when its
+  event arrived, so time in the queue uses it up. A reply whose turn comes with less than
+  `minGenerationMs` left gets a fallback without calling the model (`queue_timeout` in
+  `/stats`). Nothing is routed on "is the model busy right now": that made the same
+  events get different replies run to run. Bursts are the router's job (coalescing, W06).
 - **Streaming.** Partial text is shown once it has 12 characters and passes the reply
   check, and only if it extends what's already shown. A message's text only grows and its
   `source` never changes. If a reply goes bad after part of it was shown, the line ends at
@@ -101,7 +103,9 @@ Provisional, in `PIPELINE_DEFAULTS`; the laptop pilot (W08) sets the real values
 
 | Limit | Value |
 |-------|-------|
-| `replyTimeoutMs` | 5000 |
+| `replyTimeoutMs` (from event arrival, queue time included) | 5000 |
+| `maxGenerationsInFlight` | 1 |
+| `minGenerationMs` | 500 |
 | `maxTokens` (Ollama `num_predict`) | 48 |
 | `minStreamChars` | 12 |
 | `historySize` | 0 (off) |
@@ -119,7 +123,10 @@ First run on the RTX 4050 laptop (qwen2.5:3b loaded, 2 rounds, 16 events, 1.5 s 
 | Model (major events + player chat, n=10) | 92 / 379 ms | 200 / 480 ms |
 | Templates (minor events, n=6) | 1–7 ms | 1–7 ms |
 
-That's one short run, not the pilot benchmark (W08/W09). Earlier, the cold model load
+With events 600 ms apart (2 rounds, 16 events) the model path measured 78 / 134 ms to
+first text and 178 / 289 ms to completion, still with no fallbacks.
+
+These are short runs, not the pilot benchmark (W08/W09). Earlier, the cold model load
 took about 60 s.
 
 ## Not built yet
@@ -127,7 +134,7 @@ took about 60 s.
 | What | Task |
 |------|------|
 | Hater, Backseat Gamer and Lurker prompts | W05 |
-| Persona selector, coalescing, event-rate limits | W06 |
-| Safety filter, edge-case handling for bursts | W07 |
+| Persona selector, coalescing, event-rate limits (`burst` edge case still fails) | W06 |
+| Safety filter (`unsafe` edge case still fails) | W07 |
 | Full scripted baseline (scripts, UI switch) | W07 |
 | Hooking the game up (replace `devChatFeed.js` with `connectToService`) | after the game PR merges |

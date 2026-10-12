@@ -12,11 +12,12 @@
  * Every random choice (viewer, line) is drawn when the event arrives, before the model
  * runs, so the same seed and events give the same chat whatever the model returns.
  *
- * Every major event and player message goes to the model, even while another reply is
- * generating: Ollama queues them, and the reply timeout turns a long wait into a fallback.
- * Deciding by "is the model busy right now" would make the chat depend on timing, so the
- * same events could get different replies (docs/pipeline-contract.md, same-choices).
- * Bursts are handled by coalescing in the router instead (W06).
+ * Model replies wait in a first-in, first-out queue and run one at a time (one 6 GB GPU).
+ * Each has a deadline counted from when its event arrived, so waiting in the queue uses
+ * up its time; a reply whose deadline is too close by its turn gets a fallback without
+ * calling the model. Never "template if the model is busy": that made the chat depend on
+ * timing, so the same events could get different replies (docs/pipeline-contract.md,
+ * same-choices). Bursts are handled by coalescing in the router instead (W06).
  *
  * Not yet: persona selection (only the Fan has a prompt, W05-W06), coalescing (W06),
  * the safety filter (W07, see replyCheck.js) and the full scripted baseline (W07).
@@ -33,8 +34,15 @@ import { createLatencyLog } from "./latency.js";
 
 /** Provisional; the laptop pilot (W08) sets the real numbers. */
 export const PIPELINE_DEFAULTS = Object.freeze({
-  /** Abort a model reply after this long and send a fallback instead. */
+  /**
+   * Longest an event waits for its model reply, counted from when it arrived (queue time
+   * included). Past it the reply is aborted and a fallback is sent.
+   */
   replyTimeoutMs: 5000,
+  /** Model replies generating at once. One GPU; Ollama would only queue extras anyway. */
+  maxGenerationsInFlight: 1,
+  /** Don't start a generation with less time than this left; send the fallback instead. */
+  minGenerationMs: 500,
   /** Cap on generated tokens per reply (Ollama num_predict). */
   maxTokens: 48,
   /**
@@ -85,6 +93,7 @@ export default function startPipeline(bus, emit, deps = {}) {
   const counts = { template: 0, scripted: 0, ai: 0, fallback: 0 };
   const failures = {};
   const history = [];
+  const queue = []; // model replies waiting their turn, oldest first
   const active = new Map(); // message id -> { controller, task }
   let stopped = false;
 
@@ -120,9 +129,58 @@ export default function startPipeline(bus, emit, deps = {}) {
     if (sent) finished(ctx, { source, text, viewer, firstAt: sent.ts, doneAt: sent.ts });
   }
 
-  /** Streamed model reply; falls back to `fallbackText` if nothing usable was shown. */
+  /**
+   * Queues a model reply. The prompt is built now, from the chat as it is when the event
+   * arrives, and the deadline starts now too.
+   */
   function replyWithModel(ctx, { persona, viewer, fallbackText }) {
     const { system, prompt } = buildPrompt(ctx, { persona, streamerName, history: [...history] });
+    queue.push({
+      ctx,
+      persona,
+      viewer,
+      fallbackText,
+      system,
+      prompt,
+      deadline: now() + limits.replyTimeoutMs,
+    });
+    pump();
+  }
+
+  /** Starts queued replies while there's a free generation slot. */
+  function pump() {
+    while (!stopped && queue.length > 0 && active.size < limits.maxGenerationsInFlight) {
+      const job = queue.shift();
+      const remaining = job.deadline - now();
+      if (remaining < limits.minGenerationMs) {
+        // Waited too long for a turn: answer now, without the model.
+        const { ctx, persona, viewer, fallbackText } = job;
+        const sent = send({
+          eventId: ctx.eventId,
+          persona,
+          viewer,
+          source: "fallback",
+          text: fallbackText,
+          done: true,
+        });
+        if (sent) {
+          finished(ctx, {
+            source: "fallback",
+            text: fallbackText,
+            viewer,
+            firstAt: sent.ts,
+            doneAt: sent.ts,
+            failure: "queue_timeout",
+          });
+        }
+        continue;
+      }
+      runModelReply(job, remaining);
+    }
+  }
+
+  /** Streamed model reply; falls back to `fallbackText` if nothing usable was shown. */
+  function runModelReply({ ctx, persona, viewer, fallbackText, system, prompt }, remaining) {
     const { parse } = PERSONA_PROMPTS[persona];
     const id = globalThis.crypto.randomUUID();
     const controller = new AbortController();
@@ -131,7 +189,7 @@ export default function startPipeline(bus, emit, deps = {}) {
         controller.abort(
           new DOMException(`no reply within ${limits.replyTimeoutMs}ms`, "TimeoutError"),
         ),
-      limits.replyTimeoutMs,
+      remaining,
     );
     let shown = ""; // text of the last update sent
     let firstAt = null;
@@ -191,7 +249,10 @@ export default function startPipeline(bus, emit, deps = {}) {
       }
       const sent = update(text, true, source);
       if (sent) finished(ctx, { source, text, viewer, firstAt, doneAt: sent.ts, failure });
-    })().finally(() => active.delete(id));
+    })().finally(() => {
+      active.delete(id);
+      pump();
+    });
 
     active.set(id, { controller, task });
   }
@@ -220,13 +281,16 @@ export default function startPipeline(bus, emit, deps = {}) {
     stop() {
       stopped = true;
       off();
+      queue.length = 0;
       for (const { controller } of active.values()) {
         controller.abort(new DOMException("pipeline stopped", "AbortError"));
       }
     },
-    /** Resolves once no model reply is in flight. */
+    /** Resolves once no model reply is queued or in flight. */
     async idle() {
-      while (active.size > 0) await Promise.allSettled([...active.values()].map((a) => a.task));
+      while (active.size > 0 || queue.length > 0) {
+        await Promise.allSettled([...active.values()].map((a) => a.task));
+      }
     },
     /** Counts by final source, failure reasons, and p50/p95 latency so far. */
     stats() {

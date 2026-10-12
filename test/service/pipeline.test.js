@@ -171,7 +171,7 @@ test("an 'As an AI' reply is never shown, even while streaming", async () => {
 });
 
 test("a reply that times out falls back after replyTimeoutMs", async () => {
-  const { bus, messages, handle } = setup(["hang"], { replyTimeoutMs: 20 });
+  const { bus, messages, handle } = setup(["hang"], { replyTimeoutMs: 20, minGenerationMs: 5 });
   bus.publish(game("streak"));
   await handle.idle();
   assert.equal(messages.length, 1);
@@ -281,4 +281,66 @@ test("history is off by default: prompts carry only the event", async () => {
   await handle.idle();
   assert.equal(PIPELINE_DEFAULTS.historySize, 0);
   assert.ok(!calls[1].prompt.includes("Recent chat"));
+});
+
+test("model replies run one at a time, in arrival order", async () => {
+  let running = 0;
+  let peak = 0;
+  const order = [];
+  const bus = createEventBus();
+  const messages = [];
+  const handle = startPipeline(bus, (m) => messages.push(m), {
+    random: seeded(3),
+    generate: async (prompt) => {
+      running++;
+      peak = Math.max(peak, running);
+      order.push(prompt.match(/just (.+)\./)?.[1] ?? prompt);
+      await new Promise((r) => setTimeout(r, 15));
+      running--;
+      return { text: "what a moment chat" };
+    },
+  });
+  for (const name of ["win", "streak", "close_call", "new_best"]) bus.publish(game(name));
+  await handle.idle();
+
+  assert.equal(peak, 1);
+  assert.deepEqual(order, [
+    "won the round",
+    "went on a streak",
+    "barely survived",
+    "beat their personal best",
+  ]);
+  assert.deepEqual(
+    finals(messages).map((m) => m.source),
+    ["ai", "ai", "ai", "ai"],
+  );
+});
+
+test("a reply whose deadline passes while queued gets a fallback, without the model", async () => {
+  const { bus, messages, handle, calls } = setup(["hang"], {
+    replyTimeoutMs: 60,
+    minGenerationMs: 20,
+  });
+  bus.publish(game("win", {}, "first"));
+  bus.publish(game("loss", {}, "second"));
+  await handle.idle();
+
+  assert.equal(calls.length, 1, "the second reply never reached the model");
+  const byEvent = Object.fromEntries(finals(messages).map((m) => [m.eventId, m]));
+  assert.equal(byEvent.first.source, "fallback");
+  assert.equal(byEvent.second.source, "fallback");
+  assert.deepEqual(handle.stats().failures, { timeout: 1, queue_timeout: 1 });
+  for (const row of [byEvent.first, byEvent.second]) {
+    assert.ok(FALLBACK_LINES.includes(row.text));
+  }
+});
+
+test("stop() drops queued replies too", async () => {
+  const { bus, messages, handle, calls } = setup(["hang"], { replyTimeoutMs: 10_000 });
+  bus.publish(game("win"));
+  bus.publish(game("loss"));
+  handle.stop();
+  await handle.idle();
+  assert.equal(calls.length <= 1, true);
+  assert.deepEqual(messages, []);
 });

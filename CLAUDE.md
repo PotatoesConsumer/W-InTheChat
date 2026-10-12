@@ -58,7 +58,8 @@ on the same events.
   - `chatMessage.js`: outbound service -> UI chat messages (persona, source, streamed updates)
 - `src/service/`: the chat service, spec in `docs/service.md`
   - `pipeline.js`: bus -> chat_message updates. Minor events get templates, major events and
-    player chat get a streamed Fan reply, failures get a fallback. No timing-based routing:
+    player chat get a streamed Fan reply, failures get a fallback. Model replies run one at
+    a time from a FIFO queue, with deadlines from event arrival. No timing-based routing:
     the same seed and events must give the same chat.
   - `server.js`: POST /events, GET /stream (SSE), /health, /stats. Localhost only.
   - `client.js`: browser side for the game (`connectToService`)
