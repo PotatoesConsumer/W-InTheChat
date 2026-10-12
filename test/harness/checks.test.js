@@ -211,6 +211,29 @@ test("same-choices: same seed matches, a different seed doesn't", async () => {
   assert.match(compareRuns(a, c, { only: ["same-choices"] })[0].violations[0].message, /differs/);
 });
 
+test("same-choices ignores the order replies to different events finished in", () => {
+  const reply = (id, eventId, text) => ({
+    message: {
+      v: 1,
+      id,
+      kind: "chat_message",
+      ts: 1,
+      eventId,
+      persona: "fan",
+      viewer: "v",
+      source: "ai",
+      text,
+      done: true,
+    },
+  });
+  const events = [{ id: "e1" }, { id: "e2" }];
+  const a = { events, messages: [reply("m1", "e1", "first"), reply("m2", "e2", "second")] };
+  const b = { events, messages: [reply("m2", "e2", "second"), reply("m1", "e1", "first")] };
+  const c = { events, messages: [reply("m2", "e2", "second"), reply("m1", "e1", "other")] };
+  assert.deepEqual(compareRuns(a, b, { only: ["same-choices"] })[0].violations, []);
+  assert.match(compareRuns(a, c, { only: ["same-choices"] })[0].violations[0].message, /differs/);
+});
+
 test("persona-independent-of-model passes for the stub, fails if persona follows the text", async () => {
   const normal = { ...fast, generator: createFakeGenerator({ delayMs: 0 }) };
   const garbage = { ...fast, generator: createFakeGenerator({ mode: "garbage", delayMs: 0 }) };

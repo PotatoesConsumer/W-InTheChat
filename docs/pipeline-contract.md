@@ -26,6 +26,11 @@ import startPipeline from "../../src/service/pipeline.js";
 export const pipelines = [{ name: "service pipeline", start: startPipeline }];
 ```
 
+A pipeline can list edge cases it doesn't handle yet as `pending: { <id>: "reason" }`
+(ids are in `edgeCases.contract.test.js`). Those show as TODO with the reason instead of
+failing, so it can be registered before W06/W07 are done. The service pipeline is
+registered with `unsafe` and `burst` pending.
+
 ## Interfaces
 
 **Pipeline**: the shape from `docs/harness.md`, `start(bus, emit, deps)`, returning `stop`
@@ -62,7 +67,7 @@ means the text must not be shown, and the pipeline sends a `fallback` instead.
 
 | Comparison | Runs compared | Rule |
 |------------|---------------|------|
-| `same-choices` | Same scenario, seed and fake output, twice | Identical chat: same replies, personas, sources and text |
+| `same-choices` | Same scenario, seed and fake output, twice | Identical chat: same replies, personas, sources and text. Compared in event order: when replies to different events overlap, the order they finish in depends on timers (coarse on Windows) and isn't a choice. |
 | `persona-independent-of-model` | `normal` vs `garbage` fake output | The persona answering an event is the same. Pick the persona before generating, and keep it for the fallback. |
 | `same-stats` | `normal` vs `unsafe` fake output | Identical stats after every event: the model never changes them |
 

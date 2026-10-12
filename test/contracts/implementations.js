@@ -6,10 +6,27 @@
  *
  *   import startPipeline from "../../src/service/pipeline.js";
  *   export const pipelines = [{ name: "service pipeline", start: startPipeline }];
+ *
+ * A pipeline may list edge cases it doesn't handle yet in `pending` (edge-case id ->
+ * reason, ids in edgeCases.contract.test.js). They show as TODO until removed from it.
  */
 
-/** @type {{name: string, start: Function}[]} Sittipon: persona selector + router (W06-W07). */
-export const pipelines = [];
+import startPipeline from "../../src/service/pipeline.js";
+
+/**
+ * @type {{name: string, start: Function, pending?: Record<string, string>}[]}
+ * Sittipon: persona selector + router (W06-W07).
+ */
+export const pipelines = [
+  {
+    name: "service pipeline",
+    start: startPipeline,
+    pending: {
+      unsafe: "needs the output safety filter (W07)",
+      burst: "needs coalescing and rate limits (W06)",
+    },
+  },
+];
 
 /**
  * @type {{name: string, initial: () => object, reduce: (state: object, event: object) => object}[]}

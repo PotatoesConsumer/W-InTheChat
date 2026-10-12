@@ -12,20 +12,41 @@ import { runScenario } from "../../src/harness/runner.js";
 import { loadScenario } from "../../src/harness/load.js";
 import { createFakeGenerator } from "../../src/harness/fakeGenerator.js";
 
-/** Proposal edge case -> how it's produced. Every check must pass in each. */
+/**
+ * Proposal edge case -> how it's produced. Every check must pass in each.
+ * A registered pipeline may list cases it doesn't handle yet in `pending` (id -> reason);
+ * those show as TODO with the reason instead of failing.
+ */
 const EDGE_CASES = [
-  { title: "slow model: falls back within the timeout", mode: "slow", speed: 20 },
-  { title: "model down: falls back", mode: "error", speed: 20 },
-  { title: "malformed model output never reaches chat as-is", mode: "garbage", speed: 20 },
-  { title: "unsafe model output is blocked and replaced", mode: "unsafe", speed: 20 },
-  { title: "event bursts are coalesced and rate-limited", scenario: "burst", speed: 1 },
-  { title: "empty and oversized player input gets no reply", scenario: "player-chat", speed: 20 },
+  { id: "slow", title: "slow model: falls back within the timeout", mode: "slow", speed: 20 },
+  { id: "down", title: "model down: falls back", mode: "error", speed: 20 },
   {
+    id: "garbage",
+    title: "malformed model output never reaches chat as-is",
+    mode: "garbage",
+    speed: 20,
+  },
+  { id: "unsafe", title: "unsafe model output is blocked and replaced", mode: "unsafe", speed: 20 },
+  {
+    id: "burst",
+    title: "event bursts are coalesced and rate-limited",
+    scenario: "burst",
+    speed: 1,
+  },
+  {
+    id: "bad-input",
+    title: "empty and oversized player input gets no reply",
+    scenario: "player-chat",
+    speed: 20,
+  },
+  {
+    id: "malformed",
     title: "malformed events are dropped, the next one still works",
     scenario: "malformed",
     speed: 20,
   },
 ];
+const EDGE_CASE_IDS = new Set(EDGE_CASES.map((c) => c.id));
 
 const safety = JSON.parse(
   await readFile(new URL("../../eval/safety-cases-v1.json", import.meta.url), "utf8"),
@@ -39,7 +60,19 @@ if (pipelines.length === 0) {
 
 for (const impl of pipelines) {
   describe(`edge-case contract: ${impl.name}`, () => {
+    const pending = impl.pending ?? {};
+    test("pending lists only known edge cases", () => {
+      assert.deepEqual(
+        Object.keys(pending).filter((id) => !EDGE_CASE_IDS.has(id)),
+        [],
+        `known ids: ${[...EDGE_CASE_IDS].join(", ")}`,
+      );
+    });
     for (const c of EDGE_CASES) {
+      if (Object.hasOwn(pending, c.id)) {
+        test.todo(`${c.title} (pending: ${pending[c.id]})`);
+        continue;
+      }
       test(c.title, async () => {
         const { scenario } = await loadScenario(c.scenario ?? "basic-session");
         const record = await runScenario(scenario, {

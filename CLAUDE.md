@@ -8,6 +8,11 @@ is out of date (Qwen3, vision model, Vercel deploy); where it disagrees, the pro
 The MVP needs a switch to a scripted-chat baseline: the evaluation compares AI chat against it
 on the same events.
 
+**Before starting a task, read `docs/team-status.md`.** It says what changed recently, what
+each of us is doing next, and which design decisions are settled (whole replies instead of
+streamed partials, one generation at a time, no timing-based routing). When a task changes
+any of that, update the file in the same PR.
+
 ## Setup
 
 - Ollama must be running (`http://localhost:11434`) with the model pulled:
@@ -22,6 +27,9 @@ on the same events.
 
 - `npm run ai:demo`: sends sample events through the Fan persona, prints the replies and
   p50/p95 latency.
+- `npm run service`: the chat service on `http://127.0.0.1:8787` with the real model
+  (`--condition scripted` for the baseline). `npm run e2e`: end-to-end latency over HTTP + SSE.
+  Guide: `docs/service.md`.
 - `npm test`: runs `test/**/*.test.js` with Node's built-in test runner. Doesn't need Ollama.
 - `npm run lint` / `npm run format`: ESLint and Prettier.
 - `npm run check`: lint + format check + tests, the same as CI. Run it before opening a PR.
@@ -53,6 +61,17 @@ on the same events.
     into a prompt.
   - `bus.js`: in-process event bus (validates on publish, synchronous dispatch)
   - `chatMessage.js`: outbound service -> UI chat messages (persona, source, streamed updates)
+- `src/service/`: the chat service, spec in `docs/service.md`
+  - `pipeline.js`: bus -> chat_message updates. Minor events get templates, major events and
+    player chat get a Fan reply (sent whole, once checked; the game types it in), failures
+    get a fallback. Model replies run one at a time from a FIFO queue, with deadlines from
+    event arrival. No timing-based routing:
+    the same seed and events must give the same chat.
+  - `server.js`: POST /events, GET /stream (SSE), /health, /stats. Localhost only.
+  - `client.js`: browser side for the game (`connectToService`)
+  - `replyCheck.js`: rejects malformed replies. Not the safety filter yet (W07).
+  - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
+    every `GAME_EVENTS` name (a test checks).
 - `src/harness/`: mock-event harness (Node only). `scenario.js` (format), `runner.js`
   (plays a scenario, returns a JSON run record), `fakeGenerator.js` (OllamaClient stand-in
   with normal/slow/error/garbage/unsafe modes), `stubPipeline.js` (deliberately naive
@@ -64,8 +83,9 @@ on the same events.
   `safety-cases-v1.json` (no slurs in the repo: the filter tests its own blocklist), and
   `manifest.json` (draft/frozen, sha256). Never edit a frozen set; make a new version.
   Guides: `docs/evaluation.md`, `docs/pipeline-contract.md`.
-- `test/`: unit tests, mirroring `src/`. `test/contracts/` runs the checks against the real
-  pipeline / stats model once they're registered in `implementations.js` (TODO until then).
+- `test/`: unit tests, mirroring `src/`. `test/contracts/` runs the checks against what's
+  registered in `implementations.js`: the service pipeline is, with the `unsafe` (W07) and
+  `burst` (W06) edge cases marked `pending`. Remove an entry from `pending` when it's done.
 
 ## Rules from the proposal
 
