@@ -1,18 +1,18 @@
 # Chat service and pipeline (v1)
 
 The service is the local process between the game and the model. The game posts events,
-the pipeline decides how the chat answers, and replies stream back to the browser.
+the pipeline decides how the chat answers, and replies come back to the browser over SSE.
 
 ```
 game ──POST /events──▶ bus ──▶ pipeline ──▶ context builder ──▶ qwen2.5:3b (Ollama)
- ▲                                  │                                  │ streamed tokens
+ ▲                                  │                                  │ reply text
  └──────GET /stream (SSE)◀── chat_message updates ◀── reply check ◀────┘
 ```
 
 | Piece | Code |
 |-------|------|
 | HTTP + SSE server | [`src/service/server.js`](../src/service/server.js) |
-| Pipeline (routing, streaming, fallback) | [`src/service/pipeline.js`](../src/service/pipeline.js) |
+| Pipeline (routing, queue, fallback) | [`src/service/pipeline.js`](../src/service/pipeline.js) |
 | Reply check | [`src/service/replyCheck.js`](../src/service/replyCheck.js) |
 | Template, scripted and fallback lines | [`src/service/templates.js`](../src/service/templates.js) |
 | Browser client for the game | [`src/service/client.js`](../src/service/client.js) |
@@ -64,8 +64,8 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 | Event | ai condition | scripted condition |
 |-------|--------------|--------------------|
 | Minor game event | `template` line | `template` line |
-| Major game event | Fan reply from the model, streamed | `scripted` line |
-| Player message | Fan reply from the model, streamed | `scripted` line |
+| Major game event | Fan reply from the model | `scripted` line |
+| Player message | Fan reply from the model | `scripted` line |
 | Model times out, fails, or its reply is rejected | `fallback` line | (model never called) |
 
 - **One reply per event**, always linked by `eventId`.
@@ -78,13 +78,28 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
   `minGenerationMs` left gets a fallback without calling the model (`queue_timeout` in
   `/stats`). Nothing is routed on "is the model busy right now": that made the same
   events get different replies run to run. Bursts are the router's job (coalescing, W06).
-- **Streaming.** Partial text is shown once it has 12 characters and passes the reply
-  check, and only if it extends what's already shown. A message's text only grows and its
-  `source` never changes. If a reply goes bad after part of it was shown, the line ends at
-  the part already shown. If nothing was shown, the event gets a `fallback` line instead.
+- **Whole replies, checked first.** See [Showing replies](#showing-replies).
 - **Only `ctx.facts` reach the model** (via the context builder). Chat history is
   supported but off (`historySize: 0`): in the first runs qwen2.5:3b copied the history's
   `viewer: text` format and invented follow-ups from it.
+
+### Showing replies
+
+A model reply is sent as **one `chat_message` update, once it's complete and has passed
+the reply check** (`streamPartials: false`). The game should animate the line in (type
+it out) so chat still appears progressively, as the proposal asks.
+
+Why not stream partial text: a line can't be taken back once it's on screen. If a reply
+times out, fails or turns out unsafe after part of it was shown, the edge-case contract
+(`docs/pipeline-contract.md`) requires a fallback and that none of that generation's text
+was shown, which streamed partials can't guarantee. A filter can't judge a sentence
+before it ends either ("nobody would care if you…"). Replies take about 200 ms at p50, so
+waiting for the whole line costs little.
+
+`streamPartials: true` still works for experiments. Partials then appear once they have
+`minStreamChars` (12) characters and pass the reply check, and only if they extend what's
+shown; if the reply goes bad later, the line ends at the part already shown. The
+`chat_message` contract and the game's chat log both handle streamed updates either way.
 
 ### Reply check (v1)
 
@@ -107,7 +122,8 @@ Provisional, in `PIPELINE_DEFAULTS`; the laptop pilot (W08) sets the real values
 | `maxGenerationsInFlight` | 1 |
 | `minGenerationMs` | 500 |
 | `maxTokens` (Ollama `num_predict`) | 48 |
-| `minStreamChars` | 12 |
+| `streamPartials` | false |
+| `minStreamChars` (only with `streamPartials`) | 12 |
 | `historySize` | 0 (off) |
 
 ## Latency
@@ -116,15 +132,17 @@ Provisional, in `PIPELINE_DEFAULTS`; the laptop pilot (W08) sets the real values
 for it and to the frame with `done: true`. The pipeline also measures from `ts` to the
 moment it emits (`GET /stats`). Neither includes drawing in the browser.
 
-First run on the RTX 4050 laptop (qwen2.5:3b loaded, 2 rounds, 16 events, 1.5 s apart):
+On the RTX 4050 laptop (qwen2.5:3b loaded, 2 rounds, 16 events, 1.5 s apart), whole
+replies (the default):
 
-| Path | First text p50 / p95 | Completed p50 / p95 |
-|------|----------------------|---------------------|
-| Model (major events + player chat, n=10) | 92 / 379 ms | 200 / 480 ms |
-| Templates (minor events, n=6) | 1–7 ms | 1–7 ms |
+| Path | Reply shown p50 / p95 |
+|------|-----------------------|
+| Model (major events + player chat, n=10) | 211 / 430 ms |
+| Templates (minor events, n=6) | 1–4 ms |
 
-With events 600 ms apart (2 rounds, 16 events) the model path measured 78 / 134 ms to
-first text and 178 / 289 ms to completion, still with no fallbacks.
+No fallbacks. For comparison, with `streamPartials` on, the first partial text showed at
+92 / 379 ms and the completed line at 200 / 480 ms (same setup), and at 78 / 134 ms and
+178 / 289 ms with events 600 ms apart.
 
 These are short runs, not the pilot benchmark (W08/W09). Earlier, the cold model load
 took about 60 s.
@@ -137,4 +155,4 @@ took about 60 s.
 | Persona selector, coalescing, event-rate limits (`burst` edge case still fails) | W06 |
 | Safety filter (`unsafe` edge case still fails) | W07 |
 | Full scripted baseline (scripts, UI switch) | W07 |
-| Hooking the game up (replace `devChatFeed.js` with `connectToService`) | after the game PR merges |
+| Hooking the game up (replace `devChatFeed.js` with `connectToService`, type lines in) | after the game PR merges |

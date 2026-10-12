@@ -5,7 +5,7 @@
  * docs/harness.md ("Pipeline contract"). Behavior and limits: docs/service.md.
  *
  *   minor game event              -> template line (both conditions)
- *   major game event / chat       -> Fan reply from the model, streamed     (ai)
+ *   major game event / chat       -> Fan reply from the model              (ai)
  *                                 -> scripted line, model never called     (scripted)
  *   timeout / error / bad output  -> fallback line
  *
@@ -51,7 +51,15 @@ export const PIPELINE_DEFAULTS = Object.freeze({
    * follow-ups ("4-game streak") from them. Revisit with the persona voice rules (W05).
    */
   historySize: 0,
-  /** A streamed reply is held back until it has this many characters. */
+  /**
+   * Show partial text while the model is still generating. Off: a reply reaches the chat
+   * only once it's complete and has passed the reply check, so failed, cut-off or
+   * unsafe text is never shown; the game animates the line in instead. A line can't be
+   * taken back once shown, so streaming partials can't meet the edge-case contract's
+   * fallback and unsafe-output rules (docs/service.md, "Showing replies").
+   */
+  streamPartials: false,
+  /** With streamPartials, a reply is held back until it has this many characters. */
   minStreamChars: 12,
 });
 
@@ -179,7 +187,7 @@ export default function startPipeline(bus, emit, deps = {}) {
     }
   }
 
-  /** Streamed model reply; falls back to `fallbackText` if nothing usable was shown. */
+  /** Model reply (streamed if streamPartials); falls back to `fallbackText` if nothing usable was shown. */
   function runModelReply({ ctx, persona, viewer, fallbackText, system, prompt }, remaining) {
     const { parse } = PERSONA_PROMPTS[persona];
     const id = globalThis.crypto.randomUUID();
@@ -222,7 +230,7 @@ export default function startPipeline(bus, emit, deps = {}) {
           system,
           maxTokens: limits.maxTokens,
           signal: controller.signal,
-          onText,
+          onText: limits.streamPartials ? onText : undefined,
         });
         const check = checkReply(parse(String(result?.text ?? "")));
         if (check.ok) reply = check.text;

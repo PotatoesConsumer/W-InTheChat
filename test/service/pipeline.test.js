@@ -87,9 +87,9 @@ test("a minor event gets one template line, without calling the model", async ()
   assert.ok(VIEWERS.fan.includes(m.viewer));
 });
 
-test("a major event gets a streamed AI reply: one id, growing text, done last", async () => {
+test("streamPartials: a streamed AI reply has one id, growing text, done last", async () => {
   const reply = "no way you clutched that, LETS GO";
-  const { bus, messages, handle, calls } = setup([reply]);
+  const { bus, messages, handle, calls } = setup([reply], { streamPartials: true });
   bus.publish(game("win", { score: 12 }));
   await handle.idle();
 
@@ -161,7 +161,9 @@ test("model errors and malformed output fall back to a safe line", async () => {
 
 test("an 'As an AI' reply is never shown, even while streaming", async () => {
   const text = "As an AI I cannot watch, but nice win";
-  const { bus, messages, handle } = setup([{ parts: growing(text), text }]);
+  const { bus, messages, handle } = setup([{ parts: growing(text), text }], {
+    streamPartials: true,
+  });
   bus.publish(game("win"));
   await handle.idle();
   assert.deepEqual(
@@ -179,11 +181,12 @@ test("a reply that times out falls back after replyTimeoutMs", async () => {
   assert.deepEqual(handle.stats().failures, { timeout: 1 });
 });
 
-test("a bad ending after partials were shown keeps the shown text, same source", async () => {
+test("streamPartials: a bad ending after partials keeps the shown text, same source", async () => {
   const shown = "that was insane chat";
-  const { bus, messages, handle } = setup([
-    { parts: [shown], text: `${shown}\n` + "x".repeat(300) },
-  ]);
+  const { bus, messages, handle } = setup(
+    [{ parts: [shown], text: `${shown}\n` + "x".repeat(300) }],
+    { streamPartials: true },
+  );
   bus.publish(game("close_call"));
   await handle.idle();
   assert.deepEqual(
@@ -343,4 +346,25 @@ test("stop() drops queued replies too", async () => {
   await handle.idle();
   assert.equal(calls.length <= 1, true);
   assert.deepEqual(messages, []);
+});
+
+test("by default a reply is shown only once complete and checked: one update", async () => {
+  const reply = "no way you clutched that, LETS GO";
+  const { bus, messages, handle } = setup([reply]);
+  bus.publish(game("win"));
+  await handle.idle();
+  assert.deepEqual(
+    messages.map((m) => [m.source, m.text, m.done]),
+    [["ai", reply, true]],
+  );
+});
+
+test("by default a timed-out reply sends only the fallback, no partial text", async () => {
+  const { bus, messages, handle } = setup(["hang"], { replyTimeoutMs: 40, minGenerationMs: 5 });
+  bus.publish(game("win"));
+  await handle.idle();
+  assert.deepEqual(
+    messages.map((m) => m.source),
+    ["fallback"],
+  );
 });

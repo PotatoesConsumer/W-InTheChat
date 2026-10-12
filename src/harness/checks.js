@@ -520,11 +520,18 @@ function groupUpdates(record) {
   return groups;
 }
 
+/**
+ * Final replies in event order (then first-seen order within an event). Replies to
+ * different events can finish in either order when they overlap, which depends on
+ * timers (coarse on Windows), so that order isn't a choice and isn't compared.
+ */
 function choices(record) {
-  return [...groupUpdates(record).values()].map((updates) => {
-    const m = updates.at(-1).message;
-    return `${m.eventId} ${m.persona}/${m.source}: ${JSON.stringify(m.text)}`;
-  });
+  const eventOrder = new Map(record.events.map((e, i) => [e.id, i]));
+  const rank = (m) => eventOrder.get(m.eventId) ?? Infinity;
+  return [...groupUpdates(record).values()]
+    .map((updates, seen) => ({ m: updates.at(-1).message, seen }))
+    .sort((a, b) => rank(a.m) - rank(b.m) || a.seen - b.seen)
+    .map(({ m }) => `${m.eventId} ${m.persona}/${m.source}: ${JSON.stringify(m.text)}`);
 }
 
 function personasByEvent(record) {
