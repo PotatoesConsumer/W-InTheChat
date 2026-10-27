@@ -368,3 +368,80 @@ test("by default a timed-out reply sends only the fallback, no partial text", as
     ["fallback"],
   );
 });
+
+/** `count` events named `name`, `gapMs` apart by their own timestamps. */
+const spaced = (name, count, gapMs) =>
+  Array.from({ length: count }, (_, i) =>
+    createGameEvent(name, {}, { id: `${name}-${i}`, ts: 1_000_000 + i * gapMs }),
+  );
+
+test("the selector picks the persona for model replies; no Hater by default", async () => {
+  const personas = async (deps) => {
+    const { bus, messages, handle } = setup(["nice one chat"], {
+      maxMessagesPerSecond: 1_000,
+      ...deps,
+    });
+    for (const event of spaced("loss", 60, 3_000)) bus.publish(event);
+    await handle.idle();
+    return new Set(finals(messages).map((m) => m.persona));
+  };
+  assert.deepEqual([...(await personas())].sort(), ["backseat", "fan", "lurker"]);
+  const all = await personas({ aiPersonas: ["fan", "hater", "backseat", "lurker"] });
+  assert.ok(all.has("hater"));
+});
+
+test("template and scripted lines stay with the Fan, whose voice they're written in", async () => {
+  const { bus, messages, handle } = setup(["unused"], { condition: "scripted" });
+  bus.publish(game("kill", {}, "minor"));
+  bus.publish(game("loss", {}, "major"));
+  await handle.idle();
+  assert.deepEqual(
+    messages.map((m) => m.persona),
+    ["fan", "fan"],
+  );
+});
+
+test("repeats are coalesced by the events' timestamps: 1st, 5th and 10th of a run", async () => {
+  const { bus, messages, handle } = setup(["unused"]);
+  for (const event of spaced("kill", 12, 100)) bus.publish(event);
+  await handle.idle();
+  assert.deepEqual(
+    messages.map((m) => m.eventId),
+    ["kill-0", "kill-4", "kill-9"],
+  );
+  assert.equal(handle.stats().coalesced, 9);
+});
+
+test("the same seed and events give the same chat, coalescing included", async () => {
+  const run = async () => {
+    const { bus, messages, handle } = setup(["good reply here"], { random: seeded(5) });
+    for (const event of [...spaced("streak", 6, 300), ...spaced("win", 3, 2_500)]) {
+      bus.publish(event);
+    }
+    await handle.idle();
+    return finals(messages).map((m) => `${m.eventId} ${m.persona} ${m.viewer}`);
+  };
+  assert.deepEqual(await run(), await run());
+});
+
+test("over maxMessagesPerSecond, lines wait their turn; none is dropped", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  const { bus, messages, handle } = setup(["unused"], { maxMessagesPerSecond: 3 });
+  for (const name of ["round_start", "kill", "damage_taken", "item_pickup"]) {
+    bus.publish(game(name));
+  }
+  assert.equal(messages.length, 3);
+  const idle = handle.idle();
+  t.mock.timers.tick(1_000);
+  await idle;
+  assert.equal(messages.length, 4);
+  assert.equal(messages[3].ts - messages[0].ts, 1_000);
+  assert.equal(handle.stats().replies.template, 4);
+});
+
+test("rejects aiPersonas without a prompt", () => {
+  const bus = createEventBus();
+  const generate = async () => ({ text: "x" });
+  assert.throws(() => startPipeline(bus, () => {}, { generate, aiPersonas: ["mod"] }), /mod/);
+  assert.throws(() => startPipeline(bus, () => {}, { generate, aiPersonas: [] }), /aiPersonas/);
+});

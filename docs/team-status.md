@@ -81,7 +81,7 @@ and known issues). Add anything else you find there.
 | Task | What's left |
 |------|-------------|
 | W05 | Done on `feature/personas`: Hater, Backseat Gamer and Lurker prompts, registered; rules, trials and known weaknesses in `docs/personas.md` |
-| W06 | Persona selector (today every reply is the Fan), coalescing and rate limits. Then remove `burst` from `pending` |
+| W06 | Done on `feature/persona-selector`: persona selector (no Hater before W07), coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. `burst` passes and is out of `pending` |
 | W07 | The output safety filter in `src/service/replyCheck.js`. It must block all 13 `block` cases and allow all 16 `allow` cases in `eval/safety-cases-v1.json`. Register it in `filters`, then remove `unsafe` from `pending`. Needed before the Hater goes live. |
 | W08 | Laptop pilot: set `replyTimeoutMs`, `maxTokens`, event rate and message caps from measured p50/p95 and peak GPU memory |
 

@@ -5,9 +5,9 @@ blind raters can tell them apart (persona identifiability) and the Hater stays s
 This is that document. The prompts live in `src/ai/personas/`, one file per persona,
 registered in `index.js`.
 
-Which persona answers which event is the selector's job (W06). Until it lands, the
-service still sends every model reply as the Fan; the other three prompts are only
-reached through `buildPrompt(ctx, { persona })`.
+Which persona answers which event is the selector's job (`src/service/selector.js`,
+weights in `PERSONA_WEIGHTS`, `docs/service.md`). The Hater has a prompt but is left out
+of the service's `aiPersonas` until the output filter (W07) is in.
 
 ## Shared rules (every persona)
 
@@ -42,8 +42,8 @@ have", even when answering chat.
 
 The Backseat Gamer's advice stays general (timing, patience, playing safe, taking the
 risk, not panicking) until the mini-game is chosen; then its prompt can name the game's
-real actions. The Lurker is meant to speak at big moments only; that is a selector rule
-(W06) and can become a check in `docs/pipeline-contract.md` once it exists.
+real actions. The Lurker speaks at big moments only: the selector gives it major game
+events and never player chat.
 
 ## Safety rules
 

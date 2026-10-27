@@ -22,14 +22,17 @@ game is connected to the service; the round starts then ("here we go" in chat).
 | Key | Event | Goes to |
 |-----|-------|---------|
 | Space | `kill` | template line (minor) |
-| 1 | `win` | Fan reply from the model |
-| 2 | `loss` | Fan reply |
-| 3 | `close_call` | Fan reply |
-| 4 | `streak` | Fan reply |
-| 5 | `new_best` | Fan reply |
-| Enter, type, Enter | player chat | Fan reply |
+| 1 | `win` | model reply: Fan, Backseat Gamer or Lurker (the selector picks) |
+| 2 | `loss` | model reply |
+| 3 | `close_call` | model reply |
+| 4 | `streak` | model reply |
+| 5 | `new_best` | model reply |
+| Enter, type, Enter | player chat | model reply (Fan or Backseat Gamer) |
 
 These keys are placeholders until the mini-game is chosen and emits the events itself.
+Since W06, pressing the **same** key again within 2 s counts as a repeat and is coalesced:
+the 1st, 5th and 10th press of a run get a reply, the others nothing. Leave 2 s between
+presses of one key when recording.
 
 In the browser console, `witc.latency()` gives p50/p95 from the game's send to the reply
 (overall and by source), `witc.rows()` the raw rows and `witc.stats()` the current stats.
@@ -51,7 +54,7 @@ OBS):
    drops on the loss.
 5. 4 and 5 until hype passes 50: donations start coming in.
 6. Type a message to chat ("chat was that boss hard?"): the player line with the ADMIN
-   badge, then a Fan reply to it.
+   badge, then a reply to it.
 7. Point at the latency readout in the top bar (p50/p95).
 8. Optional: stop the service; the pill turns to **chat offline** and the game keeps
    running. Start it again; it reconnects on its own.
@@ -77,7 +80,8 @@ Known, not fixed:
 
 - Fan replies to player chat sometimes talk about "the next player" instead of the
   streamer. Prompt work, W05.
-- Every reply is the Fan; the other personas come in W05/W06.
+- ~~Every reply is the Fan~~: since W06 the selector picks Fan, Backseat Gamer or
+  Lurker. The Hater waits for the safety filter (W07).
 - Pressing the same key several times within one frame counts once (the input sees one
   press per frame). Not noticeable at 60 fps.
 - If the service stops between connecting and the round starting, that `round_start`

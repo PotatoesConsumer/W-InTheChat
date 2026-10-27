@@ -55,7 +55,7 @@ any of that, update the file in the same PR.
   context payload -> `{system, prompt}` for one persona reply. Uses only `ctx.facts`.
 - `src/ai/personas/`: one file per persona (system prompt), registered in `index.js` with
   the shared parser from `parse.js`. Voice and safety rules: `docs/personas.md`. The
-  service still sends every reply as the Fan until the selector (W06).
+  Hater is left out of the service's `aiPersonas` until the safety filter (W07).
 - `src/ai/demo.js`: latency smoke test
 - `src/ai/personaTrial.js`: the persona trial's inputs and weakness checks (CLI in
   `scripts/persona-trial.js`)
@@ -67,11 +67,14 @@ any of that, update the file in the same PR.
   - `bus.js`: in-process event bus (validates on publish, synchronous dispatch)
   - `chatMessage.js`: outbound service -> UI chat messages (persona, source, streamed updates)
 - `src/service/`: the chat service, spec in `docs/service.md`
-  - `pipeline.js`: bus -> chat_message updates. Minor events get templates, major events and
-    player chat get a Fan reply (sent whole, once checked; the game types it in), failures
-    get a fallback. Model replies run one at a time from a FIFO queue, with deadlines from
-    event arrival. No timing-based routing:
-    the same seed and events must give the same chat.
+  - `pipeline.js`: bus -> chat_message updates. Repeats are coalesced, minor events get
+    templates, major events and player chat get a model reply from the persona the selector
+    picks (sent whole, once checked; the game types it in), failures get a fallback. Model
+    replies run one at a time from a FIFO queue, with deadlines from event arrival. No
+    timing-based routing: the same seed and events must give the same chat.
+  - `selector.js`: weighted persona choice per event (`PERSONA_WEIGHTS`)
+  - `coalesce.js`: runs of repeated events, measured with the events' own timestamps
+  - `pacer.js`: the chat rate limit; delays lines, never drops them
   - `server.js`: POST /events, GET /stream (SSE), /health, /stats. Localhost only.
   - `client.js`: browser side for the game (`connectToService`)
   - `replyCheck.js`: rejects malformed replies. Not the safety filter yet (W07).
@@ -107,8 +110,8 @@ any of that, update the file in the same PR.
   `manifest.json` (draft/frozen, sha256). Never edit a frozen set; make a new version.
   Guides: `docs/evaluation.md`, `docs/pipeline-contract.md`.
 - `test/`: unit tests, mirroring `src/`. `test/contracts/` runs the checks against what's
-  registered in `implementations.js`: the service pipeline is, with the `unsafe` (W07) and
-  `burst` (W06) edge cases marked `pending`. Remove an entry from `pending` when it's done.
+  registered in `implementations.js`: the service pipeline is, with the `unsafe` (W07)
+  edge case marked `pending`. Remove an entry from `pending` when it's done.
 
 ## Rules from the proposal
 

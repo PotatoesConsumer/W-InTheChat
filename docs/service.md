@@ -63,21 +63,42 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 
 | Event | ai condition | scripted condition |
 |-------|--------------|--------------------|
-| Minor game event | `template` line | `template` line |
-| Major game event | Fan reply from the model | `scripted` line |
-| Player message | Fan reply from the model | `scripted` line |
+| Repeat of a recent same-name event (or player message) | coalesced: no message | coalesced: no message |
+| Minor game event | `template` line (Fan) | `template` line (Fan) |
+| Major game event | model reply, persona from the selector | `scripted` line (Fan) |
+| Player message | model reply, persona from the selector | `scripted` line (Fan) |
 | Model times out, fails, or its reply is rejected | `fallback` line | (model never called) |
 
-- **One reply per event**, always linked by `eventId`.
+- **At most one reply per event**, always linked by `eventId`.
 - **Choices come first.** Persona, viewer name and the fixed line are drawn from
-  `deps.random` when the event arrives, before the model runs. The same seed and events
-  give the same chat whatever the model returns.
+  `deps.random` when the event arrives, before the model runs: three draws per event,
+  coalesced or not. The same seed and events give the same chat whatever the model
+  returns.
+- **Persona selector** ([`selector.js`](../src/service/selector.js)): a weighted draw per
+  event, weights in `PERSONA_WEIGHTS` (for example a loss leans to the Hater and the
+  Backseat Gamer, a win to the Fan; the Lurker only answers major game events, never
+  chat). Only personas in `aiPersonas` can be picked, and **the Hater isn't in it until
+  the safety filter (W07) is.** Template and scripted lines are written in the Fan's
+  voice, so they stay with the Fan until the scripted baseline gets persona lines (W07).
+- **Coalescing** ([`coalesce.js`](../src/service/coalesce.js)): same-name game events (or
+  player messages) less than `coalesceWindowMs` apart form a run. The first of a run is
+  answered, then every `repeatReplyEvery`-th, at most `maxRepliesPerRun` in all; the rest
+  get no message (`coalesced` in `/stats`). Runs are measured with **the events' own
+  timestamps**, never with the pipeline's state, so this doesn't route on timing in the
+  sense of the decision below: the same events are coalesced the same way however fast
+  the model is. At real speed the evaluation set has no same-name events under 2 s apart,
+  so nothing in it is coalesced.
+- **Rate limit** ([`pacer.js`](../src/service/pacer.js)): at most `maxMessagesPerSecond`
+  new messages in any second. Over that, lines wait their turn in order. Nothing is
+  dropped and no text changes, so pacing moves when a line appears, never which lines
+  appear.
 - **One generation at a time, first in, first out.** Model replies wait in a queue
   (`maxGenerationsInFlight: 1`, one 6 GB GPU). Each reply's deadline counts from when its
   event arrived, so time in the queue uses it up. A reply whose turn comes with less than
   `minGenerationMs` left gets a fallback without calling the model (`queue_timeout` in
   `/stats`). Nothing is routed on "is the model busy right now": that made the same
-  events get different replies run to run. Bursts are the router's job (coalescing, W06).
+  events get different replies run to run. Bursts are handled by coalescing and the
+  rate limit above.
 - **Whole replies, checked first.** See [Showing replies](#showing-replies).
 - **Only `ctx.facts` reach the model** (via the context builder). Chat history is
   supported but off (`historySize: 0`): in the first runs qwen2.5:3b copied the history's
@@ -106,13 +127,13 @@ shown; if the reply goes bad later, the line ends at the part already shown. The
 
 [`replyCheck.js`](../src/service/replyCheck.js) rejects replies that are empty, over 200
 characters, talk as an AI ("As an AI…", "I cannot…") or are structured data (`{…}`,
-`[…]`). The Fan parser first keeps only the first real line and strips quotes, code fences
-and `**`.
+`[…]`). The shared persona parser first keeps only the first real line and strips quotes,
+code fences, `**` and a copied speaker label (`Player:`).
 
 **It is not the safety filter.** Abusive or unsafe text still passes. The safety filter
 and its test set are W07 and plug in here as another rejection reason. The Hater prompt
-exists (`docs/personas.md`), but nothing selects it until W06, and it must not be selected
-before the filter is in.
+exists (`docs/personas.md`), but it's left out of `aiPersonas`, so the selector never
+picks it, until the filter is in.
 
 ### Limits
 
@@ -127,6 +148,11 @@ Provisional, in `PIPELINE_DEFAULTS`; the laptop pilot (W08) sets the real values
 | `streamPartials` | false |
 | `minStreamChars` (only with `streamPartials`) | 12 |
 | `historySize` | 0 (off) |
+| `aiPersonas` | fan, backseat, lurker (no Hater before W07) |
+| `coalesceWindowMs` (same as `QA_LIMITS`) | 2000 |
+| `repeatReplyEvery` | 5 |
+| `maxRepliesPerRun` (`QA_LIMITS.maxMessagesPerEvent` is 3) | 3 |
+| `maxMessagesPerSecond` (`QA_LIMITS` allows 5) | 4 |
 
 ## Latency
 
@@ -153,6 +179,5 @@ took about 60 s.
 
 | What | Task |
 |------|------|
-| Persona selector, coalescing, event-rate limits (`burst` edge case still fails) | W06 |
 | Safety filter (`unsafe` edge case still fails) | W07 |
 | Full scripted baseline (scripts, UI switch) | W07 |
