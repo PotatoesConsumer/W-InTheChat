@@ -32,17 +32,20 @@ npm run dev
 ```
 
 Serves the game on <http://localhost:5173> (open it in Chrome). The scene is a
-placeholder until the mini-game is chosen: WASD/arrows move, Space sends a test game
-event, Enter focuses the chat box and Escape leaves it. Chat replies come from a dev
-placeholder feed (`src/game/devChatFeed.js`) until the service is connected.
+placeholder until the mini-game is chosen: WASD/arrows move, Space sends a kill, keys 1–5
+send the major events (win, loss, close call, streak, new best), Enter focuses the chat
+box and Escape leaves it. The top bar shows followers, donations, the hype meter and the
+reply latency.
 
 ```bash
 npm run service
 ```
 
-Runs the local chat service on <http://127.0.0.1:8787>: the game posts events to
-`/events` and reads replies from `/stream`. `npm run e2e` measures end-to-end latency with
-the real model. See [docs/service.md](docs/service.md).
+Runs the local chat service on <http://127.0.0.1:8787>, which the game talks to: it posts
+events to `/events` and reads replies from `/stream`. Run it next to `npm run dev`; without
+it the game still runs but chat stays empty ("chat offline" in the top bar).
+`npm run e2e` measures end-to-end latency with the real model. See
+[docs/service.md](docs/service.md) and, for the Month-1 demo, [docs/demo-m1.md](docs/demo-m1.md).
 
 ```bash
 npm run ai:demo

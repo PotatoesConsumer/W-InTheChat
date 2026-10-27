@@ -6,9 +6,9 @@ real pipeline and stats model must meet. Each rule is a check in
 [`src/harness/checks.js`](../src/harness/checks.js), which judges a harness run record.
 
 > **Status: proposal for review.** The pipeline (persona selector, coalescing, output
-> filter) is Sittipon's W06–W07 work, and the stats model is Shapphanyu's. The interfaces
-> below are what the checks need. Change them in review if they don't fit; the checks will
-> follow.
+> filter) is Sittipon's W06–W07 work, and the stats model is Shapphanyu's
+> (`src/game/stats.js`, registered in `statsModels`). The interfaces below are what the
+> checks need. Change them in review if they don't fit; the checks will follow.
 
 ## Where the checks run
 

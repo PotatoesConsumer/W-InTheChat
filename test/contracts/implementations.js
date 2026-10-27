@@ -12,6 +12,7 @@
  */
 
 import startPipeline from "../../src/service/pipeline.js";
+import { stats } from "../../src/game/stats.js";
 
 /**
  * @type {{name: string, start: Function, pending?: Record<string, string>}[]}
@@ -32,7 +33,7 @@ export const pipelines = [
  * @type {{name: string, initial: () => object, reduce: (state: object, event: object) => object}[]}
  * Shapphanyu: followers / donations / hype model (W02, W04).
  */
-export const statsModels = [];
+export const statsModels = [{ name: "stream stats", ...stats }];
 
 /**
  * @type {{name: string, check: (text: string) => {ok: boolean, reason?: string} | Promise<{ok: boolean, reason?: string}>}[]}

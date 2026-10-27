@@ -73,12 +73,20 @@ any of that, update the file in the same PR.
   - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
     every `GAME_EVENTS` name (a test checks).
 - `src/game/`: browser game (`index.html` loads `main.js`)
+  - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
+    facecam react) and to the chat service through `connectToService`; replies come back
+    over SSE into the overlay. `?service=<url>` changes the service URL. Keys 1-5 send the
+    major events until the mini-game emits them.
   - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
   - `input.js`: keyboard -> actions; ignores keys typed into the chat box
-  - `devChatFeed.js`: placeholder fake chat. Replace it with `connectToService`
-    (`src/service/client.js`, see `docs/service.md`), then delete it.
-- `src/ui/`: chat overlay. `chatLog.js` is the DOM-free state (streamed updates by id),
-  `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll).
+  - `stats.js`: followers / donations / hype as a pure reducer (`stats.initial/reduce`),
+    registered in the contract tests. The model's replies never reach it.
+  - `streamer.js`: the facecam avatar; mood from events (tested), `draw()` on the canvas
+  - `replyLatency.js`: p50/p95 from the game's send to the reply, shown in the top bar
+    and in the console as `witc.latency()`
+- `src/ui/`: chat overlay and HUD. `chatLog.js` is the DOM-free state (streamed updates by
+  id), `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll,
+  whole replies typed in), `statsHud.js` the follower/donation counters and hype meter.
   The player's own lines are UI-only entries (`kind: "player"`, name "Player", ADMIN badge),
   not chat_messages. No login or name setting yet.
 - `scripts/serve.js`: `npm run dev` static server on localhost:5173 (no dotfiles/node_modules)

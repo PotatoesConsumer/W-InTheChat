@@ -1,7 +1,8 @@
 # Team status and handoff
 
-Last updated 2026-10-12, after PR #11 (chat pipeline and service) and PR #12 (game loop and
-chat overlay) were merged.
+Last updated 2026-10-12, for the Month-1 demo branch (`feature/m1-demo`): the game is
+connected to the service, with stats, HUD and facecam. #11 (chat pipeline and service) and
+#12 (game loop and chat overlay) are merged.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -15,9 +16,11 @@ something here no longer matches the code, trust the code and say so.
   replies out over SSE, using `qwen2.5:3b`. End to end without the browser (`npm run e2e`),
   model replies reach the client in 211 / 430 ms at p50 / p95 on the RTX 4050.
 - The game loop, input and chat overlay are merged (#12, Shapphanyu's work from `tawan`).
-  `npm run dev` serves it on `localhost:5173`. It still answers chat with the placeholder
-  `devChatFeed.js`; **connecting the game to the service is the main thing between us and
-  the Month-1 demo.**
+- **The game talks to the service** (`feature/m1-demo`): `npm run service` + `npm run dev`
+  is the Month-1 demo. Whole replies are typed in; the top bar has followers, donations,
+  the hype meter and the reply p50/p95; a facecam avatar reacts to events. Keys 1–5 send
+  the major events. `devChatFeed.js` is gone. Run guide, clip shot list and bug bash:
+  `docs/demo-m1.md`.
 - **The mini-game hasn't been chosen.** The event catalog (`GAME_EVENTS` in
   `src/events/schema.js`) is still a placeholder until it is.
 
@@ -35,21 +38,21 @@ Don't change these without talking to the team first. The reasons are in the lin
 
 ## Shapphanyu (frontend / game): what's next
 
-1. **Your W01 and W03 work is on `master`** (#12). Start new work from `master` on a
-   `feature/...` branch; `tawan` is no longer needed.
-2. **Connect the game to the service.** Replace `src/game/devChatFeed.js` with
-   `connectToService` from `src/service/client.js` (example in `docs/service.md`). Run
-   `npm run service` next to `npm run dev`; the service already allows the
-   `localhost:5173` origin.
-3. **Type replies in.** Each model reply now arrives as **one** `chat_message` update with
-   `done: true`. Animate the text in (typewriter) so chat still "appears progressively",
-   as the proposal asks. Keep handling multi-update messages too; the contract allows them.
-4. **Player messages:** send what the player types with `chat.send(createChatEvent(text))`.
-   The service answers it. The player's own line can stay a UI-only entry, as it is now.
-5. **Stats model (W02/W04):** followers / donations / hype as a pure reducer,
-   `{ initial, reduce }` (interface in `docs/pipeline-contract.md`). Register it in
-   `statsModels` in `test/contracts/implementations.js` so the stats checks run.
-6. **Scripted baseline switch (W07):** the service already has the condition:
+1. **Your W01–W04 is done** (#12, plus `feature/m1-demo`, which Sittipon wrote with the
+   team's OK; please review it, it's your area). Start new work from `master` on a
+   `feature/...` branch; `tawan` is no longer needed. What's in it:
+   - `src/game/stats.js`: followers / donations / hype as a pure reducer, registered in
+     `statsModels`, so `stats-valid` and `same-stats` run. The numbers are a first pass;
+     tune `STAT_RULES` once the mini-game is chosen.
+   - `src/ui/statsHud.js`: counters with "+N" pop-ups and the hype meter, in the top bar.
+   - `src/game/streamer.js`: the facecam avatar, mood from events.
+   - `src/ui/chatOverlay.js`: whole replies are typed in (`typeInDelay`); streamed
+     updates still work.
+   - `src/game/main.js`: events go to the stats and to the service; keys 1–5 are dev
+     shortcuts for the major events.
+2. **The mini-game.** When it's chosen, emit its events from the game instead of keys
+   1–5, and replace the placeholder box scene. The facecam can stay.
+3. **Scripted baseline switch (W07):** the service already has the condition:
    `npm run service -- --condition scripted`. The game needs a way to pick it.
 
 ## Prin (multimodal / QA): what changed in your area
@@ -69,8 +72,9 @@ These changes are on `master` (merged in #11):
    else passes: all scenarios, both conditions, slow / down / garbage model, bad input,
    malformed events.
 
-Still open on your side: the Month-1 demo clip (W04) needs the game connected to the
-service first.
+Still open on your side: **record the Month-1 demo clip (W04).** The game is connected
+now; `docs/demo-m1.md` has the run steps, a shot list and the first bug bash (fixed bugs
+and known issues). Add anything else you find there.
 
 ## Sittipon (backend / AI): what's next
 
@@ -85,5 +89,6 @@ service first.
 
 | What | Waiting on |
 |------|------------|
-| Choosing the mini-game (fixes the event catalog, unblocks the M1 demo) | the whole team |
-| Connecting the game to the service (M1 demo) | Shapphanyu |
+| Choosing the mini-game (fixes the event catalog and the game scene) | the whole team |
+| Reviewing `feature/m1-demo` (game ↔ service, stats, HUD, facecam) | Shapphanyu |
+| Recording the Month-1 demo clip | Prin (or anyone) |
