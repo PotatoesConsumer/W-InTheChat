@@ -27,6 +27,9 @@ any of that, update the file in the same PR.
 
 - `npm run ai:demo`: sends sample events through the Fan persona, prints the replies and
   p50/p95 latency.
+- `npm run ai:personas`: the persona prompt trial: every persona on fixed events with the
+  real model, replies flagged for known weaknesses, counts and p50/p95. Guide:
+  `docs/personas.md`.
 - `npm run service`: the chat service on `http://127.0.0.1:8787` with the real model
   (`--condition scripted` for the baseline). `npm run e2e`: end-to-end latency over HTTP + SSE.
   Guide: `docs/service.md`.
@@ -50,10 +53,12 @@ any of that, update the file in the same PR.
 - `src/ai/ollamaClient.js`: Ollama REST wrapper (health, retry/backoff, timeout, model select)
 - `src/ai/contextBuilder.js`: `buildPrompt(ctx, {persona, streamerName, history})`, the
   context payload -> `{system, prompt}` for one persona reply. Uses only `ctx.facts`.
-- `src/ai/personas/`: one file per persona (system prompt, prompt builder, response parser),
-  registered in `index.js`. Only `fan.js` exists; Hater, Backseat Gamer and Lurker are still
-  to come.
+- `src/ai/personas/`: one file per persona (system prompt), registered in `index.js` with
+  the shared parser from `parse.js`. Voice and safety rules: `docs/personas.md`. The
+  service still sends every reply as the Fan until the selector (W06).
 - `src/ai/demo.js`: latency smoke test
+- `src/ai/personaTrial.js`: the persona trial's inputs and weakness checks (CLI in
+  `scripts/persona-trial.js`)
 - `src/events/`: the event contract, spec in `docs/events.md`
   - `schema.js`: inbound game + chat events, catalog, validation. The game catalog is a draft
     until the mini-game is chosen.

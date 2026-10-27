@@ -56,6 +56,13 @@ latency. Send one request first if the model isn't loaded yet; a cold load can
 exceed the client's 15 s timeout.
 
 ```bash
+npm run ai:personas
+```
+
+Runs every persona's prompt on fixed events and player messages, flags each reply for
+the known persona weaknesses and prints the counts. See [docs/personas.md](docs/personas.md).
+
+```bash
 npm install
 npm run check
 ```

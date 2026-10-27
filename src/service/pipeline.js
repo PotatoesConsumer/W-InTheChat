@@ -19,7 +19,7 @@
  * timing, so the same events could get different replies (docs/pipeline-contract.md,
  * same-choices). Bursts are handled by coalescing in the router instead (W06).
  *
- * Not yet: persona selection (only the Fan has a prompt, W05-W06), coalescing (W06),
+ * Not yet: persona selection (every reply is the Fan, W06), coalescing (W06),
  * the safety filter (W07, see replyCheck.js) and the full scripted baseline (W07).
  */
 
@@ -48,7 +48,7 @@ export const PIPELINE_DEFAULTS = Object.freeze({
   /**
    * Recent chat lines given to the context builder. Off for now: in the first e2e runs
    * qwen2.5:3b copied the lines' "viewer: text" format and phrasing, and invented
-   * follow-ups ("4-game streak") from them. Revisit with the persona voice rules (W05).
+   * follow-ups ("4-game streak") from them. Still off with the W05 prompts; revisit with the selector (W06).
    */
   historySize: 0,
   /**
@@ -270,7 +270,7 @@ export default function startPipeline(bus, emit, deps = {}) {
     const ctx = toContext(event);
 
     // Choices first, before the model runs: two draws per event on every path.
-    const persona = "fan"; // the only persona with a prompt; the selector is W06
+    const persona = "fan"; // the selector is W06; no Hater before the safety filter (W07)
     const viewer = pick(VIEWERS[persona], random);
     const roll = random();
 

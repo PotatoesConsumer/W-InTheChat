@@ -79,7 +79,7 @@ test("a bad or missing streamer name falls back to 'the streamer'", () => {
 
 test("rejects unknown personas and things that aren't context payloads", () => {
   const ctx = toContext(createGameEvent("win", {}, FIXED));
-  assert.throws(() => buildPrompt(ctx, { persona: "hater" }), /no prompt for persona "hater"/);
+  assert.throws(() => buildPrompt(ctx, { persona: "mod" }), /no prompt for persona "mod"/);
   assert.throws(() => buildPrompt(ctx, { persona: "toString" }), /no prompt for persona/);
   assert.throws(() => buildPrompt({ kind: "game" }), /context payload/);
   assert.throws(() => buildPrompt({ facts: {} }), /event or a playerMessage/);
