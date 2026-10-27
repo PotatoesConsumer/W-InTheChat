@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node scripts/serve.js",
     "ai:demo": "node src/ai/demo.js",
+    "ai:personas": "node scripts/persona-trial.js",
     "service": "node scripts/service.js",
     "e2e": "node scripts/e2e.js",
     "harness": "node scripts/harness.js",

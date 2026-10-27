@@ -109,8 +109,9 @@ characters, talk as an AI ("As an AI…", "I cannot…") or are structured data 
 and `**`.
 
 **It is not the safety filter.** Abusive or unsafe text still passes. The safety filter
-and its test set are W07 and plug in here as another rejection reason. Until then only
-the Fan persona exists, so there is no Hater output to filter.
+and its test set are W07 and plug in here as another rejection reason. The Hater prompt
+exists (`docs/personas.md`), but nothing selects it until W06, and it must not be selected
+before the filter is in.
 
 ### Limits
 
@@ -151,7 +152,6 @@ took about 60 s.
 
 | What | Task |
 |------|------|
-| Hater, Backseat Gamer and Lurker prompts | W05 |
 | Persona selector, coalescing, event-rate limits (`burst` edge case still fails) | W06 |
 | Safety filter (`unsafe` edge case still fails) | W07 |
 | Full scripted baseline (scripts, UI switch) | W07 |

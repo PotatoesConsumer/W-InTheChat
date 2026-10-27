@@ -146,8 +146,8 @@ a test set only spreads it.
 - **Whether a major event gets a reply.** Coalescing may legitimately answer a run of
   events once. The evaluation set keeps major events 3 s apart so this doesn't eat study
   data.
-- **Which persona fits which event.** That's part of the persona voice rules (Sittipon's
-  W05). Once they're written, rules like "the Lurker only speaks at big moments" can
-  become checks.
+- **Which persona fits which event.** The voice rules are in `docs/personas.md` (W05);
+  the selector that applies them is W06. Once it exists, rules like "the Lurker only
+  speaks at big moments" can become checks.
 - **Reply quality.** Relevance and persona clarity are rated by people, on the
   evaluation set.
