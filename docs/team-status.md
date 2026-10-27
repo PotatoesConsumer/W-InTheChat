@@ -1,6 +1,7 @@
 # Team status and handoff
 
-Last updated 2026-10-12, when PR #11 (chat pipeline and service) was ready to merge.
+Last updated 2026-10-12, after PR #11 (chat pipeline and service) and PR #12 (game loop and
+chat overlay) were merged.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -10,13 +11,13 @@ something here no longer matches the code, trust the code and say so.
 
 - `master` has the event contract, harness, evaluation set, deterministic and edge-case
   checks (Prin, #3–#8, #10), and the context builder (Sittipon, #9).
-- PR #11 adds the real chat pipeline and the local service: events in over HTTP, replies out
-  over SSE, using `qwen2.5:3b`. It runs end to end without the browser (`npm run e2e`):
+- The real chat pipeline and the local service are merged (#11): events in over HTTP,
+  replies out over SSE, using `qwen2.5:3b`. End to end without the browser (`npm run e2e`),
   model replies reach the client in 211 / 430 ms at p50 / p95 on the RTX 4050.
-- The game loop and chat overlay (Shapphanyu's branch `tawan`) are in review as a PR from
-  `feature/game-loop-chat-overlay`, a copy of `tawan` with `master` merged in. Once merged,
-  the game still needs connecting to the service; that's the main thing between us and
-  the Month-1 demo.
+- The game loop, input and chat overlay are merged (#12, Shapphanyu's work from `tawan`).
+  `npm run dev` serves it on `localhost:5173`. It still answers chat with the placeholder
+  `devChatFeed.js`; **connecting the game to the service is the main thing between us and
+  the Month-1 demo.**
 - **The mini-game hasn't been chosen.** The event catalog (`GAME_EVENTS` in
   `src/events/schema.js`) is still a placeholder until it is.
 
@@ -34,9 +35,8 @@ Don't change these without talking to the team first. The reasons are in the lin
 
 ## Shapphanyu (frontend / game): what's next
 
-1. **Get the game onto `master`.** Done for you: `feature/game-loop-chat-overlay` is
-   `tawan` plus `master`, open as a PR. Review it, and keep working on that branch (or a
-   new `feature/...` one) instead of `tawan`.
+1. **Your W01 and W03 work is on `master`** (#12). Start new work from `master` on a
+   `feature/...` branch; `tawan` is no longer needed.
 2. **Connect the game to the service.** Replace `src/game/devChatFeed.js` with
    `connectToService` from `src/service/client.js` (example in `docs/service.md`). Run
    `npm run service` next to `npm run dev`; the service already allows the
@@ -54,7 +54,7 @@ Don't change these without talking to the team first. The reasons are in the lin
 
 ## Prin (multimodal / QA): what changed in your area
 
-These changes are in PR #11 (tests pass):
+These changes are on `master` (merged in #11):
 
 1. **`same-choices` compares replies in event order** (`choices()` in
    `src/harness/checks.js`). When replies to different events overlap, the order they
@@ -85,6 +85,5 @@ service first.
 
 | What | Waiting on |
 |------|------------|
-| Reviewing and merging PR #11 | a teammate's review on GitHub |
 | Choosing the mini-game (fixes the event catalog, unblocks the M1 demo) | the whole team |
-| Reviewing the game PR (`feature/game-loop-chat-overlay`) | Shapphanyu, Prin |
+| Connecting the game to the service (M1 demo) | Shapphanyu |
