@@ -97,6 +97,10 @@ any of that, update the file in the same PR.
     are spent: `coin_purchase`); `view.js` draws it and the shop's click layout.
   - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
   - `input.js`: keyboard -> actions; ignores keys typed into the chat box
+  - `donations.js`: viewer donations: which big moments bring one, the amount (mostly
+    under $10, $20+ rare) and the donor's message, seeded from the event id so the stats
+    stay deterministic. Shown in chat as UI-only `kind: "donation"` lines. `random.js`:
+    the seeded random and string hash.
   - `stats.js`: followers / donations / hype as a pure reducer (`stats.initial/reduce`),
     registered in the contract tests. The model's replies never reach it.
   - `streamer.js`: the facecam avatar; mood from events (tested), `draw()` on the canvas

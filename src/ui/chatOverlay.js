@@ -98,12 +98,13 @@ export function createChatOverlay(
 
   function renderLine(message) {
     const isPlayer = message.kind === "player";
+    const isDonation = message.kind === "donation";
     const line = el("li", "chat-line");
     const avatar = el("span", "chat-avatar");
     const name = el("span", "chat-viewer");
     const text = el("span", "chat-text");
-    const label = isPlayer ? message.viewer : PERSONA_LABELS[message.persona];
-    avatar.textContent = label[0];
+    const label = isPlayer || isDonation ? message.viewer : PERSONA_LABELS[message.persona];
+    avatar.textContent = isDonation ? "$" : label[0];
     avatar.title = label;
     avatar.setAttribute("aria-label", label);
     name.textContent = message.viewer;
@@ -112,6 +113,12 @@ export function createChatOverlay(
       const badge = el("span", "chat-badge");
       badge.textContent = "ADMIN";
       line.append(badge);
+    }
+    if (isDonation) {
+      const badge = el("span", "chat-badge donation-amount");
+      badge.textContent = `donated $${message.amount}`;
+      line.append(name, badge, text);
+      return { line, text };
     }
     line.append(name, text);
     return { line, text };
@@ -143,6 +150,8 @@ export function createChatOverlay(
   function fill({ line, text }, message) {
     if (message.kind === "player") {
       line.className = "chat-line player";
+    } else if (message.kind === "donation") {
+      line.className = "chat-line donation";
     } else {
       line.className = `chat-line persona-${message.persona}`;
       line.classList.toggle("streaming", !message.done);
@@ -172,7 +181,8 @@ export function createChatOverlay(
     stopTyping(entry);
     fill(entry, message);
 
-    const delay = message.kind !== "player" && message.done ? typeInDelay(message.text, typeIn) : 0;
+    const delay =
+      message.kind === "chat_message" && message.done ? typeInDelay(message.text, typeIn) : 0;
     if (result.type === "added" && delay > 0 && win) typeText(entry, message.text, delay);
 
     if (stick) scrollToBottom();
@@ -209,6 +219,15 @@ export function createChatOverlay(
      */
     pushPlayer(chatEvent) {
       return show(log.addPlayerMessage(chatEvent), { stick: true });
+    },
+
+    /**
+     * Shows a viewer's donation (src/game/donations.js) as a highlighted chat line.
+     * @param {{id: string, ts: number, viewer: string, amount: number, message: string}} donation
+     */
+    pushDonation(donation) {
+      const stick = isAtBottom();
+      return show(log.addDonation(donation), { stick });
     },
 
     focusInput() {

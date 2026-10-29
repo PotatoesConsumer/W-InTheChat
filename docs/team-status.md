@@ -126,7 +126,12 @@ Don't change these without talking to the team first. The reasons are in the lin
      evaluation set is still a draft; its `data` (score, round) could use the
      shooter's fields (wave, hp, maxHp) before it's frozen. I added one
      `coin_purchase` step to it (at 42 s), since the set must cover every event.
-   - `STAT_RULES` are untouched; tune them after playing (every kill adds 4 hype).
+   - **Donations are rarer and smaller** (`src/game/donations.js`): a big moment brings
+     one by chance (15–50%, by hype; none below 30), mostly $1–9, $20+ about 1 in 50,
+     each with a donor name and a fixed message shown in chat. Drawn from a random
+     seeded with the event id, so `same-stats` still holds. Not sent to the chat
+     service yet, so the AI doesn't react to donations.
+   - The rest of `STAT_RULES` is untouched; tune it after playing (every kill adds 4 hype).
 3. **Scripted baseline switch (W07), in a PR from `feature/baseline-switch`:**
    - The game: **F2** opens a study panel (hidden from participants) with AI chat /
      Scripted chat. Picking one reloads with `?condition=...`, so stats and chat start

@@ -40,6 +40,12 @@ the top bar.
 | Enter, type, Enter | Player chat |
 | F2 | Study panel (AI chat / scripted chat) |
 
+**Donations** come like on a real stream: a cleared wave, a close call, a streak or a new
+best sometimes brings one (more likely when hype is high, never below 30 hype). Most are
+$1–9, $20 or more is rare (about 1 in 50). Each shows in chat as a gold line, e.g.
+"pixel_pal donated $5: i love your stream". In a 4–5 wave run that's usually $5–70 in
+all; the balance carries over between runs. Rules: `src/game/donations.js`.
+
 The game sends the catalog events itself:
 
 | Event | When the game sends it | Goes to |

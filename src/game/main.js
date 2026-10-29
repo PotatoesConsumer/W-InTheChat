@@ -21,6 +21,7 @@
 import { createGameLoop } from "./loop.js";
 import { createInput } from "./input.js";
 import { stats } from "./stats.js";
+import { donationFor } from "./donations.js";
 import { createStreamer } from "./streamer.js";
 import { createReplyLatency } from "./replyLatency.js";
 import { createHub } from "./hub.js";
@@ -79,6 +80,9 @@ bus.subscribe("*", (event) => {
   streamStats = stats.reduce(streamStats, event);
   hud.set(streamStats);
   streamer.react(event);
+  // The same donation the stats just added (same event, same hype), shown in chat.
+  const gift = donationFor(event, streamStats.hype);
+  if (gift) overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
 });
 
 // Chat service: every event goes out, chat_message updates come back.
