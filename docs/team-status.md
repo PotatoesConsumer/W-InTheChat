@@ -28,25 +28,47 @@ something here no longer matches the code, trust the code and say so.
 
 ## Week by week
 
-Each of us numbers our own board tasks W01, W02, …, so the same week can hold different
-work per person. Built from the W-tags in commits and docs and checked against the code;
-the board itself isn't in the repo, so weeks with no tag anywhere are marked "not in
-repo". Fill those in when you know them.
+The plan is 12 weeks in three segments of four, with one task per person each week. It's
+the "W-InTheChat Rundown" (https://claude.ai/artifact/CAzFSbKuLLS5tV6Y2on9sK, ask Sittipon
+for access); the state below is checked against the code and PRs, not just the Rundown's
+ticks. Lanes are a suggested split, so swap tasks if that suits you better.
 
-✅ done · ⬜ not started · ❓ not in repo
+✅ done · 🟡 started or in a PR · ⬜ not started
 
-| Week | Sittipon (backend / AI) | Prin (QA / tooling) | Shapphanyu (frontend / game) |
-|------|-------------------------|---------------------|------------------------------|
-| W01 | ✅ Ollama client wrapper (#1, #2) | ✅ Event schema (#3), lint/format/CI (#5) | ✅ Game loop and input (#12) |
-| W02 | ✅ Context builder (#9) | ✅ Event bus and chat message contract (#4) | ✅ Stats model (#14, written by Sittipon) |
-| W03 | ✅ Fan persona and latency demo (first commit, tagged W01–W04) | ✅ Mock-event harness (#6) | ✅ Chat overlay (#12) |
-| W04 | ✅ Chat pipeline, service, e2e latency (#11); game connected to the service (#14) | ⬜ Month-1 demo clip (run guide and shot list in `docs/demo-m1.md`) | ✅ Stats HUD, facecam, Month-1 demo (#14) |
-| W05 | ✅ Hater, Backseat Gamer and Lurker prompts, trial (#15) | ✅ Evaluation event set (#7) | ❓ Probably the mini-game, blocked until it's chosen |
-| W06 | ⬜ Persona selector, coalescing, rate limits (`burst` edge case is TODO) | ✅ Deterministic checks (#8) | ❓ |
-| W07 | ⬜ Safety filter (`unsafe` edge case and both filter tests are TODO); full scripted baseline | ✅ Edge-case checks and safety test set (#10) | ⬜ Scripted-baseline switch in the game |
-| W08 | ⬜ Laptop pilot: limits from measured p50/p95 and GPU memory | ❓ | ❓ |
+**SEG 01, Core Engine (W01–W04).** Milestone M1: the Fan reacts live to gameplay, with
+p50/p95 measured on the RTX 4050.
 
-The 4 TODO tests in `npm test` are all Sittipon's W06–W07.
+| Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
+|------|-------------------------|------------------------------|------------------------|
+| W01 | ✅ Ollama client wrapper (#1, #2) | ✅ Canvas loop and input (#12) | ✅ Repo scaffold, lint/format, CI, branch rules (#5) |
+| W02 | ✅ Context builder (#9) | ✅ Streamer avatar, followers / donations / hype model (#14) | ✅ Event schema and bus contract (#3, #4) |
+| W03 | ✅ Fan persona prompt and parser (first commit) | ✅ Chat overlay (#12) | ✅ Mock-event harness (#6) |
+| W04 | ✅ Pipeline end to end, p50/p95 logged (#11, #14) | ✅ Hype meter, follower and donation counters (#14) | 🟡 Bug bash done (#14); the Month-1 demo clip isn't recorded yet |
+
+**SEG 02, Four Personas & Baseline (W05–W08).** Milestone M2: four personas live behind
+the safety filter, the mini-game playable start to finish, and the scripted baseline
+switch running on the same events.
+
+| Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
+|------|-------------------------|------------------------------|------------------------|
+| W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
+| W06 | 🟡 Persona selector, coalescing, rate limit: PR #17 (minor events to templates done in #11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
+| W07 | ⬜ Output safety filter (fallbacks already done in #11) | 🟡 Scripted baseline switch: the service has `--condition scripted` (#11), the game has no switch yet | ✅ Edge-case checks and safety test set (#10) |
+| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ⬜ Month-2 demo prep, full regression pass |
+
+**SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
+scripted chat compared with real participants, p50/p95 reported, report ready to defend.
+Nothing here has started.
+
+| Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
+|------|-------------------------|------------------------------|------------------------|
+| W09 | ⬜ Full pipeline benchmark: first text and completion p50/p95, peak GPU memory | ⬜ Overlay and stats polish, per-persona styling | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
+| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | ⬜ Fixes from the pilot; sound and reaction effects | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
+| W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
+
+So far: 17 done, 3 started or in a PR, 16 not started. The 4 TODO tests in `npm test` on
+`master` are Sittipon's W06–W07; #17 clears `burst`.
 
 ## Decisions already made
 
