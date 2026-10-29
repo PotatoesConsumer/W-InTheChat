@@ -29,7 +29,7 @@ export const pipelines = [{ name: "service pipeline", start: startPipeline }];
 A pipeline can list edge cases it doesn't handle yet as `pending: { <id>: "reason" }`
 (ids are in `edgeCases.contract.test.js`). Those show as TODO with the reason instead of
 failing, so it can be registered before W06/W07 are done. The service pipeline is
-registered with `unsafe` and `burst` pending.
+registered with `unsafe` pending (needs the W07 filter); `burst` passes since W06.
 
 ## Interfaces
 
@@ -146,8 +146,8 @@ a test set only spreads it.
 - **Whether a major event gets a reply.** Coalescing may legitimately answer a run of
   events once. The evaluation set keeps major events 3 s apart so this doesn't eat study
   data.
-- **Which persona fits which event.** The voice rules are in `docs/personas.md` (W05);
-  the selector that applies them is W06. Once it exists, rules like "the Lurker only
-  speaks at big moments" can become checks.
+- **Which persona fits which event.** The voice rules are in `docs/personas.md` (W05)
+  and the selector's weights in `src/service/selector.js` (W06), unit tested there. A
+  rule like "the Lurker never answers player chat" could become a run check here.
 - **Reply quality.** Relevance and persona clarity are rated by people, on the
   evaluation set.

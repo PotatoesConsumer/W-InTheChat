@@ -24,7 +24,6 @@ export const pipelines = [
     start: startPipeline,
     pending: {
       unsafe: "needs the output safety filter (W07)",
-      burst: "needs coalescing and rate limits (W06)",
     },
   },
 ];
