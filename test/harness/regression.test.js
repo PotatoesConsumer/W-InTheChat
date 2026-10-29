@@ -175,3 +175,9 @@ test("the real-model section includes the hardware note and samples", () => {
   assert.match(text, /> Measured on RTX 4060, not the RTX 4050\./);
   assert.match(text, /- \*win\* → \[fan\] LETS GO/);
 });
+
+test("a requested model run that couldn't start is reported, not lost", () => {
+  const text = formatRegressionReport(report([], { model: { skipped: "Ollama isn't running" } }));
+  assert.match(text, /⚠️ Asked for, but skipped: Ollama isn't running\./);
+  assert.equal(hasRegressions(report([], { model: { skipped: "x" } })), false);
+});

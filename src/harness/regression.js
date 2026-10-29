@@ -177,6 +177,8 @@ export function formatRegressionReport(report) {
   out.push("", "## Real model", "");
   if (!model) {
     out.push("Not run. Pass `--model` with Ollama running to include it.");
+  } else if (model.skipped) {
+    out.push(`⚠️ Asked for, but skipped: ${model.skipped}. Start it and run again.`);
   } else {
     out.push(
       `\`${model.scenario}\` at real-time speed through the real pipeline and \`${env.ollama}\`.`,

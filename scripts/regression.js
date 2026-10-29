@@ -142,6 +142,16 @@ async function staticChecks() {
 /** The evaluation set at real-time speed through the real pipeline and model. */
 async function modelRun(pipeline, stats, scenario, env) {
   const client = new OllamaClient();
+  // warmUp() exits the process when Ollama is missing; check first so the rest of the
+  // report is still written.
+  const health = await client.health();
+  if (!health.ok || !health.hasDefaultModel) {
+    const reason = health.ok
+      ? `${client.model} isn't pulled (ollama pull ${client.model})`
+      : `Ollama isn't running (${health.reason})`;
+    log(`real model skipped: ${reason}`);
+    return { skipped: reason };
+  }
   await warmUp(client);
   log(
     `real model: ${scenario.name} at real-time speed (about ${Math.ceil(scenario.steps.at(-1).at / 1000)} s)...`,
