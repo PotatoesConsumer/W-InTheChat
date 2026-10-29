@@ -28,6 +28,7 @@ export const EVENT_LINES = Object.freeze({
   kill: Object.freeze(["clean", "EZ", "got him"]),
   damage_taken: Object.freeze(["ouch", "careful!!", "that hurt to watch"]),
   item_pickup: Object.freeze(["ooh upgrade", "what did you buy?", "good buy"]),
+  coin_purchase: Object.freeze(["spending our money already?", "big spender 💰", "coins acquired"]),
   win: Object.freeze(["GG!!", "WWWW", "lets gooo"]),
   loss: Object.freeze(["unlucky", "next one is yours", "so close"]),
   streak: Object.freeze(["on fire 🔥", "cant miss", "who is stopping this"]),

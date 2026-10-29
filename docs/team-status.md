@@ -24,10 +24,12 @@ something here no longer matches the code, trust the code and say so.
   Fan, with voice and safety rules in `docs/personas.md` and a trial,
   `npm run ai:personas`. Since #17 the selector picks Fan, Backseat Gamer or Lurker per
   event; the Hater waits for the safety filter (W07).
-- **The mini-game is a top-down wave shooter** (W08, `feature/wave-shooter`, Shapphanyu's
-  pick): waves that get harder, a shop between waves, donations cashed into coins. It
-  sends the catalog events itself; the names are unchanged, only the phrases now
-  describe the shooter (`docs/events.md`).
+- **The game opens on a game hub**, since we plan more than one mini-game
+  (`feature/wave-shooter`). The first is **Wave Survival**, a top-down wave shooter
+  (Shapphanyu's pick): waves that get harder, a shop between waves, and a coin store
+  where donations buy coin packs. It sends the catalog events itself; the old names
+  are kept with phrases that describe the shooter, plus one new event,
+  `coin_purchase` (`docs/events.md`).
 
 ## Week by week
 
@@ -105,8 +107,15 @@ Don't change these without talking to the team first. The reasons are in the lin
    `src/game/shooter/`. Keys 1–5 and the box scene are gone.
    - Each wave has more enemies, spawning faster, with more HP and speed; bats from
      wave 3, brutes from wave 5 (`waves.js`).
-   - The shop between waves (`shop.js`): six items for coins. Enemies drop coins, and
-     donations cash out at $5 per coin, each dollar only once.
+   - The shop between waves (`shop.js`): six items for coins. Enemies drop coins. The
+     coin store sells coin packs for donations like a mobile currency store ($10 = 25
+     up to $100 = 330, bigger packs give a bonus). **Donations are now a balance:**
+     a purchase sends `coin_purchase {pack, dollars, coins}` and `stats.js` takes the
+     dollars off (never below 0).
+   - **Game hub and pause menu** (`hub.js`, `hubView.js`, `games.js`): the stream
+     opens on the hub; Esc or P pauses (resume, restart run, quit to hub), and so
+     does leaving the window. `hub.js` documents the module interface a new game
+     implements; `shooter/index.js` is the example.
    - Events (`game.js`): a cleared wave is `close_call` on low HP (40% of max or less),
      else `new_best` when a run first passes an earlier run's best wave, else `win`;
      `streak` every 10 kills without a hit; `loss` on death; `item_pickup` for a
@@ -115,7 +124,8 @@ Don't change these without talking to the team first. The reasons are in the lin
      so prompts now say "cleared a wave" instead of "won the round". Sittipon: the
      persona trial's `lossAsWin` check now keys on the event name. Prin: the
      evaluation set is still a draft; its `data` (score, round) could use the
-     shooter's fields (wave, hp, maxHp) before it's frozen.
+     shooter's fields (wave, hp, maxHp) before it's frozen. I added one
+     `coin_purchase` step to it (at 42 s), since the set must cover every event.
    - `STAT_RULES` are untouched; tune them after playing (every kill adds 4 hype).
 3. **Scripted baseline switch (W07), in a PR from `feature/baseline-switch`:**
    - The game: **F2** opens a study panel (hidden from participants) with AI chat /

@@ -33,6 +33,11 @@
       "chat": "thank you chat, you guys carried me",
       "note": "thanks: after the round-1 win"
     },
+    {
+      "at": 42000,
+      "game": "coin_purchase",
+      "data": { "pack": "Bag of Coins", "dollars": 25, "coins": 70 }
+    },
 
     { "at": 45000, "game": "round_start", "data": { "round": 2 } },
     {

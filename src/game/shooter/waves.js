@@ -8,9 +8,9 @@
 
 /** hp and speed are wave 1 values; waveConfig scales them. */
 export const ENEMY_TYPES = Object.freeze({
-  slime: Object.freeze({ hp: 2, speed: 70, radius: 14, damage: 1, coins: 1 }),
-  bat: Object.freeze({ hp: 1, speed: 150, radius: 10, damage: 1, coins: 1 }),
-  brute: Object.freeze({ hp: 8, speed: 48, radius: 22, damage: 2, coins: 4 }),
+  slime: Object.freeze({ hp: 2, speed: 70, radius: 14, damage: 1, coins: 10 }),
+  bat: Object.freeze({ hp: 1, speed: 150, radius: 10, damage: 1, coins: 10 }),
+  brute: Object.freeze({ hp: 8, speed: 48, radius: 22, damage: 2, coins: 40 }),
 });
 
 /** The wave each enemy type first shows up in. */

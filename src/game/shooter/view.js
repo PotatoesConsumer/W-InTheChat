@@ -2,11 +2,11 @@
  * view.js
  *
  * Draws the wave shooter (game.js) on the canvas: the grass arena, the farmer, enemies,
- * bullets, coins, the HUD strip and the title / shop / game-over screens. The only
- * logic here is the shop's layout and hit test, which main.js uses for mouse clicks.
+ * bullets, coins, the HUD strip and the title / shop / coin store / game-over screens.
+ * The only logic here is the shop's layout and hit test, used for mouse clicks.
  */
 
-import { SHOP_ITEMS, priceOf, checkPurchase, cashOutValue } from "./shop.js";
+import { SHOP_ITEMS, COIN_PACKS, priceOf, checkPurchase, packBonus } from "./shop.js";
 import { COIN, LOW_HP_FRACTION } from "./game.js";
 
 export const HUD_HEIGHT = 40;
@@ -27,13 +27,14 @@ const COLORS = Object.freeze({
   bat: "#9b6bd6",
   brute: "#c8553d",
   bullet: "#ffe9a3",
+  store: "#2d6cdf",
+  ribbon: "#e5323b",
 });
 
 const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 /**
- * Where the shop's parts are, in world coordinates.
- * @returns {{panel: Rect, cards: (Rect & {id: string, key: number})[], cashOut: Rect, next: Rect}}
+ * Where the shop's and coin store's parts are, in world coordinates.
  * @typedef {{x: number, y: number, width: number, height: number}} Rect
  */
 export function shopLayout() {
@@ -52,23 +53,40 @@ export function shopLayout() {
   }));
   const buttonY = panel.y + 84 + 2 * cardH + gap + 18;
   const buttonW = (panel.width - 2 * pad - gap) / 2;
+  const packW = (panel.width - 2 * pad - 3 * gap) / 4;
+  const packs = COIN_PACKS.map((pack, i) => ({
+    id: pack.id,
+    key: i + 1,
+    x: panel.x + pad + i * (packW + gap),
+    y: panel.y + 92,
+    width: packW,
+    height: 240,
+  }));
   return {
     panel,
     cards,
-    cashOut: { x: panel.x + pad, y: buttonY, width: buttonW, height: 44 },
+    openStore: { x: panel.x + pad, y: buttonY, width: buttonW, height: 44 },
     next: { x: panel.x + pad + buttonW + gap, y: buttonY, width: buttonW, height: 44 },
+    packs,
+    closeStore: { x: panel.x + pad, y: buttonY, width: panel.width - 2 * pad, height: 44 },
   };
 }
 
 /**
- * What a click at (x, y) hits in the shop.
- * @returns {{kind: "item", id: string} | {kind: "cashOut"} | {kind: "next"} | null}
+ * What a click at (x, y) hits in the shop, or in the coin store when it's open.
+ * @returns {{kind: "item" | "pack", id: string} | {kind: "openStore" | "closeStore" | "next"} | null}
  */
-export function shopHit(x, y) {
+export function shopHit(x, y, storeOpen = false) {
   const layout = shopLayout();
+  if (storeOpen) {
+    const pack = layout.packs.find((c) => inside(c, x, y));
+    if (pack) return { kind: "pack", id: pack.id };
+    if (inside(layout.closeStore, x, y)) return { kind: "closeStore" };
+    return null;
+  }
   const card = layout.cards.find((c) => inside(c, x, y));
   if (card) return { kind: "item", id: card.id };
-  if (inside(layout.cashOut, x, y)) return { kind: "cashOut" };
+  if (inside(layout.openStore, x, y)) return { kind: "openStore" };
   if (inside(layout.next, x, y)) return { kind: "next" };
   return null;
 }
@@ -79,7 +97,7 @@ export function shopHit(x, y) {
  * @param {object} opts
  * @param {{x: number, y: number, width: number, height: number}} opts.arena
  * @param {number} opts.alpha - Interpolation between the last two updates.
- * @param {number} opts.donations - The stream's donation total, for the shop.
+ * @param {number} opts.donations - The stream's donation balance, for the coin store.
  * @param {{x: number, y: number} | null} opts.pointer - Mouse in world coordinates.
  * @param {string} opts.startHint - Shown on the title screen.
  * @param {number} opts.clock - ms, for animation.
@@ -101,7 +119,8 @@ export function drawShooter(ctx, game, { arena, alpha, donations, pointer, start
 
   drawHud(ctx, s, arena);
   if (s.phase === "ready") drawTitle(ctx, arena, startHint);
-  if (s.phase === "shop") drawShop(ctx, s, donations, pointer);
+  if (s.phase === "shop" && s.storeOpen) drawStore(ctx, s, donations, pointer, clock);
+  else if (s.phase === "shop") drawShop(ctx, s, donations, pointer);
   if (s.phase === "over") drawGameOver(ctx, s, arena);
   if (pointer && s.phase === "wave") drawCrosshair(ctx, pointer);
 }
@@ -305,6 +324,7 @@ function drawTitle(ctx, arena, startHint) {
     color: COLORS.muted,
   });
   text(ctx, startHint, cx, 320, { size: 20, weight: 700, align: "center" });
+  text(ctx, "Esc pauses", cx, 350, { size: 14, align: "center", color: COLORS.muted });
 }
 
 function drawGameOver(ctx, s, arena) {
@@ -380,14 +400,7 @@ function drawShop(ctx, s, donations, pointer) {
     }
   }
 
-  const cash = cashOutValue(donations, s.cashed);
-  button(
-    ctx,
-    layout.cashOut,
-    pointer,
-    cash.coins > 0,
-    `C  Cash out $${donations - s.cashed} → ${cash.coins} coins`,
-  );
+  button(ctx, layout.openStore, pointer, true, `C  Coin store  ($${donations} in donations)`);
   button(ctx, layout.next, pointer, true, `Space  Start wave ${s.wave + 1}`);
 
   if (s.notice) {
@@ -398,6 +411,133 @@ function drawShop(ctx, s, donations, pointer) {
       color: COLORS.gold,
     });
   }
+}
+
+function drawStore(ctx, s, donations, pointer, clock) {
+  const layout = shopLayout();
+  const { panel } = layout;
+  ctx.fillStyle = "rgba(18, 24, 48, 0.96)";
+  roundRect(ctx, panel.x, panel.y, panel.width, panel.height, 12);
+  ctx.fill();
+  ctx.strokeStyle = COLORS.gold;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  text(ctx, "COIN STORE", panel.x + 20, panel.y + 38, {
+    size: 24,
+    weight: 800,
+    color: COLORS.gold,
+  });
+  text(
+    ctx,
+    "Spend chat's donations on coins. Donations you spend are gone.",
+    panel.x + 20,
+    panel.y + 64,
+    {
+      size: 13,
+      color: "#b9c4e8",
+    },
+  );
+  text(ctx, `Donations: $${donations}`, panel.x + panel.width - 20, panel.y + 38, {
+    size: 18,
+    weight: 800,
+    align: "right",
+    color: "#7ee08a",
+  });
+  text(ctx, `Coins: ${s.run.coins}`, panel.x + panel.width - 20, panel.y + 64, {
+    size: 14,
+    weight: 700,
+    align: "right",
+  });
+
+  layout.packs.forEach((card, i) => {
+    const pack = COIN_PACKS[i];
+    const affordable = donations >= pack.dollars;
+    const hover = affordable && pointer && inside(card, pointer.x, pointer.y);
+    const lift = hover ? -4 : 0;
+    const y = card.y + lift;
+    const gradient = ctx.createLinearGradient(0, y, 0, y + card.height);
+    gradient.addColorStop(0, affordable ? "#3d5fb8" : "#2a3350");
+    gradient.addColorStop(1, affordable ? "#1f2f66" : "#1a2036");
+    ctx.fillStyle = gradient;
+    roundRect(ctx, card.x, y, card.width, card.height, 10);
+    ctx.fill();
+    ctx.strokeStyle = hover ? COLORS.gold : "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    if (pack.tag) {
+      ctx.fillStyle = COLORS.ribbon;
+      roundRect(ctx, card.x + 8, y - 10, card.width - 16, 22, 6);
+      ctx.fill();
+      text(ctx, pack.tag.toUpperCase(), card.x + card.width / 2, y + 5, {
+        size: 11,
+        weight: 800,
+        align: "center",
+      });
+    }
+
+    drawCoinPile(ctx, card.x + card.width / 2, y + 92, i + 1, clock);
+    const cx = card.x + card.width / 2;
+    text(ctx, `${pack.coins}`, cx, y + 150, {
+      size: 26,
+      weight: 800,
+      align: "center",
+      color: COLORS.gold,
+    });
+    text(ctx, pack.name, cx, y + 172, { size: 13, align: "center", color: "#dfe6ff" });
+    const bonus = packBonus(pack);
+    if (bonus > 0) {
+      text(ctx, `+${bonus}% bonus`, cx, y + 192, {
+        size: 12,
+        weight: 700,
+        align: "center",
+        color: "#7ee08a",
+      });
+    }
+
+    const price = { x: card.x + 12, y: y + card.height - 42, width: card.width - 24, height: 32 };
+    ctx.fillStyle = affordable ? "#4caf50" : "#3a4258";
+    roundRect(ctx, price.x, price.y, price.width, price.height, 8);
+    ctx.fill();
+    text(ctx, `${card.key}   $${pack.dollars}`, cx, price.y + 22, {
+      size: 16,
+      weight: 800,
+      align: "center",
+      color: affordable ? "#ffffff" : "#8a93ad",
+    });
+  });
+
+  button(ctx, layout.closeStore, pointer, true, "C or Esc  Back to the shop");
+
+  if (s.notice) {
+    text(ctx, s.notice.text, panel.x + panel.width / 2, panel.y + panel.height - 18, {
+      size: 15,
+      weight: 700,
+      align: "center",
+      color: COLORS.gold,
+    });
+  }
+}
+
+/** A heap of coins; bigger packs get taller heaps. */
+function drawCoinPile(ctx, x, y, size, clock) {
+  const rows = size + 1;
+  for (let row = 0; row < rows; row++) {
+    const count = rows - row;
+    for (let i = 0; i < count; i++) {
+      const cx = x + (i - (count - 1) / 2) * 15;
+      const cy = y + 20 - row * 9;
+      ctx.fillStyle = "#b8860b";
+      ellipse(ctx, cx, cy + 2, 9, 5);
+      ctx.fillStyle = COLORS.gold;
+      ellipse(ctx, cx, cy, 9, 5);
+    }
+  }
+  // A sparkle that moves across the heap.
+  const t = (clock / 900 + size * 0.3) % 1;
+  ctx.fillStyle = `rgba(255, 255, 255, ${1 - t})`;
+  circle(ctx, x - 20 + t * 40, y + 6 - rows * 4, 2.5);
 }
 
 function button(ctx, rect, pointer, enabled, label) {
@@ -501,4 +641,42 @@ function hash(x, y) {
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
+}
+
+/**
+ * The hub card's picture: a patch of grass, the farmer and a few slimes.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{x: number, y: number, width: number, height: number}} rect
+ * @param {number} clock - ms
+ */
+export function drawThumbnail(ctx, rect, clock) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(rect.x, rect.y, rect.width, rect.height);
+  ctx.clip();
+  drawGrass(ctx, rect);
+  const cx = rect.x + rect.width / 2;
+  const cy = rect.y + rect.height / 2;
+  const slimes = [
+    [-80, -40, 0],
+    [70, -50, 1],
+    [90, 35, 2],
+    [-70, 45, 3],
+  ];
+  for (const [dx, dy, wobble] of slimes) {
+    const enemy = { x: cx + dx, y: cy + dy, prevX: cx + dx, prevY: cy + dy, r: 14 };
+    drawEnemy(
+      ctx,
+      { ...enemy, type: "slime", hp: 1, maxHp: 1, hitMs: 0, ageMs: clock, wobble },
+      1,
+      clock,
+    );
+  }
+  const aim = clock / 1500;
+  const player = { x: cx, y: cy, prevX: cx, prevY: cy, r: 14, invulnerableMs: 0 };
+  drawPlayer(ctx, { ...player, aimX: Math.cos(aim), aimY: Math.sin(aim) }, 1, clock);
+  ctx.fillStyle = COLORS.bullet;
+  const reach = ((clock / 4) % 80) + 20;
+  circle(ctx, cx + Math.cos(aim) * reach, cy + Math.sin(aim) * reach, 4);
+  ctx.restore();
 }

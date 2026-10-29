@@ -12,10 +12,11 @@ import { waveConfig, pickEnemyType, FIRST_WAVE } from "../../src/game/shooter/wa
 import {
   SHOP_ITEMS,
   checkPurchase,
-  cashOutValue,
+  COIN_PACKS,
+  checkCoinPack,
+  packBonus,
   priceOf,
   shopItem,
-  DOLLARS_PER_COIN,
 } from "../../src/game/shooter/shop.js";
 import { shopHit, shopLayout } from "../../src/game/shooter/view.js";
 
@@ -79,7 +80,7 @@ test("new enemy types join in later waves", () => {
 });
 
 test("shop: prices go up per level, sold out at the max, refusals say why", () => {
-  const run = { coins: 100, hp: 3, maxHp: 5, levels: {} };
+  const run = { coins: 1000, hp: 3, maxHp: 5, levels: {} };
   assert.deepEqual(checkPurchase(run, "rapid"), { ok: true, price: shopItem("rapid").cost });
   assert.equal(
     priceOf(shopItem("rapid"), 2),
@@ -95,11 +96,16 @@ test("shop: prices go up per level, sold out at the max, refusals say why", () =
   assert.equal(new Set(SHOP_ITEMS.map((i) => i.id)).size, SHOP_ITEMS.length);
 });
 
-test("cashing out turns whole coins' worth of donations into coins, once", () => {
-  assert.deepEqual(cashOutValue(0, 0), { coins: 0, dollars: 0 });
-  assert.deepEqual(cashOutValue(60, 0), { coins: 60 / DOLLARS_PER_COIN, dollars: 60 });
-  assert.deepEqual(cashOutValue(63, 0), { coins: 12, dollars: 60 }, "leftover dollars stay");
-  assert.deepEqual(cashOutValue(60, 60), { coins: 0, dollars: 0 });
+test("coin packs: bigger packs give more coins per dollar, and need the donations", () => {
+  const bonuses = COIN_PACKS.map(packBonus);
+  assert.equal(bonuses[0], 0);
+  for (let i = 1; i < bonuses.length; i++) assert.ok(bonuses[i] > bonuses[i - 1], `pack ${i}`);
+  assert.equal(checkCoinPack(50, "chest").ok, true);
+  assert.deepEqual(checkCoinPack(49, "chest"), {
+    ok: false,
+    reason: "needs $50 in donations (you have $49)",
+  });
+  assert.equal(checkCoinPack(1000, "gems").ok, false);
 });
 
 test("upgrades change the player's numbers", () => {
@@ -150,15 +156,21 @@ test("clearing a wave on low HP is a close call, not a win", () => {
   assert.equal(clearWave(game).at(-1).name, "win");
 });
 
-test("the shop: buy with coins, cash out donations, then the next wave is harder", () => {
+test("the shop: buy coins with donations, buy upgrades, then the next wave is harder", () => {
   const game = newGame();
   game.start();
   clearWave(game);
   game.state.run.coins = 0;
 
   assert.equal(game.buy("rapid").ok, false);
-  assert.deepEqual(game.cashOut(60), { coins: 12 });
-  assert.deepEqual(game.cashOut(60), { coins: 0 }, "the same dollars only once");
+  assert.equal(game.toggleStore(true), true);
+  assert.equal(game.buyCoins("chest", 49).ok, false, "not enough donations");
+  assert.deepEqual(game.buyCoins("chest", 60), { ok: true });
+  assert.equal(game.state.run.coins, 150);
+  assert.deepEqual(game.takeEvents(), [
+    { name: "coin_purchase", data: { pack: "Chest of Coins", dollars: 50, coins: 150 } },
+  ]);
+  game.toggleStore(false);
   assert.equal(game.buy("rapid").ok, true);
   assert.deepEqual(game.takeEvents(), [
     { name: "item_pickup", data: { item: "Rapid fire", wave: 1 } },
@@ -166,7 +178,7 @@ test("the shop: buy with coins, cash out donations, then the next wave is harder
   assert.equal(game.state.run.levels.rapid, 1);
 
   game.state.player.hp = 3;
-  game.state.run.coins = 100;
+  game.state.run.coins = 1000;
   game.buy("medkit");
   assert.equal(game.state.player.hp, 5);
   game.buy("heart");
@@ -176,6 +188,21 @@ test("the shop: buy with coins, cash out donations, then the next wave is harder
   assert.deepEqual(game.takeEvents().at(-1), { name: "round_start", data: { wave: 2 } });
   assert.equal(game.state.spawn.config.count, waveConfig(2).count);
   assert.equal(game.buy("medkit").ok, false, "the shop is closed during a wave");
+  assert.equal(game.buyCoins("pile", 100).ok, false, "so is the coin store");
+  assert.equal(game.toggleStore(true), false);
+});
+
+test("abandoning a run goes back to the title and keeps the best wave, without a loss", () => {
+  const game = newGame();
+  game.start();
+  clearWave(game);
+  game.nextWave();
+  game.takeEvents();
+  game.abandon();
+  assert.equal(game.state.phase, "ready");
+  assert.equal(game.state.bestWave, 1);
+  assert.deepEqual(game.takeEvents(), []);
+  assert.equal(game.start(), true);
 });
 
 test("getting hit costs HP, gives a moment of safety and ends the streak; 0 HP is a loss", () => {
@@ -297,7 +324,10 @@ test("shop clicks hit the item cards and buttons", () => {
   const layout = shopLayout();
   const centre = (r) => [r.x + r.width / 2, r.y + r.height / 2];
   assert.deepEqual(shopHit(...centre(layout.cards[0])), { kind: "item", id: SHOP_ITEMS[0].id });
-  assert.deepEqual(shopHit(...centre(layout.cashOut)), { kind: "cashOut" });
+  assert.deepEqual(shopHit(...centre(layout.openStore)), { kind: "openStore" });
   assert.deepEqual(shopHit(...centre(layout.next)), { kind: "next" });
   assert.equal(shopHit(0, 0), null);
+  assert.deepEqual(shopHit(...centre(layout.packs[2]), true), { kind: "pack", id: "chest" });
+  assert.deepEqual(shopHit(...centre(layout.closeStore), true), { kind: "closeStore" });
+  assert.notEqual(shopHit(...centre(layout.cards[0]), true)?.kind, "item", "store covers the shop");
 });

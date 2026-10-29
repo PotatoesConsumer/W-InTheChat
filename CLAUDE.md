@@ -85,12 +85,16 @@ any of that, update the file in the same PR.
 - `src/game/`: browser game (`index.html` loads `main.js`)
   - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
     facecam react) and to the chat service through `connectToService`; replies come back
-    over SSE into the overlay. `?service=<url>` changes the service URL. Maps keys and
-    the mouse to the shooter's controls.
-  - `shooter/`: the mini-game (W08), a top-down wave shooter. `game.js` is the state
-    and rules with no DOM (tested; seeded random) and says which catalog event fires
-    when; `waves.js` makes each wave harder; `shop.js` items, prices and cashing
-    donations into coins; `view.js` draws it and the shop's click layout.
+    over SSE into the overlay. `?service=<url>` changes the service URL. Runs the hub,
+    one keymap per game plus the menu keys, and the mouse.
+  - `hub.js`: the game hub and pause menu as plain state (tested), and **the game
+    module interface** every mini-game implements. `hubView.js` draws them;
+    `games.js` lists the games. More games are planned: add one there.
+  - `shooter/`: Wave Survival (W08), a top-down wave shooter. `index.js` is the hub
+    module (keys, mouse, drawing); `game.js` the state and rules with no DOM (tested;
+    seeded random), which says which catalog event fires when; `waves.js` makes each
+    wave harder; `shop.js` upgrades and the coin store (donations buy coin packs and
+    are spent: `coin_purchase`); `view.js` draws it and the shop's click layout.
   - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
   - `input.js`: keyboard -> actions; ignores keys typed into the chat box
   - `stats.js`: followers / donations / hype as a pure reducer (`stats.initial/reduce`),

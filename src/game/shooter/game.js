@@ -3,7 +3,7 @@
  *
  * The mini-game (W08): a top-down wave shooter. Enemies come in waves, each harder than
  * the last (waves.js); between waves the shop sells upgrades for coins, and donations
- * can be cashed out into coins (shop.js). Plain state and logic with no DOM, so it runs
+ * buy coin packs in the coin store (shop.js). Plain state and logic with no DOM, so it runs
  * and is tested in Node; view.js draws it and main.js feeds it input.
  *
  * Phases: ready -> wave -> shop -> wave -> ... -> over -> (start) wave.
@@ -14,6 +14,8 @@
  *   kill          an enemy dies                  {enemy, wave}
  *   damage_taken  the player is hit              {hp, maxHp}
  *   item_pickup   something bought in the shop   {item, wave}
+ *   coin_purchase a coin pack bought with donations {pack, dollars, coins}; the stats
+ *                 take the dollars off the donation balance
  *   streak        every STREAK_KILLS kills in a row without being hit  {kills}
  *   loss          the player dies                {wave, kills}
  * and exactly one major event when a wave is cleared:
@@ -25,7 +27,7 @@
  */
 
 import { ENEMY_TYPES, waveConfig, pickEnemyType } from "./waves.js";
-import { MEDKIT_HEAL, checkPurchase, cashOutValue, shopItem } from "./shop.js";
+import { MEDKIT_HEAL, checkPurchase, checkCoinPack, shopItem } from "./shop.js";
 
 export const PLAYER = Object.freeze({
   radius: 14,
@@ -76,8 +78,8 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
     /** Highest wave cleared in an earlier run. */
     bestWave: 0,
     newBestThisRun: false,
-    /** Dollars of donations already turned into coins (kept across runs). */
-    cashed: 0,
+    /** The coin store is open (in the shop). */
+    storeOpen: false,
     run: newRun(),
     player: newPlayer(),
     enemies: [],
@@ -117,6 +119,7 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
   function startWave(wave) {
     s.wave = wave;
     s.phase = "wave";
+    s.storeOpen = false;
     s.spawn = { config: waveConfig(wave), spawned: 0, timerMs: FIRST_SPAWN_MS };
     s.bullets = [];
     emit("round_start", { wave });
@@ -404,6 +407,7 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
     /** Starts a new run from the title or game-over screen. */
     start() {
       if (s.phase !== "ready" && s.phase !== "over") return false;
+      s.storeOpen = false;
       s.run = newRun();
       s.player = newPlayer();
       s.enemies = [];
@@ -448,20 +452,44 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
       return { ok: true };
     },
 
+    /** Opens or closes the coin store (only in the shop). */
+    toggleStore(open = !s.storeOpen) {
+      if (s.phase !== "shop") return false;
+      s.storeOpen = open;
+      return true;
+    },
+
     /**
-     * Turns donations not cashed out yet into coins.
-     * @param {number} donations - The stream's donation total ($), from the stats.
-     * @returns {{coins: number}}
+     * Buys a coin pack with donations. The donations are spent: the coin_purchase event
+     * takes the dollars off the stats' balance.
+     * @param {string} id - Key of COIN_PACKS.
+     * @param {number} donations - The stream's donation balance ($), from the stats.
+     * @returns {{ok: true} | {ok: false, reason: string}}
      */
-    cashOut(donations) {
-      if (s.phase !== "shop") return { coins: 0 };
-      const { coins, dollars } = cashOutValue(donations, s.cashed);
-      s.cashed += dollars;
-      s.run.coins += coins;
-      notice(
-        coins > 0 ? `+${coins} coins from $${dollars} of donations` : "No donations to cash out",
-      );
-      return { coins };
+    buyCoins(id, donations) {
+      if (s.phase !== "shop") return { ok: false, reason: "the shop is closed" };
+      const check = checkCoinPack(donations, id);
+      if (!check.ok) {
+        notice(check.reason);
+        return check;
+      }
+      const { pack } = check;
+      s.run.coins += pack.coins;
+      notice(`+${pack.coins} coins for $${pack.dollars} of donations`);
+      emit("coin_purchase", { pack: pack.name, dollars: pack.dollars, coins: pack.coins });
+      return { ok: true };
+    },
+
+    /** Ends the run without a loss (quit or restart from the pause menu): back to the title. */
+    abandon() {
+      if (s.phase === "ready") return;
+      s.bestWave = Math.max(s.bestWave, s.run.cleared);
+      s.phase = "ready";
+      s.storeOpen = false;
+      s.enemies = [];
+      s.bullets = [];
+      s.coins = [];
+      s.notice = null;
     },
 
     /**

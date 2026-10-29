@@ -49,3 +49,12 @@ test("statChanges reports what moved", () => {
   const b = stats.reduce(a, createGameEvent("loss"));
   assert.deepEqual(statChanges(a, b), { followers: 0, donations: 0, hype: -15 });
 });
+
+test("buying coins spends donations, never below zero", () => {
+  const rich = play("win", "win", "win"); // $60 donated
+  const buy = (dollars) => createGameEvent("coin_purchase", { pack: "Bag of Coins", dollars });
+  assert.equal(stats.reduce(rich, buy(25)).donations, 35);
+  assert.equal(stats.reduce(rich, buy(500)).donations, 0);
+  assert.equal(stats.reduce(rich, createGameEvent("coin_purchase")).donations, 60, "no dollars");
+  assert.equal(stats.reduce(rich, buy(25)).hype, rich.hype);
+});

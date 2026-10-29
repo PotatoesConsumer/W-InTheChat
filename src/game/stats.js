@@ -7,17 +7,22 @@
  *
  * - hype: 0-100. Good plays raise it, losses and hits lower it.
  * - followers: only grows. Big moments bring followers, more of them when hype is high.
- * - donations: total donated ($). Big moments get a donation once hype passes a threshold.
+ * - donations: the donation balance ($). Big moments get a donation once hype passes a
+ *   threshold; buying coins in the game (`coin_purchase`) spends `data.dollars` of it.
  *
  * The numbers are a first pass for the demo; tune them once the mini-game is chosen.
  */
 
-/** Per game event: hype change, followers gained, and whether it can bring a donation. */
+/**
+ * Per game event: hype change, followers gained, whether it can bring a donation, and
+ * whether it spends donations (`data.dollars`).
+ */
 export const STAT_RULES = Object.freeze({
   round_start: { hype: 2, followers: 0, donation: false },
   kill: { hype: 4, followers: 0, donation: false },
   damage_taken: { hype: -3, followers: 0, donation: false },
   item_pickup: { hype: 1, followers: 0, donation: false },
+  coin_purchase: { hype: 0, followers: 0, donation: false, spends: true },
   win: { hype: 20, followers: 3, donation: true },
   loss: { hype: -15, followers: 0, donation: false },
   streak: { hype: 12, followers: 2, donation: true },
@@ -57,7 +62,14 @@ function reduce(state, event) {
   if (rule.donation && hype >= STAT_LIMITS.donationHype) {
     donations += Math.round(hype / STAT_LIMITS.donationStep) * STAT_LIMITS.donationStep;
   }
+  if (rule.spends) donations = Math.max(0, donations - spentDollars(event));
   return Object.freeze({ followers, donations, hype });
+}
+
+/** Dollars an event spends; anything but a non-negative number spends nothing. */
+function spentDollars(event) {
+  const dollars = event.data?.dollars;
+  return typeof dollars === "number" && dollars > 0 ? dollars : 0;
 }
 
 function ruleFor(event) {

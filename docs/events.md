@@ -82,6 +82,7 @@ else `new_best` the first time a run passes the best wave of earlier runs, else 
 | `kill` | minor | took out an enemy |
 | `damage_taken` | minor | took a hit |
 | `item_pickup` | minor | bought an upgrade in the shop |
+| `coin_purchase` | minor | spent chat's donations on coins |
 | `win` | major | cleared a wave |
 | `loss` | major | died and lost the run |
 | `streak` | major | went on a kill streak without getting hit |

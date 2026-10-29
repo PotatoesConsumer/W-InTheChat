@@ -35,6 +35,7 @@ export const GAME_EVENTS = Object.freeze({
   kill: { importance: IMPORTANCE.MINOR, phrase: "took out an enemy" },
   damage_taken: { importance: IMPORTANCE.MINOR, phrase: "took a hit" },
   item_pickup: { importance: IMPORTANCE.MINOR, phrase: "bought an upgrade in the shop" },
+  coin_purchase: { importance: IMPORTANCE.MINOR, phrase: "spent chat's donations on coins" },
   win: { importance: IMPORTANCE.MAJOR, phrase: "cleared a wave" },
   loss: { importance: IMPORTANCE.MAJOR, phrase: "died and lost the run" },
   streak: { importance: IMPORTANCE.MAJOR, phrase: "went on a kill streak without getting hit" },

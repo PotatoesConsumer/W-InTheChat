@@ -31,10 +31,11 @@ date; where it disagrees with the proposal, the proposal wins.
 npm run dev
 ```
 
-Serves the game on <http://localhost:5173> (open it in Chrome). The mini-game is a
-top-down wave shooter: Space starts, WASD moves, arrow keys or the mouse shoot, and the
-shop between waves takes 1–6 (buy) and C (cash out donations into coins). Enter focuses
-the chat box and Escape leaves it. Controls and events: `docs/demo-m1.md`. The top bar shows followers, donations, the hype meter and the
+Serves the game on <http://localhost:5173> (open it in Chrome). It opens on the game
+hub; the first game is Wave Survival, a top-down wave shooter: Space starts, WASD
+moves, arrow keys or the mouse shoot, the shop between waves takes 1–6 (buy) and C (the
+coin store, where donations buy coin packs). Esc pauses. Enter focuses the chat box and
+Escape leaves it. Controls and events: `docs/demo-m1.md`. The top bar shows followers, donations, the hype meter and the
 reply latency.
 
 ```bash

@@ -2,7 +2,7 @@
  * main.js
  *
  * Browser entry point (loaded by index.html). Wires the canvas, game loop, input,
- * event bus, stats, chat overlay and the chat service together.
+ * event bus, stats, chat overlay, the chat service and the game hub together.
  *
  * Every event goes on the local bus first: the stats, the HUD and the streamer's face
  * react to it here, and it is sent to the chat service (`npm run service`), whose
@@ -10,12 +10,12 @@
  * `?service=http://localhost:8787`.
  *
  * The baseline switch: `?condition=ai` or `?condition=scripted` sets the service's
- * condition before the round starts. F2 opens the study panel, which reloads the page
+ * condition before a game starts. F2 opens the study panel, which reloads the page
  * with the other condition. Without the parameter the service's own condition is used.
  *
- * The mini-game is a top-down wave shooter (src/game/shooter/): WASD to move, arrow keys
- * or the mouse to shoot, a shop between waves (1-6 or click to buy, C to cash out
- * donations into coins, Space for the next wave). It emits the catalog events itself.
+ * The stream opens on the game hub (hub.js, games list in games.js). Each game reads its
+ * own keymap and sends catalog events; Escape or P pauses it (pause menu: resume,
+ * restart, quit to the hub), and so does leaving the window.
  */
 
 import { createGameLoop } from "./loop.js";
@@ -23,9 +23,9 @@ import { createInput } from "./input.js";
 import { stats } from "./stats.js";
 import { createStreamer } from "./streamer.js";
 import { createReplyLatency } from "./replyLatency.js";
-import { createShooter } from "./shooter/game.js";
-import { drawShooter, shopHit, HUD_HEIGHT } from "./shooter/view.js";
-import { SHOP_ITEMS } from "./shooter/shop.js";
+import { createHub } from "./hub.js";
+import { drawHub, drawPause, hubHit } from "./hubView.js";
+import { GAMES } from "./games.js";
 import { createEventBus } from "../events/bus.js";
 import { createGameEvent, createChatEvent } from "../events/schema.js";
 import { connectToService, DEFAULT_SERVICE_URL } from "../service/client.js";
@@ -36,8 +36,7 @@ import { createStudyPanel, conditionFromUrl } from "../ui/studyPanel.js";
 /** Logical scene size. The canvas is scaled to fit, keeping 16:9. */
 const WORLD = { width: 960, height: 540 };
 const FACECAM = { width: 200, height: 150, margin: 16 };
-const ARENA = { x: 0, y: HUD_HEIGHT, width: WORLD.width, height: WORLD.height - HUD_HEIGHT };
-/** The facecam sits on the arena's corner, so it's solid: nothing walks under it. */
+/** The facecam sits on the scene's corner, so games treat it as solid. */
 const FACECAM_BLOCK = {
   x: WORLD.width - FACECAM.width - FACECAM.margin,
   y: WORLD.height - FACECAM.height - FACECAM.margin,
@@ -45,18 +44,19 @@ const FACECAM_BLOCK = {
   height: FACECAM.height + FACECAM.margin,
 };
 
-const BINDINGS = Object.freeze({
-  KeyW: "up",
+/** Keys for the hub and the pause menu. Each game has its own keymap. */
+const MENU_BINDINGS = Object.freeze({
+  ArrowLeft: "left",
   KeyA: "left",
-  KeyS: "down",
+  ArrowRight: "right",
   KeyD: "right",
-  ArrowUp: "shootUp",
-  ArrowLeft: "shootLeft",
-  ArrowDown: "shootDown",
-  ArrowRight: "shootRight",
-  Space: "action",
-  KeyC: "cashOut",
-  ...Object.fromEntries(SHOP_ITEMS.map((_, i) => [`Digit${i + 1}`, `buy${i + 1}`])),
+  ArrowUp: "up",
+  KeyW: "up",
+  ArrowDown: "down",
+  KeyS: "down",
+  Space: "select",
+  Escape: "back",
+  KeyP: "pause",
 });
 
 const canvas = document.getElementById("game");
@@ -136,7 +136,7 @@ async function syncCondition() {
   return false;
 }
 
-// The run can start once chat can see it in the right condition, so the first replies
+// A game can start once chat can see it in the right condition, so the first replies
 // aren't sent to nobody or answered by the wrong condition. Without a service it can
 // start anyway (no chat).
 let chatReady = false;
@@ -167,76 +167,87 @@ window.witc = {
   latency: () => latency.summary(),
   rows: () => latency.rows(),
   stats: () => streamStats,
-  game: () => game.state,
+  game: () => hub.current?.instance.state ?? null,
 };
 
-// The mini-game. Its events go on the bus like any other: stats, facecam and chat react.
-const game = createShooter({ arena: ARENA, obstacles: [FACECAM_BLOCK] });
-const input = createInput(window, BINDINGS);
+// The hub and its games. A game's events go on the bus like any other: stats, facecam
+// and chat react.
+const menuInput = createInput(window, MENU_BINDINGS);
+const gameInputs = new Map();
 const mouse = { pointer: null, down: false };
 let clock = 0;
 
+const hub = createHub({
+  games: GAMES,
+  makeGame(game) {
+    gameInputs.set(game.id, createInput(window, game.bindings));
+    return game.create({
+      world: WORLD,
+      obstacles: [FACECAM_BLOCK],
+      stream: { donations: () => streamStats.donations },
+    });
+  },
+});
+
 function publishGameEvents() {
-  for (const { name, data } of game.takeEvents()) bus.publish(createGameEvent(name, data));
+  const instance = hub.current?.instance;
+  if (!instance) return;
+  for (const { name, data } of instance.takeEvents()) bus.publish(createGameEvent(name, data));
 }
 
-const canStart = () => chatReady || serviceStatus === "reconnecting" || serviceStatus === "closed";
+const canPlay = () => chatReady || serviceStatus === "reconnecting" || serviceStatus === "closed";
 
-function startHint() {
-  if (chatReady) return "Press Space to go live";
+function hubHint() {
+  if (chatReady) return "Chat is live. Pick a game and go!";
   if (serviceStatus === "connected" || serviceStatus === "connecting") return "Connecting to chat…";
-  return "Chat is offline (npm run service). Space to play without it";
-}
-
-function shopAction(action) {
-  if (action.kind === "item") game.buy(action.id);
-  else if (action.kind === "cashOut") game.cashOut(streamStats.donations);
-  else if (action.kind === "next") game.nextWave();
+  return "Chat is offline (npm run service). You can still play without it.";
 }
 
 function update(dt) {
   clock += dt;
-  const { phase, player } = game.state;
+  const pressed = (action) => menuInput.wasPressed(action);
+  const step =
+    (pressed("right") || pressed("down") ? 1 : 0) - (pressed("left") || pressed("up") ? 1 : 0);
 
-  if ((phase === "ready" || phase === "over") && input.wasPressed("action") && canStart()) {
-    game.start();
-  } else if (phase === "shop") {
-    if (input.wasPressed("action")) shopAction({ kind: "next" });
-    if (input.wasPressed("cashOut")) shopAction({ kind: "cashOut" });
-    SHOP_ITEMS.forEach((item, i) => {
-      if (input.wasPressed(`buy${i + 1}`)) shopAction({ kind: "item", id: item.id });
-    });
+  if (hub.screen === "hub") {
+    if (step) hub.move(step);
+    if (pressed("select")) hub.confirm({ canPlay: canPlay() });
+  } else if (hub.screen === "paused") {
+    if (step) hub.move(step);
+    if (pressed("select")) hub.confirm({ canPlay: true });
+    else if (pressed("back") || pressed("pause")) hub.resume();
+  } else if (pressed("back")) {
+    hub.back();
+  } else if (pressed("pause")) {
+    hub.pause();
+  } else {
+    const { game, instance } = hub.current;
+    instance.update(dt, { input: gameInputs.get(game.id), mouse });
   }
-
-  // Arrow keys shoot in 8 directions; otherwise holding the mouse shoots at the cursor.
-  const axis = (minus, plus) => (input.isDown(plus) ? 1 : 0) - (input.isDown(minus) ? 1 : 0);
-  let aimX = axis("shootLeft", "shootRight");
-  let aimY = axis("shootUp", "shootDown");
-  let fire = aimX !== 0 || aimY !== 0;
-  if (!fire && mouse.pointer) {
-    aimX = mouse.pointer.x - player.x;
-    aimY = mouse.pointer.y - player.y;
-    fire = mouse.down;
-  }
-  game.update(dt, { moveX: axis("left", "right"), moveY: axis("up", "down"), aimX, aimY, fire });
   publishGameEvents();
   streamer.update(dt);
 
-  input.endFrame();
+  // Every keymap sees every key; presses not used this step are dropped, so a key that
+  // opened a screen doesn't also act in it.
+  menuInput.endFrame();
+  for (const input of gameInputs.values()) input.endFrame();
 }
 
 function render(alpha) {
   const scale = canvas.width / WORLD.width;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  drawShooter(ctx, game, {
-    arena: ARENA,
-    alpha,
-    donations: streamStats.donations,
-    pointer: mouse.pointer,
-    startHint: startHint(),
-    clock,
-  });
+  if (hub.screen === "hub") {
+    drawHub(ctx, hub, { world: WORLD, clock, hint: hubHint() });
+  } else {
+    const paused = hub.screen === "paused";
+    hub.current.instance.render(ctx, {
+      alpha: paused ? 1 : alpha,
+      pointer: paused ? null : mouse.pointer,
+      clock,
+    });
+    if (paused) drawPause(ctx, hub, { world: WORLD });
+  }
 
   streamer.draw(ctx, {
     x: WORLD.width - FACECAM.width - FACECAM.margin,
@@ -258,23 +269,26 @@ function toWorld(event) {
 
 canvas.addEventListener("pointermove", (event) => {
   mouse.pointer = toWorld(event);
+  const index = hubHit(hub, mouse.pointer.x, mouse.pointer.y);
+  if (index >= 0) hub.point(index);
 });
 canvas.addEventListener("pointerdown", (event) => {
   if (event.button !== 0) return;
   // Clicking the game takes the keyboard back from the chat box.
   if (document.activeElement?.tagName === "INPUT") document.activeElement.blur();
   mouse.pointer = toWorld(event);
-  mouse.down = true;
   canvas.setPointerCapture(event.pointerId);
-  const { phase } = game.state;
-  if (phase === "shop") {
-    const hit = shopHit(mouse.pointer.x, mouse.pointer.y);
-    if (hit) shopAction(hit);
-    publishGameEvents();
-  } else if ((phase === "ready" || phase === "over") && canStart()) {
-    game.start();
-    publishGameEvents();
+  if (hub.screen === "playing") {
+    mouse.down = true;
+    hub.current.instance.pointerDown(mouse.pointer);
+  } else {
+    const index = hubHit(hub, mouse.pointer.x, mouse.pointer.y);
+    if (index >= 0) {
+      hub.point(index);
+      hub.confirm({ canPlay: canPlay() });
+    }
   }
+  publishGameEvents();
 });
 for (const type of ["pointerup", "pointercancel"]) {
   canvas.addEventListener(type, () => (mouse.down = false));
@@ -282,7 +296,11 @@ for (const type of ["pointerup", "pointercancel"]) {
 canvas.addEventListener("pointerleave", () => {
   if (!mouse.down) mouse.pointer = null;
 });
-window.addEventListener("blur", () => (mouse.down = false));
+// Leaving the window pauses the game, so nothing happens while nobody is looking.
+window.addEventListener("blur", () => {
+  mouse.down = false;
+  hub.pause();
+});
 
 /** Match the canvas's pixel size to its CSS size, so it stays sharp on HiDPI screens. */
 function resizeCanvas() {
