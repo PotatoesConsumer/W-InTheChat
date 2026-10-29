@@ -11,41 +11,10 @@ import { runChecks } from "../../src/harness/checks.js";
 import { runScenario } from "../../src/harness/runner.js";
 import { loadScenario } from "../../src/harness/load.js";
 import { createFakeGenerator } from "../../src/harness/fakeGenerator.js";
+import { EDGE_CASES } from "../../src/harness/edgeCases.js";
 
-/**
- * Proposal edge case -> how it's produced. Every check must pass in each.
- * A registered pipeline may list cases it doesn't handle yet in `pending` (id -> reason);
- * those show as TODO with the reason instead of failing.
- */
-const EDGE_CASES = [
-  { id: "slow", title: "slow model: falls back within the timeout", mode: "slow", speed: 20 },
-  { id: "down", title: "model down: falls back", mode: "error", speed: 20 },
-  {
-    id: "garbage",
-    title: "malformed model output never reaches chat as-is",
-    mode: "garbage",
-    speed: 20,
-  },
-  { id: "unsafe", title: "unsafe model output is blocked and replaced", mode: "unsafe", speed: 20 },
-  {
-    id: "burst",
-    title: "event bursts are coalesced and rate-limited",
-    scenario: "burst",
-    speed: 1,
-  },
-  {
-    id: "bad-input",
-    title: "empty and oversized player input gets no reply",
-    scenario: "player-chat",
-    speed: 20,
-  },
-  {
-    id: "malformed",
-    title: "malformed events are dropped, the next one still works",
-    scenario: "malformed",
-    speed: 20,
-  },
-];
+// Every check must pass in each edge case (src/harness/edgeCases.js). Cases a pipeline
+// lists in `pending` (id -> reason) show as TODO with the reason instead of failing.
 const EDGE_CASE_IDS = new Set(EDGE_CASES.map((c) => c.id));
 
 const safety = JSON.parse(

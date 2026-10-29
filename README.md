@@ -45,7 +45,16 @@ Runs the local chat service on <http://127.0.0.1:8787>, which the game talks to:
 events to `/events` and reads replies from `/stream`. Run it next to `npm run dev`; without
 it the game still runs but chat stays empty ("chat offline" in the top bar).
 `npm run e2e` measures end-to-end latency with the real model. See
-[docs/service.md](docs/service.md) and, for the Month-1 demo, [docs/demo-m1.md](docs/demo-m1.md).
+[docs/service.md](docs/service.md) and, for the demos, [docs/demo-m1.md](docs/demo-m1.md) and
+[docs/demo-m2.md](docs/demo-m2.md).
+
+```bash
+npm run regression -- --model
+```
+
+The full regression pass: lint, tests, every scenario through the pipeline under every
+fake-model failure mode, and the evaluation set through the real model. Writes a report to
+`docs/regression/`. Run it before a demo. See [docs/regression/README.md](docs/regression/README.md).
 
 ```bash
 npm run ai:demo
