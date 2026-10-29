@@ -1,26 +1,29 @@
 /**
  * pipeline.js
  *
- * Chat pipeline v1 (W04): bus events in, chat_message updates out. Contract:
+ * Chat pipeline (W04, W06): bus events in, chat_message updates out. Contract:
  * docs/harness.md ("Pipeline contract"). Behavior and limits: docs/service.md.
  *
+ *   repeat of a recent event      -> coalesced: no message (coalesce.js)
  *   minor game event              -> template line (both conditions)
- *   major game event / chat       -> Fan reply from the model              (ai)
+ *   major game event / chat       -> reply from the model, persona from the selector (ai)
  *                                 -> scripted line, model never called     (scripted)
  *   timeout / error / bad output  -> fallback line
  *
- * Every random choice (viewer, line) is drawn when the event arrives, before the model
- * runs, so the same seed and events give the same chat whatever the model returns.
+ * Every random choice (persona, viewer, line) is drawn when the event arrives, before
+ * the model runs, so the same seed and events give the same chat whatever the model
+ * returns. Coalescing goes by the events' own timestamps, not by the pipeline's state.
  *
  * Model replies wait in a first-in, first-out queue and run one at a time (one 6 GB GPU).
  * Each has a deadline counted from when its event arrived, so waiting in the queue uses
  * up its time; a reply whose deadline is too close by its turn gets a fallback without
  * calling the model. Never "template if the model is busy": that made the chat depend on
  * timing, so the same events could get different replies (docs/pipeline-contract.md,
- * same-choices). Bursts are handled by coalescing in the router instead (W06).
+ * same-choices). Bursts are handled by coalescing instead, and the pacer (pacer.js) keeps
+ * the chat under maxMessagesPerSecond by delaying lines, never by dropping them.
  *
- * Not yet: persona selection (every reply is the Fan, W06), coalescing (W06),
- * the safety filter (W07, see replyCheck.js) and the full scripted baseline (W07).
+ * Not yet: the safety filter (W07, see replyCheck.js; the Hater stays out of
+ * aiPersonas until it's in) and the full scripted baseline with persona lines (W07).
  */
 
 import { IMPORTANCE } from "../events/schema.js";
@@ -31,6 +34,9 @@ import { PERSONA_PROMPTS } from "../ai/personas/index.js";
 import { checkReply, canShowPartial } from "./replyCheck.js";
 import { VIEWERS, FALLBACK_LINES, lineFor, pick } from "./templates.js";
 import { createLatencyLog } from "./latency.js";
+import { selectPersona } from "./selector.js";
+import { createCoalescer } from "./coalesce.js";
+import { createPacer } from "./pacer.js";
 
 /** Provisional; the laptop pilot (W08) sets the real numbers. */
 export const PIPELINE_DEFAULTS = Object.freeze({
@@ -48,7 +54,8 @@ export const PIPELINE_DEFAULTS = Object.freeze({
   /**
    * Recent chat lines given to the context builder. Off for now: in the first e2e runs
    * qwen2.5:3b copied the lines' "viewer: text" format and phrasing, and invented
-   * follow-ups ("4-game streak") from them. Still off with the W05 prompts; revisit with the selector (W06).
+   * follow-ups ("4-game streak") from them. Still off with all four personas: with
+   * several personas sharing the chat, copied phrasing would blur them further.
    */
   historySize: 0,
   /**
@@ -61,6 +68,25 @@ export const PIPELINE_DEFAULTS = Object.freeze({
   streamPartials: false,
   /** With streamPartials, a reply is held back until it has this many characters. */
   minStreamChars: 12,
+  /**
+   * Personas the selector may pick for a model reply. No Hater until the output safety
+   * filter (W07) is in: its prompt alone still let insults through (docs/personas.md).
+   */
+  aiPersonas: Object.freeze(["fan", "backseat", "lurker"]),
+  /**
+   * Same-name game events (or player messages) less than this apart form one run of
+   * repeats, measured with the events' own timestamps. Matches QA_LIMITS.coalesceWindowMs.
+   */
+  coalesceWindowMs: 2_000,
+  /** In a run of repeats, the first event is answered, then every this-many-th. */
+  repeatReplyEvery: 5,
+  /** Most replies one run of repeats gets. QA_LIMITS.maxMessagesPerEvent is 3. */
+  maxRepliesPerRun: 3,
+  /**
+   * New chat messages in any one-second window; more wait their turn. Under
+   * QA_LIMITS.maxMessagesPerSecond (5) so clock differences can't push it over.
+   */
+  maxMessagesPerSecond: 4,
 });
 
 export const CONDITIONS = Object.freeze(["ai", "scripted"]);
@@ -96,6 +122,12 @@ export default function startPipeline(bus, emit, deps = {}) {
   const limits = Object.fromEntries(
     Object.entries(PIPELINE_DEFAULTS).map(([key, value]) => [key, deps[key] ?? value]),
   );
+  const unknown = limits.aiPersonas.filter((p) => !Object.hasOwn(PERSONA_PROMPTS, p));
+  if (limits.aiPersonas.length === 0 || unknown.length > 0) {
+    throw new TypeError(
+      `aiPersonas must list personas with a prompt; unknown: ${unknown.join(", ") || "none given"}`,
+    );
+  }
 
   const latency = createLatencyLog();
   const counts = { template: 0, scripted: 0, ai: 0, fallback: 0 };
@@ -103,6 +135,14 @@ export default function startPipeline(bus, emit, deps = {}) {
   const history = [];
   const queue = []; // model replies waiting their turn, oldest first
   const active = new Map(); // message id -> { controller, task }
+  const started = new Set(); // ids of streamed messages that have had an update
+  const coalescer = createCoalescer({
+    windowMs: limits.coalesceWindowMs,
+    every: limits.repeatReplyEvery,
+    maxPerRun: limits.maxRepliesPerRun,
+  });
+  const pacer = createPacer({ maxPerSecond: limits.maxMessagesPerSecond, now });
+  let coalesced = 0;
   let stopped = false;
 
   function remember(viewer, text) {
@@ -110,11 +150,22 @@ export default function startPipeline(bus, emit, deps = {}) {
     while (history.length > limits.historySize) history.shift();
   }
 
-  function send(fields) {
-    if (stopped) return null;
-    const message = createChatMessage({ ...fields, ts: now() });
-    emit(message);
-    return message;
+  /**
+   * Sends one update through the pacer. It's validated now (a bad message throws here,
+   * in the bus handler) and stamped when it actually goes out; `onSent` gets it then.
+   */
+  function send(fields, onSent) {
+    if (stopped) return;
+    const draft = createChatMessage({ ...fields, ts: now() });
+    const isNew = !started.has(draft.id);
+    if (draft.done) started.delete(draft.id);
+    else started.add(draft.id);
+    pacer.push(isNew, () => {
+      if (stopped) return;
+      const message = createChatMessage({ ...fields, id: draft.id, ts: now() });
+      emit(message);
+      onSent?.(message);
+    });
   }
 
   function finished(ctx, { source, text, viewer, firstAt, doneAt, failure }) {
@@ -133,8 +184,9 @@ export default function startPipeline(bus, emit, deps = {}) {
 
   /** One-update reply from a fixed line (template, scripted). */
   function replyWithLine(ctx, { persona, viewer, source, text }) {
-    const sent = send({ eventId: ctx.eventId, persona, viewer, source, text, done: true });
-    if (sent) finished(ctx, { source, text, viewer, firstAt: sent.ts, doneAt: sent.ts });
+    send({ eventId: ctx.eventId, persona, viewer, source, text, done: true }, (sent) =>
+      finished(ctx, { source, text, viewer, firstAt: sent.ts, doneAt: sent.ts }),
+    );
   }
 
   /**
@@ -163,24 +215,25 @@ export default function startPipeline(bus, emit, deps = {}) {
       if (remaining < limits.minGenerationMs) {
         // Waited too long for a turn: answer now, without the model.
         const { ctx, persona, viewer, fallbackText } = job;
-        const sent = send({
-          eventId: ctx.eventId,
-          persona,
-          viewer,
-          source: "fallback",
-          text: fallbackText,
-          done: true,
-        });
-        if (sent) {
-          finished(ctx, {
+        send(
+          {
+            eventId: ctx.eventId,
+            persona,
+            viewer,
             source: "fallback",
             text: fallbackText,
-            viewer,
-            firstAt: sent.ts,
-            doneAt: sent.ts,
-            failure: "queue_timeout",
-          });
-        }
+            done: true,
+          },
+          (sent) =>
+            finished(ctx, {
+              source: "fallback",
+              text: fallbackText,
+              viewer,
+              firstAt: sent.ts,
+              doneAt: sent.ts,
+              failure: "queue_timeout",
+            }),
+        );
         continue;
       }
       runModelReply(job, remaining);
@@ -203,13 +256,12 @@ export default function startPipeline(bus, emit, deps = {}) {
     let firstAt = null;
     let done = false;
 
-    const update = (text, isDone, source) => {
-      const sent = send({ id, eventId: ctx.eventId, persona, viewer, source, text, done: isDone });
-      if (sent) {
-        shown = text;
+    const update = (text, isDone, source, onSent) => {
+      shown = text;
+      send({ id, eventId: ctx.eventId, persona, viewer, source, text, done: isDone }, (sent) => {
         firstAt ??= sent.ts;
-      }
-      return sent;
+        onSent?.(sent);
+      });
     };
 
     // Streaming: show a partial only if it passes the checks and extends what's shown,
@@ -255,8 +307,9 @@ export default function startPipeline(bus, emit, deps = {}) {
         source = "fallback";
         text = fallbackText;
       }
-      const sent = update(text, true, source);
-      if (sent) finished(ctx, { source, text, viewer, firstAt, doneAt: sent.ts, failure });
+      update(text, true, source, (sent) =>
+        finished(ctx, { source, text, viewer, firstAt, doneAt: sent.ts, failure }),
+      );
     })().finally(() => {
       active.delete(id);
       pump();
@@ -269,12 +322,20 @@ export default function startPipeline(bus, emit, deps = {}) {
     if (stopped) return;
     const ctx = toContext(event);
 
-    // Choices first, before the model runs: two draws per event on every path.
-    const persona = "fan"; // the selector is W06; no Hater before the safety filter (W07)
+    // Choices first, before the model runs: three draws per event on every path, even
+    // for an event that's coalesced, so one event's fate never shifts another's choices.
+    const personaRoll = random();
+    const byModel = ctx.importance !== IMPORTANCE.MINOR && condition === "ai";
+    // Template and scripted lines are written in the Fan's voice; persona lines for the
+    // scripted baseline come with W07.
+    const persona = byModel ? selectPersona(ctx, personaRoll, limits.aiPersonas) : "fan";
     const viewer = pick(VIEWERS[persona], random);
     const roll = random();
 
-    if (ctx.importance === IMPORTANCE.MINOR) {
+    const key = ctx.kind === "chat" ? "chat" : `game:${ctx.name}`;
+    if (!coalescer.admit(key, ctx.ts)) {
+      coalesced++;
+    } else if (ctx.importance === IMPORTANCE.MINOR) {
       replyWithLine(ctx, { persona, viewer, source: "template", text: lineFor(ctx, () => roll) });
     } else if (condition === "scripted") {
       replyWithLine(ctx, { persona, viewer, source: "scripted", text: lineFor(ctx, () => roll) });
@@ -290,21 +351,24 @@ export default function startPipeline(bus, emit, deps = {}) {
       stopped = true;
       off();
       queue.length = 0;
+      pacer.stop();
       for (const { controller } of active.values()) {
         controller.abort(new DOMException("pipeline stopped", "AbortError"));
       }
     },
-    /** Resolves once no model reply is queued or in flight. */
+    /** Resolves once no model reply is queued or in flight and every line has gone out. */
     async idle() {
       while (active.size > 0 || queue.length > 0) {
         await Promise.allSettled([...active.values()].map((a) => a.task));
       }
+      await pacer.idle();
     },
-    /** Counts by final source, failure reasons, and p50/p95 latency so far. */
+    /** Counts by final source, coalesced events, failure reasons, and p50/p95 latency. */
     stats() {
       return {
         condition,
         replies: { ...counts },
+        coalesced,
         failures: { ...failures },
         latency: latency.summary(),
       };

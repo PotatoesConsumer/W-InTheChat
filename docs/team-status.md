@@ -1,7 +1,7 @@
 # Team status and handoff
 
-Last updated 2026-10-27, after #13 (team status), #14 (Month-1 demo) and #15 (persona
-prompts) merged. Merged feature branches are deleted; only `master` and `tawan` remain.
+Last updated 2026-10-29, after #13 (team status), #14 (Month-1 demo), #15 (persona
+prompts) and #17 (persona selector, coalescing, rate limit) merged. Merged feature branches are deleted; only `master` and `tawan` remain.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -22,7 +22,8 @@ something here no longer matches the code, trust the code and say so.
   `docs/demo-m1.md`.
 - **All four personas have prompts** (#15): Hater, Backseat Gamer and Lurker join the
   Fan, with voice and safety rules in `docs/personas.md` and a trial,
-  `npm run ai:personas`. The service still answers as the Fan until the selector (W06).
+  `npm run ai:personas`. Since #17 the selector picks Fan, Backseat Gamer or Lurker per
+  event; the Hater waits for the safety filter (W07).
 - **The mini-game hasn't been chosen.** The event catalog (`GAME_EVENTS` in
   `src/events/schema.js`) is still a placeholder until it is.
 
@@ -52,7 +53,7 @@ switch running on the same events.
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
-| W06 | 🟡 Persona selector, coalescing, rate limit: PR #17 (minor events to templates done in #11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
+| W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
 | W07 | ⬜ Output safety filter (fallbacks already done in #11) | 🟡 Scripted baseline switch: the service has `--condition scripted` (#11), the game has no switch yet | ✅ Edge-case checks and safety test set (#10) |
 | W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ⬜ Month-2 demo prep, full regression pass |
 
@@ -67,8 +68,8 @@ Nothing here has started.
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
 
-So far: 17 done, 3 started or in a PR, 16 not started. The 4 TODO tests in `npm test` on
-`master` are Sittipon's W06–W07; #17 clears `burst`.
+So far: 18 done, 2 started, 16 not started. The 3 TODO tests left in `npm test` are all
+Sittipon's W07 safety filter.
 
 ## Decisions already made
 
@@ -128,7 +129,7 @@ and known issues). Add anything else you find there.
 | Task | What's left |
 |------|-------------|
 | W05 | Done (#15). Known weaknesses for a later prompt pass are in `docs/personas.md`; the Backseat Gamer's advice can name real actions once the mini-game is chosen |
-| W06 | Persona selector (today every reply is the Fan), coalescing and rate limits. Then remove `burst` from `pending` |
+| W06 | Done (#17): persona selector (no Hater before W07), coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. `burst` passes and is out of `pending` |
 | W07 | The output safety filter in `src/service/replyCheck.js`. It must block all 13 `block` cases and allow all 16 `allow` cases in `eval/safety-cases-v1.json`. Register it in `filters`, then remove `unsafe` from `pending`. Needed before the Hater goes live. |
 | W08 | Laptop pilot: set `replyTimeoutMs`, `maxTokens`, event rate and message caps from measured p50/p95 and peak GPU memory |
 
