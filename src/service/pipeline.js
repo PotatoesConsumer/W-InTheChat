@@ -23,7 +23,7 @@
  * the chat under maxMessagesPerSecond by delaying lines, never by dropping them.
  *
  * Not yet: the safety filter (W07, see replyCheck.js; the Hater stays out of
- * aiPersonas until it's in) and the full scripted baseline with persona lines (W07).
+ * aiPersonas until it's in, in both conditions, so they keep the same persona labels).
  */
 
 import { IMPORTANCE } from "../events/schema.js";
@@ -32,7 +32,7 @@ import { createChatMessage } from "../events/chatMessage.js";
 import { buildPrompt } from "../ai/contextBuilder.js";
 import { PERSONA_PROMPTS } from "../ai/personas/index.js";
 import { checkReply, canShowPartial } from "./replyCheck.js";
-import { VIEWERS, FALLBACK_LINES, lineFor, pick } from "./templates.js";
+import { VIEWERS, FALLBACK_LINES, lineFor, scriptedLineFor, pick } from "./templates.js";
 import { createLatencyLog } from "./latency.js";
 import { selectPersona } from "./selector.js";
 import { createCoalescer } from "./coalesce.js";
@@ -325,10 +325,11 @@ export default function startPipeline(bus, emit, deps = {}) {
     // Choices first, before the model runs: three draws per event on every path, even
     // for an event that's coalesced, so one event's fate never shifts another's choices.
     const personaRoll = random();
-    const byModel = ctx.importance !== IMPORTANCE.MINOR && condition === "ai";
-    // Template and scripted lines are written in the Fan's voice; persona lines for the
-    // scripted baseline come with W07.
-    const persona = byModel ? selectPersona(ctx, personaRoll, limits.aiPersonas) : "fan";
+    // Major events and player chat get a persona from the selector in both conditions,
+    // from the same roll and the same aiPersonas, so a seed gives the same persona labels
+    // whether the line is generated or scripted. Minor-event templates are the Fan's.
+    const answered = ctx.importance !== IMPORTANCE.MINOR;
+    const persona = answered ? selectPersona(ctx, personaRoll, limits.aiPersonas) : "fan";
     const viewer = pick(VIEWERS[persona], random);
     const roll = random();
 
@@ -338,7 +339,8 @@ export default function startPipeline(bus, emit, deps = {}) {
     } else if (ctx.importance === IMPORTANCE.MINOR) {
       replyWithLine(ctx, { persona, viewer, source: "template", text: lineFor(ctx, () => roll) });
     } else if (condition === "scripted") {
-      replyWithLine(ctx, { persona, viewer, source: "scripted", text: lineFor(ctx, () => roll) });
+      const text = scriptedLineFor(ctx, persona, () => roll);
+      replyWithLine(ctx, { persona, viewer, source: "scripted", text });
     } else {
       replyWithModel(ctx, { persona, viewer, fallbackText: pick(FALLBACK_LINES, () => roll) });
     }

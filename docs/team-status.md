@@ -54,7 +54,7 @@ switch running on the same events.
 |------|-------------------------|------------------------------|------------------------|
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
 | W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
-| W07 | ⬜ Output safety filter (fallbacks already done in #11) | 🟡 Scripted baseline switch: the service has `--condition scripted` (#11), the game has no switch yet | ✅ Edge-case checks and safety test set (#10) |
+| W07 | ⬜ Output safety filter (fallbacks already done in #11) | 🟡 Scripted baseline switch: study panel (F2) and `?condition=`, `POST /condition`, scripted lines per persona (`feature/baseline-switch`, in a PR) | ✅ Edge-case checks and safety test set (#10) |
 | W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ⬜ Month-2 demo prep, full regression pass |
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
@@ -100,8 +100,16 @@ Don't change these without talking to the team first. The reasons are in the lin
      shortcuts for the major events.
 2. **The mini-game.** When it's chosen, emit its events from the game instead of keys
    1–5, and replace the placeholder box scene. The facecam can stay.
-3. **Scripted baseline switch (W07):** the service already has the condition:
-   `npm run service -- --condition scripted`. The game needs a way to pick it.
+3. **Scripted baseline switch (W07), in a PR from `feature/baseline-switch`:**
+   - The game: **F2** opens a study panel (hidden from participants) with AI chat /
+     Scripted chat. Picking one reloads with `?condition=...`, so stats and chat start
+     fresh; the game sets that condition on the service before the round starts.
+   - The service: `GET`/`POST /condition` restarts the pipeline in the other
+     condition (`src/service/server.js`); switching to ai loads the model first.
+   - The scripted baseline now uses **the same persona selector** as the ai condition,
+     with per-persona lines (`SCRIPTED_LINES` in `src/service/templates.js`). Before,
+     every scripted line was the Fan's, so the two conditions didn't show the same
+     persona labels. **Sittipon: please review the `pipeline.js` / `server.js` part.**
 
 ## Prin (multimodal / QA): what changed in your area
 

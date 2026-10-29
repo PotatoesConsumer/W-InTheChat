@@ -77,3 +77,21 @@ test("send posts the event to a running service and never rejects", async () => 
   assert.equal(result.ok, false);
   assert.match(result.errors[0].message, /service unreachable/);
 });
+
+test("getCondition and setCondition talk to the service's /condition", async () => {
+  const service = createService({
+    port: 0,
+    deps: { condition: "scripted", generate: async () => ({ text: "nice one" }) },
+  });
+  const { url } = await service.start();
+  try {
+    const chat = connectToService({ url, onMessage: () => {}, EventSourceImpl: FakeEventSource });
+    assert.equal((await chat.getCondition()).condition, "scripted");
+    assert.deepEqual(await chat.setCondition("ai"), { ok: true, condition: "ai" });
+    assert.equal((await chat.setCondition("nope")).ok, false);
+    assert.equal((await chat.getCondition()).condition, "ai");
+    chat.close();
+  } finally {
+    await service.close();
+  }
+});

@@ -6,13 +6,45 @@ import {
   EVENT_LINES,
   CHAT_LINES,
   FALLBACK_LINES,
+  SCRIPTED_LINES,
   lineFor,
+  scriptedLineFor,
   pick,
   missingEventLines,
+  missingScriptedLines,
 } from "../../src/service/templates.js";
 
 test("every catalog event has template lines (update templates.js with the catalog)", () => {
   assert.deepEqual(missingEventLines(), []);
+});
+
+test("every persona has scripted lines for every major event and for chat", () => {
+  assert.deepEqual(missingScriptedLines(), []);
+  assert.deepEqual(Object.keys(SCRIPTED_LINES).sort(), [...PERSONAS].sort());
+});
+
+test("scripted lines keep the personas' voice limits (docs/personas.md)", () => {
+  const maxWords = { fan: 20, hater: 15, backseat: 12, lurker: 4 };
+  for (const [persona, lines] of Object.entries(SCRIPTED_LINES)) {
+    for (const line of Object.values(lines).flat()) {
+      const words = line.split(/\s+/).filter(Boolean).length;
+      assert.ok(words <= maxWords[persona], `${persona}: ${line}`);
+      if (persona === "lurker") assert.equal(line, line.toLowerCase(), line);
+    }
+  }
+});
+
+test("scriptedLineFor picks the persona's line for the event, or its chat line", () => {
+  assert.equal(
+    scriptedLineFor({ kind: "game", name: "loss" }, "backseat", () => 0),
+    SCRIPTED_LINES.backseat.loss[0],
+  );
+  assert.equal(
+    scriptedLineFor({ kind: "chat", name: null }, "hater", () => 0.99),
+    SCRIPTED_LINES.hater.chat.at(-1),
+  );
+  assert.throws(() => scriptedLineFor({ kind: "game", name: "kill" }, "fan", () => 0), /kill/);
+  assert.throws(() => scriptedLineFor({ kind: "chat", name: null }, "mod", () => 0), /mod/);
 });
 
 test("every persona has viewer names that fit the chat_message limit", () => {
@@ -25,7 +57,13 @@ test("every persona has viewer names that fit the chat_message limit", () => {
 });
 
 test("every line is non-empty and within the text limit", () => {
-  for (const line of [...Object.values(EVENT_LINES).flat(), ...CHAT_LINES, ...FALLBACK_LINES]) {
+  const scripted = Object.values(SCRIPTED_LINES).flatMap((p) => Object.values(p).flat());
+  for (const line of [
+    ...Object.values(EVENT_LINES).flat(),
+    ...CHAT_LINES,
+    ...FALLBACK_LINES,
+    ...scripted,
+  ]) {
     assert.ok(line.trim().length > 0 && line.length <= MESSAGE_LIMITS.maxTextLength, line);
   }
 });

@@ -38,8 +38,9 @@ In the browser console, `witc.latency()` gives p50/p95 from the game's send to t
 (overall and by source), `witc.rows()` the raw rows and `witc.stats()` the current stats.
 The service prints its own p50/p95 when you stop it with Ctrl+C.
 
-For the scripted baseline, run `npm run service -- --condition scripted` instead: same
-game, scripted lines, no model calls.
+For the scripted baseline, press **F2** in the game and pick **Scripted chat** (or start
+with `npm run service -- --condition scripted`, or open the game with
+`?condition=scripted`): same game, same persona labels, scripted lines, no model calls.
 
 ## Shot list for the clip
 

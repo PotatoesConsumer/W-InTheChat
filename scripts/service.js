@@ -5,13 +5,15 @@
  *   npm run service -- --condition scripted --port 8787 --streamer Pu
  *
  * Warms the model first (a cold load can take longer than a reply timeout), then serves
- * POST /events and GET /stream on localhost. Ctrl+C prints p50/p95 latency and exits.
+ * POST /events and GET /stream on localhost. The game can switch the condition while it
+ * runs (POST /condition); switching to ai loads the model first. Ctrl+C prints p50/p95
+ * latency for the current condition and exits.
  */
 
 import { parseArgs } from "node:util";
 import { OllamaClient } from "../src/ai/ollamaClient.js";
 import { createService, SERVICE_DEFAULTS } from "../src/service/server.js";
-import { warmUp, formatStats } from "./lib/serviceTools.js";
+import { warmUp, loadModel, formatStats } from "./lib/serviceTools.js";
 
 const { values } = parseArgs({
   options: {
@@ -32,6 +34,10 @@ if (values.condition === "ai") await warmUp(client);
 
 const service = createService({
   port: Number(values.port),
+  prepare: (condition) => (condition === "ai" ? loadModel(client) : undefined),
+  onCondition: (condition, previousStats) => {
+    console.log(`\n${formatStats(previousStats)}\nSwitched to the ${condition} condition.`);
+  },
   log: (msg, err) => console.error(`! ${msg}:`, err?.message ?? err),
   deps: {
     condition: values.condition,
@@ -48,7 +54,9 @@ const service = createService({
 });
 
 const { url } = await service.start();
-console.log(`Chat service (${values.condition}) on ${url}  POST /events  GET /stream  GET /stats`);
+console.log(
+  `Chat service (${service.condition()}) on ${url}  POST /events  GET /stream  GET /stats  GET|POST /condition`,
+);
 
 process.on("SIGINT", async () => {
   console.log(`\n${formatStats(service.stats())}`);
