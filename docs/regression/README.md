@@ -50,4 +50,4 @@ Only numbers from the RTX 4050 laptop count as the project's latency (proposal: 
 
 | Date | Commit | Result | Notes |
 |------|--------|--------|-------|
-| [2026-10-29](2026-10-29.md) | after #17 | ✅ no regressions | W08 pass. Known gap: unsafe output (no filter yet). Findings in `docs/demo-m2.md`. |
+| [2026-10-29](2026-10-29.md) | `0bd20f5` (after #17) | ✅ no regressions | W08 pass, with the real model (RTX 4060). Known gap: unsafe output (no filter yet). Findings in `docs/demo-m2.md`. |

@@ -93,6 +93,7 @@ apart, coalesced as intended.
 | 2 | **The scripted condition only speaks as the Fan.** On the evaluation set: 14 of 14 scripted lines are Fan, while the AI condition mixes Fan, Backseat and Lurker. The proposal says both conditions use "the same ... persona labels", so persona identification in the study would be one-sided. The pipeline already lists persona lines for the scripted baseline as W07 work. | Sittipon | Scripted lines per persona, chosen with the same selector, so both conditions show the same labels for the same events |
 | 3 | **Template lines (minor events) are all Fan**, in both conditions (20 of 20 on the evaluation set). Fine if intended; worth deciding before the study, since raters see persona labels. | Sittipon | Decide, and note it in `docs/personas.md` |
 | 4 | **Switching condition means restarting the service.** Fine for a demo; the study needs a switch the facilitator can use between conditions. | Shapphanyu | The game's switch (W07) |
+| 5 | **Reply quality, from the real-model run** (`docs/regression/2026-10-29.md`, samples): the Fan invented a score after a win ("15-14 now!" when the event said 14), and the Lurker answered a 5-kill streak with just "hi". Not check failures; things raters would mark down. | Sittipon | Add both to the known weaknesses in `docs/personas.md` for the prompt pass (W10) |
 
 Known and expected: the Hater never appears and unsafe output isn't filtered yet (W07
 filter).
