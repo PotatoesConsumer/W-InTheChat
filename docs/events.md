@@ -71,20 +71,22 @@ it, so the same event always routes the same way in both the AI and scripted con
 
 `phrase` completes "&lt;streamer&gt; just ___" and is used by prompts and templates.
 
-> **Draft.** The mini-game isn't chosen yet. These entries are placeholders based on the pitch
-> deck's loop ("scores a kill, takes damage, finds loot"). Replace them once the game is fixed.
+The mini-game is a top-down wave shooter (`src/game/shooter/game.js`). The names are kept
+from the first draft, so the evaluation set and harness scenarios still apply; the phrases
+describe the shooter. A cleared wave sends exactly one major event: `close_call` on low HP,
+else `new_best` the first time a run passes the best wave of earlier runs, else `win`.
 
 | Name | Importance | Phrase |
 |------|-----------|--------|
-| `round_start` | minor | started a new round |
+| `round_start` | minor | started a new wave |
 | `kill` | minor | took out an enemy |
 | `damage_taken` | minor | took a hit |
-| `item_pickup` | minor | picked up an item |
-| `win` | major | won the round |
-| `loss` | major | lost the round |
-| `streak` | major | went on a streak |
-| `close_call` | major | barely survived |
-| `new_best` | major | beat their personal best |
+| `item_pickup` | minor | bought an upgrade in the shop |
+| `win` | major | cleared a wave |
+| `loss` | major | died and lost the run |
+| `streak` | major | went on a kill streak without getting hit |
+| `close_call` | major | barely survived a wave on low health |
+| `new_best` | major | reached their furthest wave yet |
 
 To add an event: add an entry to `GAME_EVENTS`, add a row here and run `npm test`.
 
@@ -110,7 +112,7 @@ toContext(createGameEvent("win", { score: 12 }))
 // {
 //   eventId: "…", ts: 1727760000000, kind: "game",
 //   name: "win", importance: "major",
-//   facts: { event: "won the round", details: { score: 12 } }
+//   facts: { event: "cleared a wave", details: { wave: 3, hp: 4, maxHp: 5 } }
 // }
 
 toContext(createChatEvent("is this boss hard?"))

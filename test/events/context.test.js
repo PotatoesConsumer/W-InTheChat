@@ -14,7 +14,7 @@ test("game event -> payload with catalog phrase, importance and details", () => 
     kind: "game",
     name: "win",
     importance: "major",
-    facts: { event: "won the round", details: { score: 12 } },
+    facts: { event: "cleared a wave", details: { score: 12 } },
   });
   assert.ok(Object.isFrozen(ctx));
   assert.ok(Object.isFrozen(ctx.facts));
@@ -44,7 +44,7 @@ test("facts.event plugs straight into the existing Fan prompt", () => {
   const ctx = toContext(createGameEvent("close_call", {}, FIXED));
   assert.equal(
     buildFanPrompt({ event: ctx.facts.event }),
-    "Event: the streamer just barely survived.\nWrite the chat message.",
+    "Event: the streamer just barely survived a wave on low health.\nWrite the chat message.",
   );
 });
 

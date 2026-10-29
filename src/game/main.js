@@ -13,15 +13,19 @@
  * condition before the round starts. F2 opens the study panel, which reloads the page
  * with the other condition. Without the parameter the service's own condition is used.
  *
- * The scene is a placeholder until the mini-game is chosen: a box you move with
- * WASD/arrows, Space for a kill, and keys 1-5 for the major events (dev only).
+ * The mini-game is a top-down wave shooter (src/game/shooter/): WASD to move, arrow keys
+ * or the mouse to shoot, a shop between waves (1-6 or click to buy, C to cash out
+ * donations into coins, Space for the next wave). It emits the catalog events itself.
  */
 
 import { createGameLoop } from "./loop.js";
-import { createInput, DEFAULT_BINDINGS } from "./input.js";
+import { createInput } from "./input.js";
 import { stats } from "./stats.js";
 import { createStreamer } from "./streamer.js";
 import { createReplyLatency } from "./replyLatency.js";
+import { createShooter } from "./shooter/game.js";
+import { drawShooter, shopHit, HUD_HEIGHT } from "./shooter/view.js";
+import { SHOP_ITEMS } from "./shooter/shop.js";
 import { createEventBus } from "../events/bus.js";
 import { createGameEvent, createChatEvent } from "../events/schema.js";
 import { connectToService, DEFAULT_SERVICE_URL } from "../service/client.js";
@@ -31,17 +35,28 @@ import { createStudyPanel, conditionFromUrl } from "../ui/studyPanel.js";
 
 /** Logical scene size. The canvas is scaled to fit, keeping 16:9. */
 const WORLD = { width: 960, height: 540 };
-const PLAYER_SIZE = 40;
-const PLAYER_SPEED = 320; // px per second
 const FACECAM = { width: 200, height: 150, margin: 16 };
+const ARENA = { x: 0, y: HUD_HEIGHT, width: WORLD.width, height: WORLD.height - HUD_HEIGHT };
+/** The facecam sits on the arena's corner, so it's solid: nothing walks under it. */
+const FACECAM_BLOCK = {
+  x: WORLD.width - FACECAM.width - FACECAM.margin,
+  y: WORLD.height - FACECAM.height - FACECAM.margin,
+  width: FACECAM.width + FACECAM.margin,
+  height: FACECAM.height + FACECAM.margin,
+};
 
-/** Dev keys for the major events, until the mini-game emits them itself. */
-const DEV_EVENT_KEYS = Object.freeze({
-  Digit1: "win",
-  Digit2: "loss",
-  Digit3: "close_call",
-  Digit4: "streak",
-  Digit5: "new_best",
+const BINDINGS = Object.freeze({
+  KeyW: "up",
+  KeyA: "left",
+  KeyS: "down",
+  KeyD: "right",
+  ArrowUp: "shootUp",
+  ArrowLeft: "shootLeft",
+  ArrowDown: "shootDown",
+  ArrowRight: "shootRight",
+  Space: "action",
+  KeyC: "cashOut",
+  ...Object.fromEntries(SHOP_ITEMS.map((_, i) => [`Digit${i + 1}`, `buy${i + 1}`])),
 });
 
 const canvas = document.getElementById("game");
@@ -121,18 +136,16 @@ async function syncCondition() {
   return false;
 }
 
-let roundStarted = false;
+// The run can start once chat can see it in the right condition, so the first replies
+// aren't sent to nobody or answered by the wrong condition. Without a service it can
+// start anyway (no chat).
+let chatReady = false;
+let serviceStatus = "connecting";
 
 async function showStatus(status) {
-  // Start the round once chat can see it, in the right condition, so its reply
-  // isn't sent to nobody or answered by the wrong condition.
-  if (status === "connected") {
-    const ready = await syncCondition();
-    if (ready && !roundStarted) {
-      roundStarted = true;
-      bus.publish(createGameEvent("round_start"));
-    }
-  }
+  serviceStatus = status;
+  if (status === "connected") chatReady = await syncCondition();
+  else chatReady = false;
   const text = { connected: "chat live", reconnecting: "chat offline", closed: "chat off" };
   statusEl.textContent = text[status] ?? status;
   statusEl.dataset.status = status;
@@ -154,40 +167,59 @@ window.witc = {
   latency: () => latency.summary(),
   rows: () => latency.rows(),
   stats: () => streamStats,
+  game: () => game.state,
 };
 
-const input = createInput(window, {
-  ...DEFAULT_BINDINGS,
-  ...Object.fromEntries(Object.keys(DEV_EVENT_KEYS).map((code) => [code, code])),
-});
+// The mini-game. Its events go on the bus like any other: stats, facecam and chat react.
+const game = createShooter({ arena: ARENA, obstacles: [FACECAM_BLOCK] });
+const input = createInput(window, BINDINGS);
+const mouse = { pointer: null, down: false };
+let clock = 0;
 
-const player = {
-  x: (WORLD.width - PLAYER_SIZE) / 2,
-  y: (WORLD.height - PLAYER_SIZE) / 2,
-  prevX: 0,
-  prevY: 0,
-};
-let flash = 0; // ms left of the "action" highlight
+function publishGameEvents() {
+  for (const { name, data } of game.takeEvents()) bus.publish(createGameEvent(name, data));
+}
+
+const canStart = () => chatReady || serviceStatus === "reconnecting" || serviceStatus === "closed";
+
+function startHint() {
+  if (chatReady) return "Press Space to go live";
+  if (serviceStatus === "connected" || serviceStatus === "connecting") return "Connecting to chat…";
+  return "Chat is offline (npm run service). Space to play without it";
+}
+
+function shopAction(action) {
+  if (action.kind === "item") game.buy(action.id);
+  else if (action.kind === "cashOut") game.cashOut(streamStats.donations);
+  else if (action.kind === "next") game.nextWave();
+}
 
 function update(dt) {
-  player.prevX = player.x;
-  player.prevY = player.y;
+  clock += dt;
+  const { phase, player } = game.state;
 
-  const dx = (input.isDown("right") ? 1 : 0) - (input.isDown("left") ? 1 : 0);
-  const dy = (input.isDown("down") ? 1 : 0) - (input.isDown("up") ? 1 : 0);
-  const len = Math.hypot(dx, dy) || 1; // diagonal isn't faster
-  const dist = (PLAYER_SPEED * dt) / 1000;
-  player.x = clamp(player.x + (dx / len) * dist, 0, WORLD.width - PLAYER_SIZE);
-  player.y = clamp(player.y + (dy / len) * dist, 0, WORLD.height - PLAYER_SIZE);
+  if ((phase === "ready" || phase === "over") && input.wasPressed("action") && canStart()) {
+    game.start();
+  } else if (phase === "shop") {
+    if (input.wasPressed("action")) shopAction({ kind: "next" });
+    if (input.wasPressed("cashOut")) shopAction({ kind: "cashOut" });
+    SHOP_ITEMS.forEach((item, i) => {
+      if (input.wasPressed(`buy${i + 1}`)) shopAction({ kind: "item", id: item.id });
+    });
+  }
 
-  if (input.wasPressed("action")) {
-    flash = 200;
-    bus.publish(createGameEvent("kill"));
+  // Arrow keys shoot in 8 directions; otherwise holding the mouse shoots at the cursor.
+  const axis = (minus, plus) => (input.isDown(plus) ? 1 : 0) - (input.isDown(minus) ? 1 : 0);
+  let aimX = axis("shootLeft", "shootRight");
+  let aimY = axis("shootUp", "shootDown");
+  let fire = aimX !== 0 || aimY !== 0;
+  if (!fire && mouse.pointer) {
+    aimX = mouse.pointer.x - player.x;
+    aimY = mouse.pointer.y - player.y;
+    fire = mouse.down;
   }
-  for (const [code, name] of Object.entries(DEV_EVENT_KEYS)) {
-    if (input.wasPressed(code)) bus.publish(createGameEvent(name));
-  }
-  flash = Math.max(0, flash - dt);
+  game.update(dt, { moveX: axis("left", "right"), moveY: axis("up", "down"), aimX, aimY, fire });
+  publishGameEvents();
   streamer.update(dt);
 
   input.endFrame();
@@ -197,23 +229,14 @@ function render(alpha) {
   const scale = canvas.width / WORLD.width;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  ctx.fillStyle = "#14121c";
-  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
-
-  ctx.strokeStyle = "#221f2e";
-  ctx.lineWidth = 1;
-  for (let x = 0; x <= WORLD.width; x += 40) line(x, 0, x, WORLD.height);
-  for (let y = 0; y <= WORLD.height; y += 40) line(0, y, WORLD.width, y);
-
-  const x = lerp(player.prevX, player.x, alpha);
-  const y = lerp(player.prevY, player.y, alpha);
-  ctx.fillStyle = flash > 0 ? "#ffd166" : "#ff7a59";
-  ctx.fillRect(x, y, PLAYER_SIZE, PLAYER_SIZE);
-
-  ctx.fillStyle = "#8a8599";
-  ctx.font = "16px system-ui, sans-serif";
-  ctx.fillText("Mini-game TBD · WASD / arrows to move · Space: kill", 16, 28);
-  ctx.fillText("Test events: 1 win · 2 loss · 3 close call · 4 streak · 5 new best", 16, 50);
+  drawShooter(ctx, game, {
+    arena: ARENA,
+    alpha,
+    donations: streamStats.donations,
+    pointer: mouse.pointer,
+    startHint: startHint(),
+    clock,
+  });
 
   streamer.draw(ctx, {
     x: WORLD.width - FACECAM.width - FACECAM.margin,
@@ -224,12 +247,42 @@ function render(alpha) {
   });
 }
 
-function line(x1, y1, x2, y2) {
-  ctx.beginPath();
-  ctx.moveTo(x1 + 0.5, y1 + 0.5);
-  ctx.lineTo(x2 + 0.5, y2 + 0.5);
-  ctx.stroke();
+/** Pointer position in world coordinates. */
+function toWorld(event) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) * WORLD.width) / rect.width,
+    y: ((event.clientY - rect.top) * WORLD.height) / rect.height,
+  };
 }
+
+canvas.addEventListener("pointermove", (event) => {
+  mouse.pointer = toWorld(event);
+});
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  // Clicking the game takes the keyboard back from the chat box.
+  if (document.activeElement?.tagName === "INPUT") document.activeElement.blur();
+  mouse.pointer = toWorld(event);
+  mouse.down = true;
+  canvas.setPointerCapture(event.pointerId);
+  const { phase } = game.state;
+  if (phase === "shop") {
+    const hit = shopHit(mouse.pointer.x, mouse.pointer.y);
+    if (hit) shopAction(hit);
+    publishGameEvents();
+  } else if ((phase === "ready" || phase === "over") && canStart()) {
+    game.start();
+    publishGameEvents();
+  }
+});
+for (const type of ["pointerup", "pointercancel"]) {
+  canvas.addEventListener(type, () => (mouse.down = false));
+}
+canvas.addEventListener("pointerleave", () => {
+  if (!mouse.down) mouse.pointer = null;
+});
+window.addEventListener("blur", () => (mouse.down = false));
 
 /** Match the canvas's pixel size to its CSS size, so it stays sharp on HiDPI screens. */
 function resizeCanvas() {
@@ -259,14 +312,4 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-player.prevX = player.x;
-player.prevY = player.y;
 createGameLoop({ update, render }).start();
-
-function clamp(v, min, max) {
-  return Math.min(Math.max(v, min), max);
-}
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}

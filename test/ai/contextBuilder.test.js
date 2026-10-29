@@ -22,7 +22,7 @@ test("game details are listed in plain words", () => {
   );
   assert.equal(
     buildPrompt(ctx, { streamerName: "Pu" }).prompt,
-    "Event: Pu just won the round.\n" +
+    "Event: Pu just cleared a wave.\n" +
       "Details: score 12, enemy type boss, time left 3, solo yes.\n" +
       "Write the chat message.",
   );

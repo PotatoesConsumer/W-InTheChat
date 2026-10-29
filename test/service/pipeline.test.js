@@ -99,7 +99,7 @@ test("streamPartials: a streamed AI reply has one id, growing text, done last", 
   await handle.idle();
 
   assert.equal(calls.length, 1);
-  assert.ok(calls[0].prompt.includes("just won the round"));
+  assert.ok(calls[0].prompt.includes("just cleared a wave"));
   assert.ok(calls[0].system.includes("excited fan"));
   assert.ok(messages.length >= 2, "expected partial updates before the final one");
   assert.equal(new Set(messages.map((m) => m.id)).size, 1);
@@ -336,10 +336,10 @@ test("model replies run one at a time, in arrival order", async () => {
 
   assert.equal(peak, 1);
   assert.deepEqual(order, [
-    "won the round",
-    "went on a streak",
-    "barely survived",
-    "beat their personal best",
+    "cleared a wave",
+    "went on a kill streak without getting hit",
+    "barely survived a wave on low health",
+    "reached their furthest wave yet",
   ]);
   assert.deepEqual(
     finals(messages).map((m) => m.source),

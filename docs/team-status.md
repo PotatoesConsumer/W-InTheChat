@@ -24,8 +24,10 @@ something here no longer matches the code, trust the code and say so.
   Fan, with voice and safety rules in `docs/personas.md` and a trial,
   `npm run ai:personas`. Since #17 the selector picks Fan, Backseat Gamer or Lurker per
   event; the Hater waits for the safety filter (W07).
-- **The mini-game hasn't been chosen.** The event catalog (`GAME_EVENTS` in
-  `src/events/schema.js`) is still a placeholder until it is.
+- **The mini-game is a top-down wave shooter** (W08, `feature/wave-shooter`, Shapphanyu's
+  pick): waves that get harder, a shop between waves, donations cashed into coins. It
+  sends the catalog events itself; the names are unchanged, only the phrases now
+  describe the shooter (`docs/events.md`).
 
 ## Week by week
 
@@ -55,7 +57,7 @@ switch running on the same events.
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
 | W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
 | W07 | ⬜ Output safety filter (fallbacks already done in #11) | 🟡 Scripted baseline switch: study panel (F2) and `?condition=`, `POST /condition`, scripted lines per persona (`feature/baseline-switch`, in a PR) | ✅ Edge-case checks and safety test set (#10) |
-| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ⬜ Month-2 demo prep, full regression pass |
+| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | 🟡 Wave shooter wired to AI reactions and the 3 stats (`feature/wave-shooter`, in a PR) | ⬜ Month-2 demo prep, full regression pass |
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
@@ -98,8 +100,23 @@ Don't change these without talking to the team first. The reasons are in the lin
      updates still work.
    - `src/game/main.js`: events go to the stats and to the service; keys 1–5 are dev
      shortcuts for the major events.
-2. **The mini-game.** When it's chosen, emit its events from the game instead of keys
-   1–5, and replace the placeholder box scene. The facecam can stay.
+2. **The mini-game (W08), in a PR from `feature/wave-shooter`** (built on
+   `feature/baseline-switch`, so merge that first): a top-down wave shooter in
+   `src/game/shooter/`. Keys 1–5 and the box scene are gone.
+   - Each wave has more enemies, spawning faster, with more HP and speed; bats from
+     wave 3, brutes from wave 5 (`waves.js`).
+   - The shop between waves (`shop.js`): six items for coins. Enemies drop coins, and
+     donations cash out at $5 per coin, each dollar only once.
+   - Events (`game.js`): a cleared wave is `close_call` on low HP (40% of max or less),
+     else `new_best` when a run first passes an earlier run's best wave, else `win`;
+     `streak` every 10 kills without a hit; `loss` on death; `item_pickup` for a
+     purchase; `round_start` per wave.
+   - **Everyone: the catalog phrases changed** to describe waves (`src/events/schema.js`),
+     so prompts now say "cleared a wave" instead of "won the round". Sittipon: the
+     persona trial's `lossAsWin` check now keys on the event name. Prin: the
+     evaluation set is still a draft; its `data` (score, round) could use the
+     shooter's fields (wave, hp, maxHp) before it's frozen.
+   - `STAT_RULES` are untouched; tune them after playing (every kill adds 4 hype).
 3. **Scripted baseline switch (W07), in a PR from `feature/baseline-switch`:**
    - The game: **F2** opens a study panel (hidden from participants) with AI chat /
      Scripted chat. Picking one reloads with `?condition=...`, so stats and chat start
@@ -145,6 +162,6 @@ and known issues). Add anything else you find there.
 
 | What | Waiting on |
 |------|------------|
-| Choosing the mini-game (fixes the event catalog and the game scene) | the whole team |
+| A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
 | Whether `tawan` can be deleted (fully merged) | Shapphanyu |
 | Recording the Month-1 demo clip | Prin (or anyone) |

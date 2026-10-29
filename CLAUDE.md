@@ -85,8 +85,12 @@ any of that, update the file in the same PR.
 - `src/game/`: browser game (`index.html` loads `main.js`)
   - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
     facecam react) and to the chat service through `connectToService`; replies come back
-    over SSE into the overlay. `?service=<url>` changes the service URL. Keys 1-5 send the
-    major events until the mini-game emits them.
+    over SSE into the overlay. `?service=<url>` changes the service URL. Maps keys and
+    the mouse to the shooter's controls.
+  - `shooter/`: the mini-game (W08), a top-down wave shooter. `game.js` is the state
+    and rules with no DOM (tested; seeded random) and says which catalog event fires
+    when; `waves.js` makes each wave harder; `shop.js` items, prices and cashing
+    donations into coins; `view.js` draws it and the shop's click layout.
   - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
   - `input.js`: keyboard -> actions; ignores keys typed into the chat box
   - `stats.js`: followers / donations / hype as a pure reducer (`stats.initial/reduce`),
