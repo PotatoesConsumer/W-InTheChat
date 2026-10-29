@@ -1,8 +1,7 @@
 # Team status and handoff
 
-Last updated 2026-10-12, for the Month-1 demo branch (`feature/m1-demo`): the game is
-connected to the service, with stats, HUD and facecam. #11 (chat pipeline and service) and
-#12 (game loop and chat overlay) are merged.
+Last updated 2026-10-29, after #13 (team status), #14 (Month-1 demo), #15 (persona
+prompts) and #17 (persona selector, coalescing, rate limit) merged. Merged feature branches are deleted; only `master` and `tawan` remain.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -16,13 +15,61 @@ something here no longer matches the code, trust the code and say so.
   replies out over SSE, using `qwen2.5:3b`. End to end without the browser (`npm run e2e`),
   model replies reach the client in 211 / 430 ms at p50 / p95 on the RTX 4050.
 - The game loop, input and chat overlay are merged (#12, Shapphanyu's work from `tawan`).
-- **The game talks to the service** (`feature/m1-demo`): `npm run service` + `npm run dev`
+- **The game talks to the service** (#14): `npm run service` + `npm run dev`
   is the Month-1 demo. Whole replies are typed in; the top bar has followers, donations,
   the hype meter and the reply p50/p95; a facecam avatar reacts to events. Keys 1–5 send
   the major events. `devChatFeed.js` is gone. Run guide, clip shot list and bug bash:
   `docs/demo-m1.md`.
+- **All four personas have prompts** (#15): Hater, Backseat Gamer and Lurker join the
+  Fan, with voice and safety rules in `docs/personas.md` and a trial,
+  `npm run ai:personas`. Since #17 the selector picks Fan, Backseat Gamer or Lurker per
+  event; the Hater waits for the safety filter (W07).
 - **The mini-game hasn't been chosen.** The event catalog (`GAME_EVENTS` in
   `src/events/schema.js`) is still a placeholder until it is.
+
+## Week by week
+
+The plan is 12 weeks in three segments of four, with one task per person each week. It's
+the "W-InTheChat Rundown" (https://claude.ai/artifact/CAzFSbKuLLS5tV6Y2on9sK, ask Sittipon
+for access); the state below is checked against the code and PRs, not just the Rundown's
+ticks. Lanes are a suggested split, so swap tasks if that suits you better.
+
+✅ done · 🟡 started or in a PR · ⬜ not started
+
+**SEG 01, Core Engine (W01–W04).** Milestone M1: the Fan reacts live to gameplay, with
+p50/p95 measured on the RTX 4050.
+
+| Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
+|------|-------------------------|------------------------------|------------------------|
+| W01 | ✅ Ollama client wrapper (#1, #2) | ✅ Canvas loop and input (#12) | ✅ Repo scaffold, lint/format, CI, branch rules (#5) |
+| W02 | ✅ Context builder (#9) | ✅ Streamer avatar, followers / donations / hype model (#14) | ✅ Event schema and bus contract (#3, #4) |
+| W03 | ✅ Fan persona prompt and parser (first commit) | ✅ Chat overlay (#12) | ✅ Mock-event harness (#6) |
+| W04 | ✅ Pipeline end to end, p50/p95 logged (#11, #14) | ✅ Hype meter, follower and donation counters (#14) | 🟡 Bug bash done (#14); the Month-1 demo clip isn't recorded yet |
+
+**SEG 02, Four Personas & Baseline (W05–W08).** Milestone M2: four personas live behind
+the safety filter, the mini-game playable start to finish, and the scripted baseline
+switch running on the same events.
+
+| Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
+|------|-------------------------|------------------------------|------------------------|
+| W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
+| W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
+| W07 | ⬜ Output safety filter (fallbacks already done in #11) | 🟡 Scripted baseline switch: the service has `--condition scripted` (#11), the game has no switch yet | ✅ Edge-case checks and safety test set (#10) |
+| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ⬜ Month-2 demo prep, full regression pass |
+
+**SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
+scripted chat compared with real participants, p50/p95 reported, report ready to defend.
+Nothing here has started.
+
+| Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
+|------|-------------------------|------------------------------|------------------------|
+| W09 | ⬜ Full pipeline benchmark: first text and completion p50/p95, peak GPU memory | ⬜ Overlay and stats polish, per-persona styling | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
+| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | ⬜ Fixes from the pilot; sound and reaction effects | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
+| W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
+
+So far: 18 done, 2 started, 16 not started. The 3 TODO tests left in `npm test` are all
+Sittipon's W07 safety filter.
 
 ## Decisions already made
 
@@ -38,9 +85,10 @@ Don't change these without talking to the team first. The reasons are in the lin
 
 ## Shapphanyu (frontend / game): what's next
 
-1. **Your W01–W04 is done** (#12, plus `feature/m1-demo`, which Sittipon wrote with the
-   team's OK; please review it, it's your area). Start new work from `master` on a
-   `feature/...` branch; `tawan` is no longer needed. What's in it:
+1. **Your W01–W04 is done** (#12, plus #14, which Sittipon wrote with the team's OK; it's
+   your area, so read through it). Start new work from `master` on a `feature/...`
+   branch. `tawan` is fully merged into `master` but still on GitHub; say if it can be
+   deleted. What's in #14:
    - `src/game/stats.js`: followers / donations / hype as a pure reducer, registered in
      `statsModels`, so `stats-valid` and `same-stats` run. The numbers are a first pass;
      tune `STAT_RULES` once the mini-game is chosen.
@@ -80,8 +128,8 @@ and known issues). Add anything else you find there.
 
 | Task | What's left |
 |------|-------------|
-| W05 | Done on `feature/personas`: Hater, Backseat Gamer and Lurker prompts, registered; rules, trials and known weaknesses in `docs/personas.md` |
-| W06 | Done on `feature/persona-selector`: persona selector (no Hater before W07), coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. `burst` passes and is out of `pending` |
+| W05 | Done (#15). Known weaknesses for a later prompt pass are in `docs/personas.md`; the Backseat Gamer's advice can name real actions once the mini-game is chosen |
+| W06 | Done (#17): persona selector (no Hater before W07), coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. `burst` passes and is out of `pending` |
 | W07 | The output safety filter in `src/service/replyCheck.js`. It must block all 13 `block` cases and allow all 16 `allow` cases in `eval/safety-cases-v1.json`. Register it in `filters`, then remove `unsafe` from `pending`. Needed before the Hater goes live. |
 | W08 | Laptop pilot: set `replyTimeoutMs`, `maxTokens`, event rate and message caps from measured p50/p95 and peak GPU memory |
 
@@ -90,5 +138,5 @@ and known issues). Add anything else you find there.
 | What | Waiting on |
 |------|------------|
 | Choosing the mini-game (fixes the event catalog and the game scene) | the whole team |
-| Reviewing `feature/m1-demo` (game ↔ service, stats, HUD, facecam) | Shapphanyu |
+| Whether `tawan` can be deleted (fully merged) | Shapphanyu |
 | Recording the Month-1 demo clip | Prin (or anyone) |
