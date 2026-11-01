@@ -2,8 +2,9 @@
 
 Last updated 2026-11-01, for `fix/chat-coalescing-and-safety-filter` (the W07 safety
 filter, the Hater live, and the player-chat coalescing fix from #18's findings). Before
-that: #13 (team status), #14 (Month-1 demo), #15 (persona prompts) and #17 (persona
-selector, coalescing, rate limit) merged. Merged feature branches are deleted; only `master` and `tawan` remain.
+that: #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
+selector, coalescing, rate limit) and #18 (W08 regression pass and Month-2 demo guide)
+merged. Merged feature branches are deleted; only `master` and `tawan` remain.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -58,7 +59,7 @@ switch running on the same events.
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
 | W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
 | W07 | ✅ Output safety filter, the Hater live (this branch); fallbacks (#11). Still open: persona lines for the scripted baseline | 🟡 Scripted baseline switch: the service has `--condition scripted` (#11), the game has no switch yet | ✅ Edge-case checks and safety test set (#10) |
-| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ⬜ Month-2 demo prep, full regression pass |
+| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
@@ -71,7 +72,7 @@ Nothing here has started.
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
 
-So far: 19 done, 2 started, 15 not started (counting this branch). `npm test` has no TODO
+So far: 20 done, 2 started, 14 not started (counting this branch). `npm test` has no TODO
 tests left.
 
 ## Decisions already made
@@ -127,6 +128,10 @@ Still open on your side: **record the Month-1 demo clip (W04).** The game is con
 now; `docs/demo-m1.md` has the run steps, a shot list and the first bug bash (fixed bugs
 and known issues). Add anything else you find there.
 
+**W08 is done (#18).** Run `npm run regression` (add `-- --model` with Ollama running)
+before every demo and after big merges; reports go in `docs/regression/`. Next up: W09
+study materials.
+
 ## Sittipon (backend / AI): what's next
 
 | Task | What's left |
@@ -144,3 +149,5 @@ and known issues). Add anything else you find there.
 | Choosing the mini-game (fixes the event catalog and the game scene) | the whole team |
 | Whether `tawan` can be deleted (fully merged) | Shapphanyu |
 | Recording the Month-1 demo clip | Prin (or anyone) |
+| W08 findings 1–3 and 5 (quick player messages dropped, scripted and template lines all Fan, reply quality) in `docs/demo-m2.md` | Sittipon |
+| W08 finding 4 (condition switch in the game) | Shapphanyu |

@@ -38,6 +38,10 @@ any of that, update the file in the same PR.
 - `npm run check`: lint + format check + tests, the same as CI. Run it before opening a PR.
 - `npm run harness -- <scenario>`: plays a scenario into the pipeline headless with a fake
   model (no game, no Ollama). `--list` shows scenarios. Guide: `docs/harness.md`.
+- `npm run regression [-- --model]`: full regression pass (static checks, every scenario ×
+  fake-model mode × condition through the registered pipeline, comparisons, optionally the
+  real model). Writes `docs/regression/<date>.md`, exits 1 on a regression. Run it before
+  demos. Guide: `docs/regression/README.md`.
 
 ## Model
 
@@ -108,6 +112,8 @@ any of that, update the file in the same PR.
   with normal/slow/error/garbage/unsafe modes), `stubPipeline.js` (deliberately naive
   stand-in until the real pipeline exists; never use it in the game), `checks.js`
   (deterministic checks over a run record; rules in `docs/pipeline-contract.md`),
+  `edgeCases.js` (the proposal's edge cases, shared by the contract suite and the
+  regression pass), `regression.js` (regression matrix, verdicts, report),
   `scenarios/*.json`.
   CLI in `scripts/harness.js`.
 - `eval/`: fixed evaluation event sets (scenario format), the output filter test set
