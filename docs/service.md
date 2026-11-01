@@ -174,14 +174,15 @@ regexes miss what's said indirectly, so keep reviewing the logged replies.
 
 ### Limits
 
-Provisional, in `PIPELINE_DEFAULTS`; the laptop pilot (W08) sets the real values.
+In `PIPELINE_DEFAULTS`. The timeouts and `maxTokens` were set from the W08 laptop pilot
+(`npm run pilot`, results and reasons in [`docs/pilot-w08.md`](pilot-w08.md)).
 
 | Limit | Value |
 |-------|-------|
-| `replyTimeoutMs` (from event arrival, queue time included) | 5000 |
+| `replyTimeoutMs` (from event arrival, queue time included) | 3000 (slowest pilot reply: 933 ms) |
 | `maxGenerationsInFlight` | 1 |
-| `minGenerationMs` | 500 |
-| `maxTokens` (Ollama `num_predict`) | 48 |
+| `minGenerationMs` | 800 (pilot model call p95: 781 ms) |
+| `maxTokens` (Ollama `num_predict`) | 32 (longest pilot reply: 25 tokens) |
 | `streamPartials` | false |
 | `minStreamChars` (only with `streamPartials`) | 12 |
 | `historySize` | 0 (off) |

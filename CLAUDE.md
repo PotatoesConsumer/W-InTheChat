@@ -38,6 +38,9 @@ any of that, update the file in the same PR.
 - `npm run check`: lint + format check + tests, the same as CI. Run it before opening a PR.
 - `npm run harness -- <scenario>`: plays a scenario into the pipeline headless with a fake
   model (no game, no Ollama). `--list` shows scenarios. Guide: `docs/harness.md`.
+- `npm run pilot`: the W08 laptop pilot: a bot plays the wave shooter into the pipeline
+  with the real model at real time; latency, reply length, chat rate, GPU memory, checks
+  and rejected replies. Results and the limits set from them: `docs/pilot-w08.md`.
 - `npm run regression [-- --model]`: full regression pass (static checks, every scenario ×
   fake-model mode × condition through the registered pipeline, comparisons, optionally the
   real model). Writes `docs/regression/<date>.md`, exits 1 on a regression. Run it before
@@ -129,7 +132,8 @@ any of that, update the file in the same PR.
   stand-in until the real pipeline exists; never use it in the game), `checks.js`
   (deterministic checks over a run record; rules in `docs/pipeline-contract.md`),
   `edgeCases.js` (the proposal's edge cases, shared by the contract suite and the
-  regression pass), `regression.js` (regression matrix, verdicts, report),
+  regression pass), `shooterBot.js` (plays the wave shooter headless and records its
+  events as a scenario, for the pilot), `regression.js` (regression matrix, verdicts, report),
   `scenarios/*.json`.
   CLI in `scripts/harness.js`.
 - `eval/`: fixed evaluation event sets (scenario format), the output filter test set

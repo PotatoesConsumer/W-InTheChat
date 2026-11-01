@@ -74,8 +74,10 @@ means the text must not be shown, and the pipeline sends a `fallback` instead.
 
 ## Limits
 
-`QA_LIMITS` in `checks.js` are **provisional** until the laptop pilot (Sittipon's W08) sets
-the real numbers:
+`QA_LIMITS` in `checks.js` are **provisional**. The laptop pilot (W08,
+[`docs/pilot-w08.md`](pilot-w08.md)) measured the slowest reply at 933 ms and at most 3 new
+messages in a second, and set the pipeline's own `replyTimeoutMs` to 3000 ms; these check
+limits are Prin's to tighten:
 
 | Limit | Provisional value | Used by |
 |-------|-------------------|---------|
