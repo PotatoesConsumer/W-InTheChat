@@ -13,6 +13,7 @@
 
 import startPipeline from "../../src/service/pipeline.js";
 import { stats } from "../../src/game/stats.js";
+import { checkSafety } from "../../src/service/safetyFilter.js";
 
 /**
  * @type {{name: string, start: Function, pending?: Record<string, string>}[]}
@@ -22,9 +23,6 @@ export const pipelines = [
   {
     name: "service pipeline",
     start: startPipeline,
-    pending: {
-      unsafe: "needs the output safety filter (W07)",
-    },
   },
 ];
 
@@ -38,4 +36,4 @@ export const statsModels = [{ name: "stream stats", ...stats }];
  * @type {{name: string, check: (text: string) => {ok: boolean, reason?: string} | Promise<{ok: boolean, reason?: string}>}[]}
  * Sittipon: output filter (W07). `ok: false` means the text must not be shown.
  */
-export const filters = [];
+export const filters = [{ name: "output safety filter", check: checkSafety }];

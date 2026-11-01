@@ -1,15 +1,14 @@
 /**
  * replyCheck.js
  *
- * Checks a parsed model reply before it reaches the chat. v1 catches malformed output:
- * empty, too long, the model talking as an AI, or structured data instead of a chat
- * line. Anything rejected is replaced by a safe fallback line (docs/service.md).
- *
- * NOT a safety filter yet. Blocking abusive or unsafe text (Hater safety rules, the
- * safety test set) is W07 and goes here, as another reason in checkReply.
+ * Checks a parsed model reply before it reaches the chat: empty, too long, the model
+ * talking as an AI, structured data instead of a chat line, and unsafe text (the output
+ * safety filter, safetyFilter.js). Anything rejected is replaced by a safe fallback line
+ * (docs/service.md).
  */
 
 import { MESSAGE_LIMITS } from "../events/chatMessage.js";
+import { checkSafety } from "./safetyFilter.js";
 
 const AI_DISCLOSURE =
   /\b(as an ai|i am an ai|i'm an ai|ai (language )?model|language model|i cannot|i can't (help|assist|watch|see))\b/i;
@@ -17,7 +16,9 @@ const STRUCTURED = /^[{[<]/;
 
 /**
  * @param {string} text - A parsed reply (persona parser already applied).
- * @returns {{ok: true, text: string} | {ok: false, reason: "empty" | "too_long" | "ai_disclosure" | "structured"}}
+ * @returns {{ok: true, text: string}
+ *   | {ok: false, reason: "empty" | "too_long" | "ai_disclosure" | "structured"}
+ *   | {ok: false, reason: "unsafe", category: string}}
  */
 export function checkReply(text) {
   const t = typeof text === "string" ? text.trim() : "";
@@ -25,6 +26,8 @@ export function checkReply(text) {
   if (t.length > MESSAGE_LIMITS.maxTextLength) return { ok: false, reason: "too_long" };
   if (AI_DISCLOSURE.test(t)) return { ok: false, reason: "ai_disclosure" };
   if (STRUCTURED.test(t)) return { ok: false, reason: "structured" };
+  const safety = checkSafety(t);
+  if (!safety.ok) return { ok: false, reason: "unsafe", category: safety.reason };
   return { ok: true, text: t };
 }
 

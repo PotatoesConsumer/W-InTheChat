@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createCoalescer } from "../../src/service/coalesce.js";
+import { createCoalescer, coalesceKey } from "../../src/service/coalesce.js";
+import { createChatEvent, createGameEvent } from "../../src/events/schema.js";
+import { toContext } from "../../src/events/context.js";
 
 const opts = { windowMs: 2_000, every: 5, maxPerRun: 3 };
 const admitted = (c, key, times) => times.filter((ts) => c.admit(key, ts));
@@ -24,6 +26,13 @@ test("different keys are separate runs", () => {
   const c = createCoalescer(opts);
   assert.equal(c.admit("game:kill", 0), true);
   assert.equal(c.admit("game:win", 10), true);
-  assert.equal(c.admit("chat", 20), true);
+  assert.equal(c.admit("chat:hi", 20), true);
   assert.equal(c.admit("game:kill", 30), false);
+});
+
+test("player messages are the same event only when the text is the same", () => {
+  const key = (text) => coalesceKey(toContext(createChatEvent(text)));
+  assert.equal(key("GG  chat"), key("gg chat"));
+  assert.notEqual(key("ok chat"), key("should I go left?"));
+  assert.notEqual(key("win"), coalesceKey(toContext(createGameEvent("win"))));
 });
