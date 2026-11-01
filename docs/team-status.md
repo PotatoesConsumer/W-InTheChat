@@ -1,11 +1,11 @@
 # Team status and handoff
 
-Last updated 2026-11-01, for `feature/w09-benchmark` (Sittipon's W09 full pipeline
-benchmark in Chrome, `docs/benchmark-w09.md`). Before that: #13 (team status), #14
-(Month-1 demo), #15 (persona prompts), #17 (persona selector, coalescing, rate limit),
-#18 (W08 regression pass and Month-2 demo guide), #19 (safety filter, the Hater live,
-player-chat coalescing fix), #20 (scripted baseline switch), #21/#22 (wave shooter, game
-hub, coin store) and #23 (W08 laptop pilot, limits) merged.
+Last updated 2026-11-01, after #24 (Sittipon's W09 full pipeline benchmark in Chrome,
+`docs/benchmark-w09.md`) merged. Before that: #13 (team status), #14 (Month-1 demo), #15
+(persona prompts), #17 (persona selector, coalescing, rate limit), #18 (W08 regression
+pass and Month-2 demo guide), #19 (safety filter, the Hater live, player-chat coalescing
+fix), #20 (scripted baseline switch), #21/#22 (wave shooter, game hub, coin store) and
+#23 (W08 laptop pilot, limits) merged.
 Merged branches are deleted, `tawan` included; only `master` remains.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
@@ -69,11 +69,11 @@ switch running on the same events.
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
-Nothing here has started.
+Sittipon's W09 benchmark is done (#24); the rest hasn't started.
 
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
-| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (`docs/benchmark-w09.md`, this branch) | ⬜ Overlay and stats polish, per-persona styling | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
+| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ⬜ Overlay and stats polish, per-persona styling | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
 | W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | ⬜ Fixes from the pilot; sound and reaction effects | ⬜ Participant sessions, about 15–20 people, both conditions |
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
@@ -98,8 +98,7 @@ Don't change these without talking to the team first. The reasons are in the lin
 
 1. **Your W01–W04 is done** (#12, plus #14, which Sittipon wrote with the team's OK; it's
    your area, so read through it). Start new work from `master` on a `feature/...`
-   branch. `tawan` is fully merged into `master` but still on GitHub; say if it can be
-   deleted. What's in #14:
+   branch. `tawan` was fully merged and has been deleted, with your OK. What's in #14:
    - `src/game/stats.js`: followers / donations / hype as a pure reducer, registered in
      `statsModels`, so `stats-valid` and `same-stats` run. The numbers are a first pass;
      tune `STAT_RULES` once the mini-game is chosen.
@@ -183,7 +182,7 @@ study materials.
 | W07 | Done: the safety filter (#19), `src/service/safetyFilter.js`, registered in `filters`, the Hater in `aiPersonas`. Scripted lines per persona came with Shapphanyu's switch (#20, #18 finding 2) |
 | Prompt pass | From #18's real-model samples: the Fan invented a score, the Lurker answered a 5-kill streak with "hi". Also decide whether template lines stay all-Fan (#18 finding 3) |
 | W08 | Done (#23): `npm run pilot` (a bot plays the shooter into the real model) and `replyTimeoutMs` 3000, `minGenerationMs` 800, `maxTokens` 32 from its numbers (`docs/pilot-w08.md`) |
-| W09 | Done on `feature/w09-benchmark`: `npm run benchmark` with the bot in Chrome (`?bot=`): AI reply 507 / 721 ms p50 / p95, templates 6 ms, GPU 2.2 of 6 GB. Idle test: after ~2 s idle the GPU clocks down and replies run 2.4× slower per token, which is why the game is slower than `npm run e2e` (`docs/benchmark-w09.md`) |
+| W09 | Done (#24): `npm run benchmark` with the bot in Chrome (`?bot=`): AI reply 507 / 721 ms p50 / p95, templates 6 ms, GPU 2.2 of 6 GB. Idle test: after ~2 s idle the GPU clocks down and replies run 2.4× slower per token, which is why the game is slower than `npm run e2e` (`docs/benchmark-w09.md`) |
 | W10 | Prompt tuning from pilot logs, plus a team decision on the idle GPU (NVIDIA power setting, keeping it warm, or accepting ~500 ms; `docs/benchmark-w09.md`) |
 
 ## Waiting on someone
