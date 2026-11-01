@@ -14,7 +14,8 @@
  *
  * The player's own messages are added with addPlayerMessage(). They come from the
  * player's chat event, not from the service, so they are UI-only entries with
- * `kind: "player"` rather than chat_messages.
+ * `kind: "player"` rather than chat_messages. Donations (src/game/donations.js) are the
+ * same: UI-only entries with `kind: "donation"`, added with addDonation().
  */
 
 import { validateChatMessage } from "../events/chatMessage.js";
@@ -85,6 +86,26 @@ export function createChatLog({ maxMessages = 150 } = {}) {
           text: event.text,
           done: true,
         }),
+      );
+    },
+
+    /**
+     * A viewer's donation, shown in chat like on a real stream.
+     * @param {{id: string, ts: number, viewer: string, amount: number, message: string}} donation
+     * @returns the same shape as apply(); the message has `kind: "donation"`.
+     */
+    addDonation({ id, ts, viewer, amount, message }) {
+      const valid =
+        typeof id === "string" &&
+        Number.isSafeInteger(ts) &&
+        typeof viewer === "string" &&
+        Number.isFinite(amount) &&
+        amount > 0 &&
+        typeof message === "string";
+      if (!valid) return { type: "ignored", reason: "invalid" };
+      if (byId.has(id)) return { type: "ignored", reason: "duplicate" };
+      return add(
+        Object.freeze({ id, kind: "donation", ts, viewer, amount, text: message, done: true }),
       );
     },
 

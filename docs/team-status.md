@@ -1,7 +1,7 @@
 # Team status and handoff
 
-Last updated 2026-11-01, for `feature/baseline-switch` (Shapphanyu's W07 scripted
-baseline switch, merged with `master`). Before that: #13 (team status), #14 (Month-1
+Last updated 2026-11-01, for `feature/wave-shooter` (Shapphanyu's W08 wave shooter,
+game hub and coin store, built on #20, the W07 scripted baseline switch). Before that: #13 (team status), #14 (Month-1
 demo), #15 (persona prompts), #17 (persona selector, coalescing, rate limit), #18 (W08
 regression pass and Month-2 demo guide) and #19 (safety filter, the Hater live,
 player-chat coalescing fix) merged. Merged feature branches are deleted; only `master` and `tawan` remain.
@@ -28,8 +28,12 @@ something here no longer matches the code, trust the code and say so.
   `npm run ai:personas`. The selector picks one per event (#17). **The Hater is live**
   since the output safety filter (W07): every reply is filtered before display, and a
   fallback replaces anything blocked (`docs/service.md`, "Reply check and safety filter").
-- **The mini-game hasn't been chosen.** The event catalog (`GAME_EVENTS` in
-  `src/events/schema.js`) is still a placeholder until it is.
+- **The game opens on a game hub**, since we plan more than one mini-game
+  (`feature/wave-shooter`). The first is **Wave Survival**, a top-down wave shooter
+  (Shapphanyu's pick): waves that get harder, a shop between waves, and a coin store
+  where donations buy coin packs. It sends the catalog events itself; the old names
+  are kept with phrases that describe the shooter, plus one new event,
+  `coin_purchase` (`docs/events.md`).
 
 ## Week by week
 
@@ -58,8 +62,8 @@ switch running on the same events.
 |------|-------------------------|------------------------------|------------------------|
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
 | W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
-| W07 | ✅ Output safety filter, the Hater live (#19); fallbacks (#11) | ✅ Scripted baseline switch: study panel (F2) and `?condition=`, `POST /condition`, scripted lines per persona (this branch) | ✅ Edge-case checks and safety test set (#10) |
-| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
+| W07 | ✅ Output safety filter, the Hater live (#19); fallbacks (#11) | ✅ Scripted baseline switch: study panel (F2) and `?condition=`, `POST /condition`, scripted lines per persona (#20) | ✅ Edge-case checks and safety test set (#10) |
+| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | 🟡 Wave shooter wired to AI reactions and the 3 stats (`feature/wave-shooter`, in a PR) | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
@@ -72,7 +76,7 @@ Nothing here has started.
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
 
-So far: 21 done, 1 started, 14 not started (counting this branch). `npm test` has no TODO
+So far: 21 done, 2 started, 13 not started (counting #20; the wave shooter is the started W08). `npm test` has no TODO
 tests left.
 
 ## Decisions already made
@@ -102,9 +106,37 @@ Don't change these without talking to the team first. The reasons are in the lin
      updates still work.
    - `src/game/main.js`: events go to the stats and to the service; keys 1–5 are dev
      shortcuts for the major events.
-2. **The mini-game.** When it's chosen, emit its events from the game instead of keys
-   1–5, and replace the placeholder box scene. The facecam can stay.
-3. **Scripted baseline switch (W07), in a PR from `feature/baseline-switch`:**
+2. **The mini-game (W08), in a PR from `feature/wave-shooter`** (built on
+   #20, so merge that first): a top-down wave shooter in
+   `src/game/shooter/`. Keys 1–5 and the box scene are gone.
+   - Each wave has more enemies, spawning faster, with more HP and speed; bats from
+     wave 3, brutes from wave 5 (`waves.js`).
+   - The shop between waves (`shop.js`): six items for coins. Enemies drop coins. The
+     coin store sells coin packs for donations like a mobile currency store ($10 = 25
+     up to $100 = 330, bigger packs give a bonus). **Donations are now a balance:**
+     a purchase sends `coin_purchase {pack, dollars, coins}` and `stats.js` takes the
+     dollars off (never below 0).
+   - **Game hub and pause menu** (`hub.js`, `hubView.js`, `games.js`): the stream
+     opens on the hub; Esc or P pauses (resume, restart run, quit to hub), and so
+     does leaving the window. `hub.js` documents the module interface a new game
+     implements; `shooter/index.js` is the example.
+   - Events (`game.js`): a cleared wave is `close_call` on low HP (40% of max or less),
+     else `new_best` when a run first passes an earlier run's best wave, else `win`;
+     `streak` every 10 kills without a hit; `loss` on death; `item_pickup` for a
+     purchase; `round_start` per wave.
+   - **Everyone: the catalog phrases changed** to describe waves (`src/events/schema.js`),
+     so prompts now say "cleared a wave" instead of "won the round". Sittipon: the
+     persona trial's `lossAsWin` check now keys on the event name. Prin: the
+     evaluation set is still a draft; its `data` (score, round) could use the
+     shooter's fields (wave, hp, maxHp) before it's frozen. I added one
+     `coin_purchase` step to it (at 42 s), since the set must cover every event.
+   - **Donations are rarer and smaller** (`src/game/donations.js`): a big moment brings
+     one by chance (15–50%, by hype; none below 30), mostly $1–9, $20+ about 1 in 50,
+     each with a donor name and a fixed message shown in chat. Drawn from a random
+     seeded with the event id, so `same-stats` still holds. Not sent to the chat
+     service yet, so the AI doesn't react to donations.
+   - The rest of `STAT_RULES` is untouched; tune it after playing (every kill adds 4 hype).
+3. **Scripted baseline switch (W07), #20 from `feature/baseline-switch`:**
    - The game: **F2** opens a study panel (hidden from participants) with AI chat /
      Scripted chat. Picking one reloads with `?condition=...`, so stats and chat start
      fresh; the game sets that condition on the service before the round starts.
@@ -145,8 +177,8 @@ study materials.
 | Task | What's left |
 |------|-------------|
 | W05 | Done (#15). Known weaknesses for a later prompt pass are in `docs/personas.md`; the Backseat Gamer's advice can name real actions once the mini-game is chosen |
-| W06 | Done (#17): persona selector, coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. Since this branch, player messages only coalesce when the same text repeats (a quick follow-up question used to get no reply, #18 finding 1) |
-| W07 | Done: the safety filter (#19), `src/service/safetyFilter.js`, registered in `filters`, the Hater in `aiPersonas`. Scripted lines per persona came with Shapphanyu's switch (this branch, #18 finding 2) |
+| W06 | Done (#17): persona selector, coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. Since #19, player messages only coalesce when the same text repeats (a quick follow-up question used to get no reply, #18 finding 1) |
+| W07 | Done: the safety filter (#19), `src/service/safetyFilter.js`, registered in `filters`, the Hater in `aiPersonas`. Scripted lines per persona came with Shapphanyu's switch (#20, #18 finding 2) |
 | Prompt pass | From #18's real-model samples: the Fan invented a score, the Lurker answered a 5-kill streak with "hi". Also decide whether template lines stay all-Fan (#18 finding 3) |
 | W08 | Laptop pilot: set `replyTimeoutMs`, `maxTokens`, event rate and message caps from measured p50/p95 and peak GPU memory |
 
@@ -154,7 +186,7 @@ study materials.
 
 | What | Waiting on |
 |------|------------|
-| Choosing the mini-game (fixes the event catalog and the game scene) | the whole team |
+| A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
 | Whether `tawan` can be deleted (fully merged) | Shapphanyu |
 | Recording the Month-1 demo clip | Prin (or anyone) |
-| W08 findings 3 and 5 (template lines all Fan, reply quality) in `docs/demo-m2.md`; 1 was fixed in #19, 2 and 4 on this branch | Sittipon |
+| W08 findings 3 and 5 (template lines all Fan, reply quality) in `docs/demo-m2.md`; 1 was fixed in #19, 2 and 4 in #20 | Sittipon |

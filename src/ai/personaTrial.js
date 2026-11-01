@@ -43,8 +43,7 @@ const COMMON_CHECKS = {
 const PERSONA_CHECKS = {
   fan: {
     lossAsWin: (line, ctx) =>
-      /^lost\b/.test(ctx.facts.event ?? "") &&
-      /\b(up big|won|win|victory|crush(ed|ing)? it)\b/i.test(line),
+      ctx.name === "loss" && /\b(up big|won|win|victory|crush(ed|ing)? it)\b/i.test(line),
   },
   hater: {
     nameCalling: (line) =>

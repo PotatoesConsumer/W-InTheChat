@@ -22,22 +22,25 @@ export const EVENT_KINDS = Object.freeze(["game", "chat"]);
 export const IMPORTANCE = Object.freeze({ MINOR: "minor", MAJOR: "major" });
 
 /**
- * Game event catalog. DRAFT: the mini-game isn't chosen yet, so these are
- * placeholders taken from the pitch deck's core loop. Replace them once the game is fixed.
+ * Game event catalog, for the wave shooter (src/game/shooter/game.js, which says when
+ * each one fires). The names are kept from the first draft, so the evaluation set and
+ * harness scenarios still apply; the phrases describe the shooter: a "win" is a cleared
+ * wave, a "close_call" a wave cleared on low HP, "new_best" the furthest wave yet.
  *
  * `phrase` completes "<streamer> just ___" and is what prompts and templates
  * use to describe the event (see buildFanPrompt in src/ai/personas/fan.js).
  */
 export const GAME_EVENTS = Object.freeze({
-  round_start: { importance: IMPORTANCE.MINOR, phrase: "started a new round" },
+  round_start: { importance: IMPORTANCE.MINOR, phrase: "started a new wave" },
   kill: { importance: IMPORTANCE.MINOR, phrase: "took out an enemy" },
   damage_taken: { importance: IMPORTANCE.MINOR, phrase: "took a hit" },
-  item_pickup: { importance: IMPORTANCE.MINOR, phrase: "picked up an item" },
-  win: { importance: IMPORTANCE.MAJOR, phrase: "won the round" },
-  loss: { importance: IMPORTANCE.MAJOR, phrase: "lost the round" },
-  streak: { importance: IMPORTANCE.MAJOR, phrase: "went on a streak" },
-  close_call: { importance: IMPORTANCE.MAJOR, phrase: "barely survived" },
-  new_best: { importance: IMPORTANCE.MAJOR, phrase: "beat their personal best" },
+  item_pickup: { importance: IMPORTANCE.MINOR, phrase: "bought an upgrade in the shop" },
+  coin_purchase: { importance: IMPORTANCE.MINOR, phrase: "spent chat's donations on coins" },
+  win: { importance: IMPORTANCE.MAJOR, phrase: "cleared a wave" },
+  loss: { importance: IMPORTANCE.MAJOR, phrase: "died and lost the run" },
+  streak: { importance: IMPORTANCE.MAJOR, phrase: "went on a kill streak without getting hit" },
+  close_call: { importance: IMPORTANCE.MAJOR, phrase: "barely survived a wave on low health" },
+  new_best: { importance: IMPORTANCE.MAJOR, phrase: "reached their furthest wave yet" },
 });
 
 /**

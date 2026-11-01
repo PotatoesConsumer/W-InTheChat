@@ -111,3 +111,22 @@ test("player messages: only valid chat events, once each, and trimmed like the r
 test("rejects a bad maxMessages", () => {
   assert.throws(() => createChatLog({ maxMessages: 0 }), RangeError);
 });
+
+test("donations are UI-only lines with the amount and the donor's message", () => {
+  const log = createChatLog();
+  const donation = { id: "donation-1", ts: 5, viewer: "pixel_pal", amount: 5, message: "hi" };
+  const result = log.addDonation(donation);
+  assert.equal(result.type, "added");
+  assert.deepEqual(result.message, {
+    id: "donation-1",
+    kind: "donation",
+    ts: 5,
+    viewer: "pixel_pal",
+    amount: 5,
+    text: "hi",
+    done: true,
+  });
+  assert.equal(log.addDonation(donation).type, "ignored", "once");
+  assert.equal(log.addDonation({ ...donation, id: "d2", amount: -1 }).type, "ignored");
+  assert.equal(log.addDonation({ ...donation, id: "d3", message: null }).type, "ignored");
+});

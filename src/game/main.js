@@ -2,7 +2,7 @@
  * main.js
  *
  * Browser entry point (loaded by index.html). Wires the canvas, game loop, input,
- * event bus, stats, chat overlay and the chat service together.
+ * event bus, stats, chat overlay, the chat service and the game hub together.
  *
  * Every event goes on the local bus first: the stats, the HUD and the streamer's face
  * react to it here, and it is sent to the chat service (`npm run service`), whose
@@ -10,18 +10,23 @@
  * `?service=http://localhost:8787`.
  *
  * The baseline switch: `?condition=ai` or `?condition=scripted` sets the service's
- * condition before the round starts. F2 opens the study panel, which reloads the page
+ * condition before a game starts. F2 opens the study panel, which reloads the page
  * with the other condition. Without the parameter the service's own condition is used.
  *
- * The scene is a placeholder until the mini-game is chosen: a box you move with
- * WASD/arrows, Space for a kill, and keys 1-5 for the major events (dev only).
+ * The stream opens on the game hub (hub.js, games list in games.js). Each game reads its
+ * own keymap and sends catalog events; Escape or P pauses it (pause menu: resume,
+ * restart, quit to the hub), and so does leaving the window.
  */
 
 import { createGameLoop } from "./loop.js";
-import { createInput, DEFAULT_BINDINGS } from "./input.js";
+import { createInput } from "./input.js";
 import { stats } from "./stats.js";
+import { donationFor } from "./donations.js";
 import { createStreamer } from "./streamer.js";
 import { createReplyLatency } from "./replyLatency.js";
+import { createHub } from "./hub.js";
+import { drawHub, drawPause, hubHit } from "./hubView.js";
+import { GAMES } from "./games.js";
 import { createEventBus } from "../events/bus.js";
 import { createGameEvent, createChatEvent } from "../events/schema.js";
 import { connectToService, DEFAULT_SERVICE_URL } from "../service/client.js";
@@ -31,17 +36,28 @@ import { createStudyPanel, conditionFromUrl } from "../ui/studyPanel.js";
 
 /** Logical scene size. The canvas is scaled to fit, keeping 16:9. */
 const WORLD = { width: 960, height: 540 };
-const PLAYER_SIZE = 40;
-const PLAYER_SPEED = 320; // px per second
 const FACECAM = { width: 200, height: 150, margin: 16 };
+/** The facecam sits on the scene's corner, so games treat it as solid. */
+const FACECAM_BLOCK = {
+  x: WORLD.width - FACECAM.width - FACECAM.margin,
+  y: WORLD.height - FACECAM.height - FACECAM.margin,
+  width: FACECAM.width + FACECAM.margin,
+  height: FACECAM.height + FACECAM.margin,
+};
 
-/** Dev keys for the major events, until the mini-game emits them itself. */
-const DEV_EVENT_KEYS = Object.freeze({
-  Digit1: "win",
-  Digit2: "loss",
-  Digit3: "close_call",
-  Digit4: "streak",
-  Digit5: "new_best",
+/** Keys for the hub and the pause menu. Each game has its own keymap. */
+const MENU_BINDINGS = Object.freeze({
+  ArrowLeft: "left",
+  KeyA: "left",
+  ArrowRight: "right",
+  KeyD: "right",
+  ArrowUp: "up",
+  KeyW: "up",
+  ArrowDown: "down",
+  KeyS: "down",
+  Space: "select",
+  Escape: "back",
+  KeyP: "pause",
 });
 
 const canvas = document.getElementById("game");
@@ -64,6 +80,9 @@ bus.subscribe("*", (event) => {
   streamStats = stats.reduce(streamStats, event);
   hud.set(streamStats);
   streamer.react(event);
+  // The same donation the stats just added (same event, same hype), shown in chat.
+  const gift = donationFor(event, streamStats.hype);
+  if (gift) overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
 });
 
 // Chat service: every event goes out, chat_message updates come back.
@@ -121,18 +140,16 @@ async function syncCondition() {
   return false;
 }
 
-let roundStarted = false;
+// A game can start once chat can see it in the right condition, so the first replies
+// aren't sent to nobody or answered by the wrong condition. Without a service it can
+// start anyway (no chat).
+let chatReady = false;
+let serviceStatus = "connecting";
 
 async function showStatus(status) {
-  // Start the round once chat can see it, in the right condition, so its reply
-  // isn't sent to nobody or answered by the wrong condition.
-  if (status === "connected") {
-    const ready = await syncCondition();
-    if (ready && !roundStarted) {
-      roundStarted = true;
-      bus.publish(createGameEvent("round_start"));
-    }
-  }
+  serviceStatus = status;
+  if (status === "connected") chatReady = await syncCondition();
+  else chatReady = false;
   const text = { connected: "chat live", reconnecting: "chat offline", closed: "chat off" };
   statusEl.textContent = text[status] ?? status;
   statusEl.dataset.status = status;
@@ -154,66 +171,87 @@ window.witc = {
   latency: () => latency.summary(),
   rows: () => latency.rows(),
   stats: () => streamStats,
+  game: () => hub.current?.instance.state ?? null,
 };
 
-const input = createInput(window, {
-  ...DEFAULT_BINDINGS,
-  ...Object.fromEntries(Object.keys(DEV_EVENT_KEYS).map((code) => [code, code])),
+// The hub and its games. A game's events go on the bus like any other: stats, facecam
+// and chat react.
+const menuInput = createInput(window, MENU_BINDINGS);
+const gameInputs = new Map();
+const mouse = { pointer: null, down: false };
+let clock = 0;
+
+const hub = createHub({
+  games: GAMES,
+  makeGame(game) {
+    gameInputs.set(game.id, createInput(window, game.bindings));
+    return game.create({
+      world: WORLD,
+      obstacles: [FACECAM_BLOCK],
+      stream: { donations: () => streamStats.donations },
+    });
+  },
 });
 
-const player = {
-  x: (WORLD.width - PLAYER_SIZE) / 2,
-  y: (WORLD.height - PLAYER_SIZE) / 2,
-  prevX: 0,
-  prevY: 0,
-};
-let flash = 0; // ms left of the "action" highlight
+function publishGameEvents() {
+  const instance = hub.current?.instance;
+  if (!instance) return;
+  for (const { name, data } of instance.takeEvents()) bus.publish(createGameEvent(name, data));
+}
+
+const canPlay = () => chatReady || serviceStatus === "reconnecting" || serviceStatus === "closed";
+
+function hubHint() {
+  if (chatReady) return "Chat is live. Pick a game and go!";
+  if (serviceStatus === "connected" || serviceStatus === "connecting") return "Connecting to chat…";
+  return "Chat is offline (npm run service). You can still play without it.";
+}
 
 function update(dt) {
-  player.prevX = player.x;
-  player.prevY = player.y;
+  clock += dt;
+  const pressed = (action) => menuInput.wasPressed(action);
+  const step =
+    (pressed("right") || pressed("down") ? 1 : 0) - (pressed("left") || pressed("up") ? 1 : 0);
 
-  const dx = (input.isDown("right") ? 1 : 0) - (input.isDown("left") ? 1 : 0);
-  const dy = (input.isDown("down") ? 1 : 0) - (input.isDown("up") ? 1 : 0);
-  const len = Math.hypot(dx, dy) || 1; // diagonal isn't faster
-  const dist = (PLAYER_SPEED * dt) / 1000;
-  player.x = clamp(player.x + (dx / len) * dist, 0, WORLD.width - PLAYER_SIZE);
-  player.y = clamp(player.y + (dy / len) * dist, 0, WORLD.height - PLAYER_SIZE);
-
-  if (input.wasPressed("action")) {
-    flash = 200;
-    bus.publish(createGameEvent("kill"));
+  if (hub.screen === "hub") {
+    if (step) hub.move(step);
+    if (pressed("select")) hub.confirm({ canPlay: canPlay() });
+  } else if (hub.screen === "paused") {
+    if (step) hub.move(step);
+    if (pressed("select")) hub.confirm({ canPlay: true });
+    else if (pressed("back") || pressed("pause")) hub.resume();
+  } else if (pressed("back")) {
+    hub.back();
+  } else if (pressed("pause")) {
+    hub.pause();
+  } else {
+    const { game, instance } = hub.current;
+    instance.update(dt, { input: gameInputs.get(game.id), mouse });
   }
-  for (const [code, name] of Object.entries(DEV_EVENT_KEYS)) {
-    if (input.wasPressed(code)) bus.publish(createGameEvent(name));
-  }
-  flash = Math.max(0, flash - dt);
+  publishGameEvents();
   streamer.update(dt);
 
-  input.endFrame();
+  // Every keymap sees every key; presses not used this step are dropped, so a key that
+  // opened a screen doesn't also act in it.
+  menuInput.endFrame();
+  for (const input of gameInputs.values()) input.endFrame();
 }
 
 function render(alpha) {
   const scale = canvas.width / WORLD.width;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  ctx.fillStyle = "#14121c";
-  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
-
-  ctx.strokeStyle = "#221f2e";
-  ctx.lineWidth = 1;
-  for (let x = 0; x <= WORLD.width; x += 40) line(x, 0, x, WORLD.height);
-  for (let y = 0; y <= WORLD.height; y += 40) line(0, y, WORLD.width, y);
-
-  const x = lerp(player.prevX, player.x, alpha);
-  const y = lerp(player.prevY, player.y, alpha);
-  ctx.fillStyle = flash > 0 ? "#ffd166" : "#ff7a59";
-  ctx.fillRect(x, y, PLAYER_SIZE, PLAYER_SIZE);
-
-  ctx.fillStyle = "#8a8599";
-  ctx.font = "16px system-ui, sans-serif";
-  ctx.fillText("Mini-game TBD · WASD / arrows to move · Space: kill", 16, 28);
-  ctx.fillText("Test events: 1 win · 2 loss · 3 close call · 4 streak · 5 new best", 16, 50);
+  if (hub.screen === "hub") {
+    drawHub(ctx, hub, { world: WORLD, clock, hint: hubHint() });
+  } else {
+    const paused = hub.screen === "paused";
+    hub.current.instance.render(ctx, {
+      alpha: paused ? 1 : alpha,
+      pointer: paused ? null : mouse.pointer,
+      clock,
+    });
+    if (paused) drawPause(ctx, hub, { world: WORLD });
+  }
 
   streamer.draw(ctx, {
     x: WORLD.width - FACECAM.width - FACECAM.margin,
@@ -224,12 +262,49 @@ function render(alpha) {
   });
 }
 
-function line(x1, y1, x2, y2) {
-  ctx.beginPath();
-  ctx.moveTo(x1 + 0.5, y1 + 0.5);
-  ctx.lineTo(x2 + 0.5, y2 + 0.5);
-  ctx.stroke();
+/** Pointer position in world coordinates. */
+function toWorld(event) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) * WORLD.width) / rect.width,
+    y: ((event.clientY - rect.top) * WORLD.height) / rect.height,
+  };
 }
+
+canvas.addEventListener("pointermove", (event) => {
+  mouse.pointer = toWorld(event);
+  const index = hubHit(hub, mouse.pointer.x, mouse.pointer.y);
+  if (index >= 0) hub.point(index);
+});
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  // Clicking the game takes the keyboard back from the chat box.
+  if (document.activeElement?.tagName === "INPUT") document.activeElement.blur();
+  mouse.pointer = toWorld(event);
+  canvas.setPointerCapture(event.pointerId);
+  if (hub.screen === "playing") {
+    mouse.down = true;
+    hub.current.instance.pointerDown(mouse.pointer);
+  } else {
+    const index = hubHit(hub, mouse.pointer.x, mouse.pointer.y);
+    if (index >= 0) {
+      hub.point(index);
+      hub.confirm({ canPlay: canPlay() });
+    }
+  }
+  publishGameEvents();
+});
+for (const type of ["pointerup", "pointercancel"]) {
+  canvas.addEventListener(type, () => (mouse.down = false));
+}
+canvas.addEventListener("pointerleave", () => {
+  if (!mouse.down) mouse.pointer = null;
+});
+// Leaving the window pauses the game, so nothing happens while nobody is looking.
+window.addEventListener("blur", () => {
+  mouse.down = false;
+  hub.pause();
+});
 
 /** Match the canvas's pixel size to its CSS size, so it stays sharp on HiDPI screens. */
 function resizeCanvas() {
@@ -259,14 +334,4 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-player.prevX = player.x;
-player.prevY = player.y;
 createGameLoop({ update, render }).start();
-
-function clamp(v, min, max) {
-  return Math.min(Math.max(v, min), max);
-}
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
