@@ -70,7 +70,7 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 
 | Event | ai condition | scripted condition |
 |-------|--------------|--------------------|
-| Repeat of a recent same-name event (or player message) | coalesced: no message | coalesced: no message |
+| Repeat of a recent same-name event (or the same player message) | coalesced: no message | coalesced: no message |
 | Minor game event | `template` line (Fan) | `template` line (Fan) |
 | Major game event | model reply, persona from the selector | `scripted` line, persona from the selector |
 | Player message | model reply, persona from the selector | `scripted` line, persona from the selector |
@@ -84,15 +84,17 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 - **Persona selector** ([`selector.js`](../src/service/selector.js)): a weighted draw per
   event, weights in `PERSONA_WEIGHTS` (for example a loss leans to the Hater and the
   Backseat Gamer, a win to the Fan; the Lurker only answers major game events, never
-  chat). Only personas in `aiPersonas` can be picked, and **the Hater isn't in it until
-  the safety filter (W07) is.** The scripted condition uses the same selector, roll and
+  chat). Only personas in `aiPersonas` can be picked; all four are, the Hater since the
+  safety filter (W07). The scripted condition uses the same selector, roll and
   `aiPersonas`, so the same seed and events give **the same persona labels in both
   conditions** (proposal: same events and persona labels); only the text differs. Its
   lines are `SCRIPTED_LINES` in `templates.js`, per persona and event, written to the
-  voice and safety rules in `docs/personas.md` (the Hater's are ready for when it's
-  enabled). Minor-event templates stay in the Fan's voice in both conditions.
-- **Coalescing** ([`coalesce.js`](../src/service/coalesce.js)): same-name game events (or
-  player messages) less than `coalesceWindowMs` apart form a run. The first of a run is
+  voice and safety rules in `docs/personas.md`. Minor-event templates stay in the Fan's
+  voice in both conditions.
+- **Coalescing** ([`coalesce.js`](../src/service/coalesce.js)): same-name game events, or
+  player messages with the same text (case and spacing ignored), less than
+  `coalesceWindowMs` apart form a run. Different player messages are never repeats of
+  each other, so a quick follow-up question is still answered. The first of a run is
   answered, then every `repeatReplyEvery`-th, at most `maxRepliesPerRun` in all; the rest
   get no message (`coalesced` in `/stats`). Runs are measured with **the events' own
   timestamps**, never with the pipeline's state, so this doesn't route on timing in the
@@ -134,17 +136,41 @@ waiting for the whole line costs little.
 shown; if the reply goes bad later, the line ends at the part already shown. The
 `chat_message` contract and the game's chat log both handle streamed updates either way.
 
-### Reply check (v1)
+### Reply check and safety filter
 
 [`replyCheck.js`](../src/service/replyCheck.js) rejects replies that are empty, over 200
 characters, talk as an AI ("As an AI…", "I cannot…") or are structured data (`{…}`,
-`[…]`). The shared persona parser first keeps only the first real line and strips quotes,
-code fences, `**` and a copied speaker label (`Player:`).
+`[…]`), and anything the safety filter blocks (`unsafe` in `/stats` failures). The shared
+persona parser first keeps only the first real line and strips quotes, code fences, `**`
+and a copied speaker label (`Player:`). A rejected reply gets a fallback line; none of
+its text is shown.
 
-**It is not the safety filter.** Abusive or unsafe text still passes. The safety filter
-and its test set are W07 and plug in here as another rejection reason. The Hater prompt
-exists (`docs/personas.md`), but it's left out of `aiPersonas`, so the selector never
-picks it, until the filter is in.
+**Safety filter** ([`safetyFilter.js`](../src/service/safetyFilter.js), W07). The Hater
+mocks plays, never people, so the filter lets harsh criticism of a play ("my grandma aims
+better than this") and in-game violence ("nice kill!") through, and blocks what's aimed
+at the person:
+
+| Category | Examples of what's blocked |
+|----------|----------------------------|
+| `slur`, `profanity` | words in the hashed blocklist ([`blocklist.js`](../src/service/blocklist.js)) |
+| `threat` | "watch your back", "I'm going to find you", swatting |
+| `self_harm` | "kys", "go die", "nobody would miss you" |
+| `privacy` | real names, addresses, doxxing |
+| `sexual` | requests for pics, remarks about the body |
+| `protected_group` | "like a girl", "your country / religion / race …" |
+| `personal_attack` | name-calling ("idiot", "loser", "you're clueless"), looks, worth, family |
+
+Before matching it undoes leetspeak next to letters (`n00b`), joins spaced-out letters
+(`k y s`) and squeezes repeated letters. The blocklist holds salted SHA-256 hashes, not
+the words, so slurs never sit in the repo; add one with
+`node scripts/blocklist-hash.js <word> <category>`.
+
+It passes all 13 `block` and all 16 `allow` cases in `eval/safety-cases-v1.json` (contract
+suite) and its own unit tests. With qwen2.5:3b (`npm run ai:personas -- --repeats 3`,
+132 replies from all four personas, 2026-11-01) it blocked none of the other personas'
+replies; it caught the Hater's "losers", "you must be blind" and "my bot", which became
+unit tests. Known gaps: English patterns only (Thai replies aren't checked yet), and
+regexes miss what's said indirectly, so keep reviewing the logged replies.
 
 ### Limits
 
@@ -159,7 +185,7 @@ Provisional, in `PIPELINE_DEFAULTS`; the laptop pilot (W08) sets the real values
 | `streamPartials` | false |
 | `minStreamChars` (only with `streamPartials`) | 12 |
 | `historySize` | 0 (off) |
-| `aiPersonas` | fan, backseat, lurker (no Hater before W07) |
+| `aiPersonas` | fan, hater, backseat, lurker |
 | `coalesceWindowMs` (same as `QA_LIMITS`) | 2000 |
 | `repeatReplyEvery` | 5 |
 | `maxRepliesPerRun` (`QA_LIMITS.maxMessagesPerEvent` is 3) | 3 |
@@ -185,9 +211,3 @@ No fallbacks. For comparison, with `streamPartials` on, the first partial text s
 
 These are short runs, not the pilot benchmark (W08/W09). Earlier, the cold model load
 took about 60 s.
-
-## Not built yet
-
-| What | Task |
-|------|------|
-| Safety filter (`unsafe` edge case still fails) | W07 |

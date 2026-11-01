@@ -38,6 +38,10 @@ any of that, update the file in the same PR.
 - `npm run check`: lint + format check + tests, the same as CI. Run it before opening a PR.
 - `npm run harness -- <scenario>`: plays a scenario into the pipeline headless with a fake
   model (no game, no Ollama). `--list` shows scenarios. Guide: `docs/harness.md`.
+- `npm run regression [-- --model]`: full regression pass (static checks, every scenario ×
+  fake-model mode × condition through the registered pipeline, comparisons, optionally the
+  real model). Writes `docs/regression/<date>.md`, exits 1 on a regression. Run it before
+  demos. Guide: `docs/regression/README.md`.
 
 ## Model
 
@@ -54,8 +58,8 @@ any of that, update the file in the same PR.
 - `src/ai/contextBuilder.js`: `buildPrompt(ctx, {persona, streamerName, history})`, the
   context payload -> `{system, prompt}` for one persona reply. Uses only `ctx.facts`.
 - `src/ai/personas/`: one file per persona (system prompt), registered in `index.js` with
-  the shared parser from `parse.js`. Voice and safety rules: `docs/personas.md`. The
-  Hater is left out of the service's `aiPersonas` until the safety filter (W07).
+  the shared parser from `parse.js`. Voice and safety rules: `docs/personas.md`. All four
+  are in the service's `aiPersonas`; every reply passes the safety filter first.
 - `src/ai/demo.js`: latency smoke test
 - `src/ai/personaTrial.js`: the persona trial's inputs and weakness checks (CLI in
   `scripts/persona-trial.js`)
@@ -73,12 +77,17 @@ any of that, update the file in the same PR.
     replies run one at a time from a FIFO queue, with deadlines from event arrival. No
     timing-based routing: the same seed and events must give the same chat.
   - `selector.js`: weighted persona choice per event (`PERSONA_WEIGHTS`)
-  - `coalesce.js`: runs of repeated events, measured with the events' own timestamps
+  - `coalesce.js`: runs of repeated events, measured with the events' own timestamps.
+    Player messages count as repeats only when the text is the same.
   - `pacer.js`: the chat rate limit; delays lines, never drops them
   - `server.js`: POST /events, GET /stream (SSE), /health, /stats, GET/POST /condition
     (the baseline switch: restarts the pipeline in ai or scripted). Localhost only.
   - `client.js`: browser side for the game (`connectToService`)
-  - `replyCheck.js`: rejects malformed replies. Not the safety filter yet (W07).
+  - `replyCheck.js`: rejects malformed replies and anything the safety filter blocks
+  - `safetyFilter.js`: the output safety filter (slurs, threats, self-harm, doxxing,
+    sexual, protected groups, personal attacks; play criticism and game violence pass).
+    `blocklist.js` holds salted hashes, never the words; add one with
+    `node scripts/blocklist-hash.js <word> <category>`.
   - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
     every `GAME_EVENTS` name, and scripted lines per persona for every major one (tests
     check). Scripted replies use the same persona selector as ai ones.
@@ -119,6 +128,8 @@ any of that, update the file in the same PR.
   with normal/slow/error/garbage/unsafe modes), `stubPipeline.js` (deliberately naive
   stand-in until the real pipeline exists; never use it in the game), `checks.js`
   (deterministic checks over a run record; rules in `docs/pipeline-contract.md`),
+  `edgeCases.js` (the proposal's edge cases, shared by the contract suite and the
+  regression pass), `regression.js` (regression matrix, verdicts, report),
   `scenarios/*.json`.
   CLI in `scripts/harness.js`.
 - `eval/`: fixed evaluation event sets (scenario format), the output filter test set
@@ -126,8 +137,8 @@ any of that, update the file in the same PR.
   `manifest.json` (draft/frozen, sha256). Never edit a frozen set; make a new version.
   Guides: `docs/evaluation.md`, `docs/pipeline-contract.md`.
 - `test/`: unit tests, mirroring `src/`. `test/contracts/` runs the checks against what's
-  registered in `implementations.js`: the service pipeline is, with the `unsafe` (W07)
-  edge case marked `pending`. Remove an entry from `pending` when it's done.
+  registered in `implementations.js`: the service pipeline (nothing `pending` now), the
+  stats model and the safety filter. A new gap can be listed in `pending` until it's done.
 
 ## Rules from the proposal
 

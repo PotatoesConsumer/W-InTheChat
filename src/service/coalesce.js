@@ -13,6 +13,18 @@
  */
 
 /**
+ * What counts as "the same event": game events by name, player messages by their text
+ * (case and spacing ignored). Different messages are never repeats of each other, so a
+ * quick follow-up question still gets an answer; the same line spammed is coalesced.
+ * @param {{kind: string, name?: string, facts?: {playerMessage?: string}}} ctx
+ */
+export function coalesceKey(ctx) {
+  if (ctx.kind !== "chat") return `game:${ctx.name}`;
+  const text = ctx.facts.playerMessage.toLowerCase().replace(/\s+/g, " ").trim();
+  return `chat:${text}`;
+}
+
+/**
  * @param {{windowMs: number, every: number, maxPerRun: number}} opts
  */
 export function createCoalescer({ windowMs, every, maxPerRun }) {
