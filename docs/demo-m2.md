@@ -13,7 +13,7 @@ and with `npm run regression`.
 | Part of M2 | State | What works | What's missing | Owner |
 |------------|-------|------------|----------------|-------|
 | Four personas live behind the safety filter | ✅ | Prompts for all four (#15). The selector picks any of the four for model replies (#17, #19). Every reply passes the output safety filter (`src/service/safetyFilter.js`, #19) first; the `unsafe` edge case passes. | Nothing for the milestone. The filter is English only (`docs/service.md`). | Sittipon, W07 |
-| Mini-game playable start to finish | ⬜ | The placeholder box scene, with keys 1–5 for the major events | **Choosing the mini-game**, then emitting its events and replacing the scene | Whole team, then Shapphanyu W08 |
+| Mini-game playable start to finish | 🟡 | Wave Survival from the game hub (`feature/wave-shooter`): waves, shop, coin store; it sends the catalog events itself. Played in Chrome on 2026-11-01: kills get templates, a death got a Backseat reply from the model. | Merging it; the team's look before the catalog and evaluation set are frozen | Shapphanyu W08 |
 | Scripted baseline switch on the same events | ✅ | The study panel (F2) or `?condition=` switches the game and the service (`POST /condition`) without a restart. Scripted lines per persona, picked by the same selector, so both conditions show the same persona labels (findings 2 and 4). | Nothing for the milestone. | Shapphanyu W07 |
 
 ## Before the demo
@@ -39,21 +39,21 @@ npm run service
 npm run dev
 ```
 
-Open <http://localhost:5173> in Chrome and wait for **chat live**. Keys are the same as the
-Month-1 demo (`docs/demo-m1.md`): Space for a kill, 1–5 for win, loss, close call, streak and
-new best, Enter to type to chat.
+Open <http://localhost:5173> in Chrome and wait for **chat live**. Pick Wave Survival on
+the hub. WASD moves, arrow keys or the held mouse shoot, Space starts the next wave, 1–6
+buy in the shop between waves, C opens the coin store, Esc pauses. Enter types to chat.
 
-For the scripted condition, stop the service (Ctrl+C) and start it again with
-`npm run service -- --condition scripted`. The game reconnects on its own.
+F2 opens the study panel to switch between AI and scripted chat; the page reloads with
+`?condition=...` and stats and chat start fresh.
 
 ## Shot list
 
 About two minutes. Items marked *once ready* wait on the missing parts above.
 
 1. **AI condition.** Both terminals, then the game with **chat live**.
-2. Space a few times: template lines appear at once.
-3. 1, 3, 4, leaving 2 s between keys: model replies from **different personas** (the
-   avatar letter: F, B, L). Followers and hype react.
+2. Start Wave Survival and get some kills: template lines appear at once.
+3. Clear a wave (a win, or a close call on low HP): model replies from **different
+   personas** (the avatar letter). Followers and hype react.
 4. Type a message to chat, then a different one right after: both get a reply (finding 1,
    fixed in #19). Sending the same message again within 2 s counts as a repeat.
 5. Point at the latency readout (p50/p95 in the top bar).
@@ -62,10 +62,10 @@ About two minutes. Items marked *once ready* wait on the missing parts above.
    The fake model answers with threats and attacks from the safety test set; the output
    should show every one replaced by a fallback and all checks passing. This shows the
    filter working without making the real model say something bad on camera.
-7. A Hater line in the game (H avatar): press 1–5 until the selector picks it.
-8. **Scripted condition.** F2 opens the study panel; pick Scripted chat. Same keys:
+7. A Hater line in the game (H avatar): a loss leans to the Hater and the Backseat Gamer.
+8. **Scripted condition.** F2 opens the study panel; pick Scripted chat. Play a wave:
    scripted lines from the same personas, instantly, no model. F2 again to go back to AI.
-9. *Once ready:* the mini-game from start to finish, with chat reacting to its real events.
+9. A full run: waves, the shop, a coin store purchase, and a death, with chat reacting.
 10. The regression report for the day (`docs/regression/`): no regressions.
 
 ## W08 regression pass and smoke test (2026-10-29)

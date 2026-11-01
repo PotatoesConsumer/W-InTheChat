@@ -94,10 +94,22 @@ any of that, update the file in the same PR.
 - `src/game/`: browser game (`index.html` loads `main.js`)
   - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
     facecam react) and to the chat service through `connectToService`; replies come back
-    over SSE into the overlay. `?service=<url>` changes the service URL. Keys 1-5 send the
-    major events until the mini-game emits them.
+    over SSE into the overlay. `?service=<url>` changes the service URL. Runs the hub,
+    one keymap per game plus the menu keys, and the mouse.
+  - `hub.js`: the game hub and pause menu as plain state (tested), and **the game
+    module interface** every mini-game implements. `hubView.js` draws them;
+    `games.js` lists the games. More games are planned: add one there.
+  - `shooter/`: Wave Survival (W08), a top-down wave shooter. `index.js` is the hub
+    module (keys, mouse, drawing); `game.js` the state and rules with no DOM (tested;
+    seeded random), which says which catalog event fires when; `waves.js` makes each
+    wave harder; `shop.js` upgrades and the coin store (donations buy coin packs and
+    are spent: `coin_purchase`); `view.js` draws it and the shop's click layout.
   - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
   - `input.js`: keyboard -> actions; ignores keys typed into the chat box
+  - `donations.js`: viewer donations: which big moments bring one, the amount (mostly
+    under $10, $20+ rare) and the donor's message, seeded from the event id so the stats
+    stay deterministic. Shown in chat as UI-only `kind: "donation"` lines. `random.js`:
+    the seeded random and string hash.
   - `stats.js`: followers / donations / hype as a pure reducer (`stats.initial/reduce`),
     registered in the contract tests. The model's replies never reach it.
   - `streamer.js`: the facecam avatar; mood from events (tested), `draw()` on the canvas

@@ -10,6 +10,7 @@
 export const EVENT_MOODS = Object.freeze({
   kill: "happy",
   item_pickup: "happy",
+  coin_purchase: "happy",
   damage_taken: "shocked",
   win: "hyped",
   streak: "hyped",

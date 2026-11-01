@@ -24,10 +24,11 @@ export const VIEWERS = Object.freeze({
 });
 
 export const EVENT_LINES = Object.freeze({
-  round_start: Object.freeze(["here we go", "lock in", "new round lets gooo"]),
+  round_start: Object.freeze(["here we go", "lock in", "new wave lets gooo"]),
   kill: Object.freeze(["clean", "EZ", "got him"]),
   damage_taken: Object.freeze(["ouch", "careful!!", "that hurt to watch"]),
-  item_pickup: Object.freeze(["ooh loot", "what did you get?", "nice pickup"]),
+  item_pickup: Object.freeze(["ooh upgrade", "what did you buy?", "good buy"]),
+  coin_purchase: Object.freeze(["spending our money already?", "big spender 💰", "coins acquired"]),
   win: Object.freeze(["GG!!", "WWWW", "lets gooo"]),
   loss: Object.freeze(["unlucky", "next one is yours", "so close"]),
   streak: Object.freeze(["on fire 🔥", "cant miss", "who is stopping this"]),
@@ -54,7 +55,7 @@ export const SCRIPTED_LINES = Object.freeze({
     chat: Object.freeze(["love this stream", "hi!! having a great time", "you got this"]),
   }),
   hater: Object.freeze({
-    win: Object.freeze(["that round was on easy mode", "lucky win tbh", "wow, the bare minimum"]),
+    win: Object.freeze(["that wave was on easy mode", "lucky win tbh", "wow, the bare minimum"]),
     loss: Object.freeze(["that was rough to watch", "saw that coming", "classic throw"]),
     streak: Object.freeze([
       "it wont last",

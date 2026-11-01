@@ -13,6 +13,7 @@
   --backseat: #f5b942;
   --lurker: #7c8aa5;
   --player: #4ecdc4;
+  --donation: #ffd34e;
 }
 
 * {
@@ -304,6 +305,35 @@ body {
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 16px;
+}
+
+/* Donations (src/game/donations.js): a gold alert line, like a real stream's. */
+.donation {
+  --persona: var(--donation);
+  flex-wrap: wrap;
+  row-gap: 2px;
+  margin: 4px 8px;
+  border-left: 3px solid var(--donation);
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255, 211, 78, 0.22), rgba(255, 211, 78, 0.06));
+  animation: donation-in 0.6s ease-out;
+}
+
+.donation .chat-text {
+  flex-basis: 100%;
+  padding-left: 30px;
+  font-style: italic;
+}
+
+.donation-amount {
+  background: var(--donation);
+}
+
+@keyframes donation-in {
+  from {
+    transform: scale(0.96);
+    background-color: rgba(255, 211, 78, 0.6);
+  }
 }
 
 .chat-jump {
