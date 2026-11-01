@@ -16,6 +16,11 @@
  * The stream opens on the game hub (hub.js, games list in games.js). Each game reads its
  * own keymap and sends catalog events; Escape or P pauses it (pause menu: resume,
  * restart, quit to the hub), and so does leaving the window.
+ *
+ * Benchmark bot (W09): `?bot=<skill 0-1>` plays Wave Survival by itself (the bot from
+ * shooter/bot.js, through the game's normal input path) and types a player message every
+ * 25 s; `&seed=` picks its seed and `&minutes=` stops it after that much play and logs
+ * `witc.benchmark()`. It never pauses on blur. For measuring the pipeline, not the study.
  */
 
 import { createGameLoop } from "./loop.js";
@@ -33,6 +38,9 @@ import { connectToService, DEFAULT_SERVICE_URL } from "../service/client.js";
 import { createChatOverlay } from "../ui/chatOverlay.js";
 import { createStatsHud } from "../ui/statsHud.js";
 import { createStudyPanel, conditionFromUrl } from "../ui/studyPanel.js";
+import { createBot, createBotInput, BOT_CHAT } from "./shooter/bot.js";
+import { HUD_HEIGHT } from "./shooter/view.js";
+import { seededRandom } from "./random.js";
 
 /** Logical scene size. The canvas is scaled to fit, keeping 16:9. */
 const WORLD = { width: 960, height: 540 };
@@ -64,13 +72,29 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const bus = createEventBus({ onError: (err, event) => console.error(err, event) });
-const overlay = createChatOverlay(document.getElementById("chat"), {
-  onSend(text) {
-    const result = bus.publish(createChatEvent(text));
-    if (result.ok) overlay.pushPlayer(result.event);
-    else console.warn("Chat message rejected:", result.errors);
-  },
-});
+const overlay = createChatOverlay(document.getElementById("chat"), { onSend: sendChat });
+
+/** A message from the player (typed, or the benchmark bot's). */
+function sendChat(text) {
+  const result = bus.publish(createChatEvent(text));
+  if (result.ok) overlay.pushPlayer(result.event);
+  else console.warn("Chat message rejected:", result.errors);
+}
+
+const params = new URLSearchParams(location.search);
+const bot = params.has("bot")
+  ? {
+      skill: Math.min(1, Math.max(0, Number(params.get("bot")) || 0.6)),
+      seed: Number(params.get("seed")) || 1,
+      stopAfterMs: (Number(params.get("minutes")) || Infinity) * 60_000,
+      chatEveryMs: 25_000,
+      playedMs: 0,
+      chatAt: 12_500,
+      chats: 0,
+      done: false,
+      input: null,
+    }
+  : null;
 
 // Stats: a pure reducer over the bus, so chat replies can never change them.
 let streamStats = stats.initial();
@@ -88,7 +112,7 @@ bus.subscribe("*", (event) => {
 // Chat service: every event goes out, chat_message updates come back.
 const latency = createReplyLatency();
 const statusEl = document.getElementById("service-status");
-const serviceUrl = new URLSearchParams(location.search).get("service") ?? DEFAULT_SERVICE_URL;
+const serviceUrl = params.get("service") ?? DEFAULT_SERVICE_URL;
 const service = connectToService({
   url: serviceUrl,
   onMessage(message) {
@@ -162,7 +186,7 @@ async function showStatus(status) {
 function showLatency() {
   const { completion } = latency.summary().all;
   const el = document.getElementById("latency");
-  el.textContent = `reply p50 ${completion.p50} ms · p95 ${completion.p95} ms (n=${completion.n})`;
+  el.textContent = `${bot ? "BOT · " : ""}reply p50 ${completion.p50} ms · p95 ${completion.p95} ms (n=${completion.n})`;
 }
 
 // For the demo and the bug bash: witc.latency() / witc.rows() / witc.stats() in the console.
@@ -172,7 +196,20 @@ window.witc = {
   rows: () => latency.rows(),
   stats: () => streamStats,
   game: () => hub.current?.instance.state ?? null,
+  /** The benchmark bot's run so far (null without `?bot=`). */
+  benchmark: () =>
+    bot && {
+      skill: bot.skill,
+      seed: bot.seed,
+      playedMs: Math.round(bot.playedMs),
+      done: bot.done,
+      chats: bot.chats,
+      wave: hub.current?.instance.state.wave ?? 0,
+      bestWave: hub.current?.instance.state.bestWave ?? 0,
+      latency: latency.summary(),
+    },
 };
+if (bot) document.title = `[BOT] ${document.title}`;
 
 // The hub and its games. A game's events go on the bus like any other: stats, facecam
 // and chat react.
@@ -213,7 +250,9 @@ function update(dt) {
   const step =
     (pressed("right") || pressed("down") ? 1 : 0) - (pressed("left") || pressed("up") ? 1 : 0);
 
-  if (hub.screen === "hub") {
+  if (bot && !bot.done && hub.screen === "hub" && chatReady) {
+    hub.confirm({ canPlay: true }); // Wave Survival is the first game
+  } else if (hub.screen === "hub") {
     if (step) hub.move(step);
     if (pressed("select")) hub.confirm({ canPlay: canPlay() });
   } else if (hub.screen === "paused") {
@@ -224,6 +263,8 @@ function update(dt) {
     hub.back();
   } else if (pressed("pause")) {
     hub.pause();
+  } else if (bot && !bot.done) {
+    playBot(dt);
   } else {
     const { game, instance } = hub.current;
     instance.update(dt, { input: gameInputs.get(game.id), mouse });
@@ -235,6 +276,29 @@ function update(dt) {
   // opened a screen doesn't also act in it.
   menuInput.endFrame();
   for (const input of gameInputs.values()) input.endFrame();
+}
+
+/** One step of the benchmark bot: it plays, chats on a timer, and stops when time's up. */
+function playBot(dt) {
+  const { instance } = hub.current;
+  bot.input ??= createBotInput(
+    createBot({
+      arena: { x: 0, y: HUD_HEIGHT, width: WORLD.width, height: WORLD.height - HUD_HEIGHT },
+      skill: bot.skill,
+      random: seededRandom(bot.seed),
+    }),
+  );
+  instance.update(dt, bot.input(instance.state, dt));
+  bot.playedMs += dt;
+  if (bot.playedMs >= bot.chatAt) {
+    sendChat(BOT_CHAT[bot.chats++ % BOT_CHAT.length]);
+    bot.chatAt += bot.chatEveryMs;
+  }
+  if (bot.playedMs >= bot.stopAfterMs) {
+    bot.done = true;
+    hub.pause();
+    console.log("Benchmark done:", JSON.stringify(window.witc.benchmark()));
+  }
 }
 
 function render(alpha) {
@@ -303,7 +367,7 @@ canvas.addEventListener("pointerleave", () => {
 // Leaving the window pauses the game, so nothing happens while nobody is looking.
 window.addEventListener("blur", () => {
   mouse.down = false;
-  hub.pause();
+  if (!bot) hub.pause();
 });
 
 /** Match the canvas's pixel size to its CSS size, so it stays sharp on HiDPI screens. */

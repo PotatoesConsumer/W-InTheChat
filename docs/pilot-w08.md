@@ -90,8 +90,10 @@ The slowest reply (903 ms) used under a third of the new 3000 ms timeout.
    run 2 were coalesced. The chat still gets a line every 2–3 s. If it feels quiet during
    waves in the study, raise `repeatReplyEvery` (more lines per run, up to the QA cap of
    3) rather than shortening the window. *Team decision before the study.*
-2. **Model replies are slower here than in the e2e test** (p50 about 500 ms against
-   211–269 ms in `npm run e2e`). The GPU sits idle between the game's sparse model calls
+2. **Model replies are slower here than in the e2e test.** Confirmed in W09: the GPU
+   clocks down after about 2 s idle and the next reply runs 2.4× slower per token
+   (`docs/benchmark-w09.md`). What the pilot saw: p50 about 500 ms against
+   211–269 ms in `npm run e2e`. The GPU sits idle between the game's sparse model calls
    (GPU use p50 0%) while the e2e test keeps it busy. A GPU that slows down when idle
    would explain it, but that's a guess; the W09 benchmark should measure it. All
    replies are still well inside the new 3 s timeout.
