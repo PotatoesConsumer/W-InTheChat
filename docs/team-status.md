@@ -1,8 +1,10 @@
 # Team status and handoff
 
-Last updated 2026-10-30, with #18 (W08 regression pass and Month-2 demo guide), after #13
-(team status), #14 (Month-1 demo), #15 (persona prompts) and #17 (persona selector,
-coalescing, rate limit) merged. Merged feature branches are deleted; only `master` and `tawan` remain.
+Last updated 2026-11-01, for `fix/chat-coalescing-and-safety-filter` (the W07 safety
+filter, the Hater live, and the player-chat coalescing fix from #18's findings). Before
+that: #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
+selector, coalescing, rate limit) and #18 (W08 regression pass and Month-2 demo guide)
+merged. Merged feature branches are deleted; only `master` and `tawan` remain.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -23,8 +25,9 @@ something here no longer matches the code, trust the code and say so.
   `docs/demo-m1.md`.
 - **All four personas have prompts** (#15): Hater, Backseat Gamer and Lurker join the
   Fan, with voice and safety rules in `docs/personas.md` and a trial,
-  `npm run ai:personas`. Since #17 the selector picks Fan, Backseat Gamer or Lurker per
-  event; the Hater waits for the safety filter (W07).
+  `npm run ai:personas`. The selector picks one per event (#17). **The Hater is live**
+  since the output safety filter (W07): every reply is filtered before display, and a
+  fallback replaces anything blocked (`docs/service.md`, "Reply check and safety filter").
 - **The mini-game hasn't been chosen.** The event catalog (`GAME_EVENTS` in
   `src/events/schema.js`) is still a placeholder until it is.
 
@@ -55,7 +58,7 @@ switch running on the same events.
 |------|-------------------------|------------------------------|------------------------|
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
 | W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
-| W07 | ⬜ Output safety filter (fallbacks already done in #11) | 🟡 Scripted baseline switch: the service has `--condition scripted` (#11), the game has no switch yet | ✅ Edge-case checks and safety test set (#10) |
+| W07 | ✅ Output safety filter, the Hater live (this branch); fallbacks (#11). Still open: persona lines for the scripted baseline | 🟡 Scripted baseline switch: the service has `--condition scripted` (#11), the game has no switch yet | ✅ Edge-case checks and safety test set (#10) |
 | W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
@@ -69,8 +72,8 @@ Nothing here has started.
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
 
-So far: 19 done, 2 started, 15 not started. The 3 TODO tests left in `npm test` are all
-Sittipon's W07 safety filter.
+So far: 20 done, 2 started, 14 not started (counting this branch). `npm test` has no TODO
+tests left.
 
 ## Decisions already made
 
@@ -116,10 +119,10 @@ These changes are on `master` (merged in #11):
    edge case has an `id`; a registered pipeline can list
    `pending: { <id>: "reason" }`, and those show as TODO with the reason. Unknown ids fail
    a test, so typos are caught.
-3. **The service pipeline is registered** in `test/contracts/implementations.js`, with
-   `unsafe` (needs the W07 filter) and `burst` (needs W06 coalescing) pending. Everything
-   else passes: all scenarios, both conditions, slow / down / garbage model, bad input,
-   malformed events.
+3. **The service pipeline is registered** in `test/contracts/implementations.js`, and
+   now nothing is `pending`: `burst` passes since W06 and `unsafe` since the safety
+   filter, which is also registered in `filters` (13/13 block, 16/16 allow). Your
+   regression pass (#18) should show those as passing, not ⏸ known.
 
 Still open on your side: **record the Month-1 demo clip (W04).** The game is connected
 now; `docs/demo-m1.md` has the run steps, a shot list and the first bug bash (fixed bugs
@@ -134,8 +137,9 @@ study materials.
 | Task | What's left |
 |------|-------------|
 | W05 | Done (#15). Known weaknesses for a later prompt pass are in `docs/personas.md`; the Backseat Gamer's advice can name real actions once the mini-game is chosen |
-| W06 | Done (#17): persona selector (no Hater before W07), coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. `burst` passes and is out of `pending` |
-| W07 | The output safety filter in `src/service/replyCheck.js`. It must block all 13 `block` cases and allow all 16 `allow` cases in `eval/safety-cases-v1.json`. Register it in `filters`, then remove `unsafe` from `pending`. Needed before the Hater goes live. |
+| W06 | Done (#17): persona selector, coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. Since this branch, player messages only coalesce when the same text repeats (a quick follow-up question used to get no reply, #18 finding 1) |
+| W07 | Safety filter done (this branch): `src/service/safetyFilter.js`, registered in `filters`, `unsafe` out of `pending`, the Hater in `aiPersonas`. Still open: the scripted baseline speaks only as the Fan (#18 finding 2); it needs lines per persona so both conditions show the same persona labels |
+| Prompt pass | From #18's real-model samples: the Fan invented a score, the Lurker answered a 5-kill streak with "hi". Also decide whether template lines stay all-Fan (#18 finding 3) |
 | W08 | Laptop pilot: set `replyTimeoutMs`, `maxTokens`, event rate and message caps from measured p50/p95 and peak GPU memory |
 
 ## Waiting on someone

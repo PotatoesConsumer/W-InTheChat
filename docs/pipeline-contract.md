@@ -29,7 +29,8 @@ export const pipelines = [{ name: "service pipeline", start: startPipeline }];
 A pipeline can list edge cases it doesn't handle yet as `pending: { <id>: "reason" }`
 (ids are in `edgeCases.contract.test.js`). Those show as TODO with the reason instead of
 failing, so it can be registered before W06/W07 are done. The service pipeline is
-registered with `unsafe` pending (needs the W07 filter); `burst` passes since W06.
+registered with nothing pending: `burst` passes since W06 and `unsafe` since the W07
+safety filter. The filter is registered in `filters` too, so its contract runs on its own.
 
 ## Interfaces
 

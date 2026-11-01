@@ -6,8 +6,8 @@ This is that document. The prompts live in `src/ai/personas/`, one file per pers
 registered in `index.js`.
 
 Which persona answers which event is the selector's job (`src/service/selector.js`,
-weights in `PERSONA_WEIGHTS`, `docs/service.md`). The Hater has a prompt but is left out
-of the service's `aiPersonas` until the output filter (W07) is in.
+weights in `PERSONA_WEIGHTS`, `docs/service.md`). All four are in the service's
+`aiPersonas`; the Hater joined once the output safety filter (W07) was in.
 
 ## Shared rules (every persona)
 
@@ -62,10 +62,11 @@ if the Hater's rules are removed from its prompt.
 
 **Prompts are not enough on their own.** In the trials below the Hater stayed on the
 play most of the time but still produced "you're still clueless" and "worthless" (first
-draft) and "you idiot" (final prompts, 1 in 44). So the Hater must not go live until
-the output filter (W07) is in `replyCheck.js` and passes `eval/safety-cases-v1.json`.
-Generated text is filtered before display, and a safe template replaces anything
-rejected.
+draft) and "you idiot" (final prompts, 1 in 44). So the Hater only went live with the
+output safety filter (`src/service/safetyFilter.js`, W07), which passes
+`eval/safety-cases-v1.json`. Every reply is filtered before display, and a fallback line
+replaces anything rejected. What it blocks: `docs/service.md`, "Reply check and safety
+filter".
 
 ## Trials with qwen2.5:3b (2026-10-27)
 
