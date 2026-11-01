@@ -14,7 +14,7 @@ and with `npm run regression`.
 |------------|-------|------------|----------------|-------|
 | Four personas live behind the safety filter | ✅ | Prompts for all four (#15). The selector picks any of the four for model replies (#17, #19). Every reply passes the output safety filter (`src/service/safetyFilter.js`, #19) first; the `unsafe` edge case passes. | Nothing for the milestone. The filter is English only (`docs/service.md`). | Sittipon, W07 |
 | Mini-game playable start to finish | ⬜ | The placeholder box scene, with keys 1–5 for the major events | **Choosing the mini-game**, then emitting its events and replacing the scene | Whole team, then Shapphanyu W08 |
-| Scripted baseline switch on the same events | 🟡 | `npm run service -- --condition scripted` works in the game: scripted lines, no model calls (seen 2026-10-29) | A switch in the game (today: restart the service). Scripted lines with all four persona labels (today all Fan; finding 2 below). | Shapphanyu W07, Sittipon W07 |
+| Scripted baseline switch on the same events | ✅ | The study panel (F2) or `?condition=` switches the game and the service (`POST /condition`) without a restart. Scripted lines per persona, picked by the same selector, so both conditions show the same persona labels (findings 2 and 4). | Nothing for the milestone. | Shapphanyu W07 |
 
 ## Before the demo
 
@@ -63,8 +63,8 @@ About two minutes. Items marked *once ready* wait on the missing parts above.
    should show every one replaced by a fallback and all checks passing. This shows the
    filter working without making the real model say something bad on camera.
 7. A Hater line in the game (H avatar): press 1–5 until the selector picks it.
-8. **Scripted condition.** Restart the service with `--condition scripted` (or use the
-   game's switch, *once ready*). Same keys: scripted lines, instantly, no model.
+8. **Scripted condition.** F2 opens the study panel; pick Scripted chat. Same keys:
+   scripted lines from the same personas, instantly, no model. F2 again to go back to AI.
 9. *Once ready:* the mini-game from start to finish, with chat reacting to its real events.
 10. The regression report for the day (`docs/regression/`): no regressions.
 
@@ -90,9 +90,9 @@ apart, coalesced as intended.
 | # | Found | Owner | Suggestion |
 |---|-------|-------|------------|
 | 1 | **Fixed in #19.** **The player's quick follow-up messages get no reply.** All player messages share one coalescing key (`chat` in `pipeline.js` / `coalesce.js`), so different messages less than 2 s apart count as repeats. In the game: "ok chat", then a question a second later; the question was ignored. In `player-chat` at real time, 3 of 6 valid messages got a reply. The evaluation set isn't affected (its messages are at least 3 s apart). | Sittipon | Coalesce player messages by their (normalized) text, so spam like "LETS GO" ×5 still collapses, and let the pacer spread out different messages. Repro: `npm run harness -- player-chat --pipeline src/service/pipeline.js` |
-| 2 | **The scripted condition only speaks as the Fan.** On the evaluation set: 14 of 14 scripted lines are Fan, while the AI condition mixes Fan, Backseat and Lurker. The proposal says both conditions use "the same ... persona labels", so persona identification in the study would be one-sided. The pipeline already lists persona lines for the scripted baseline as W07 work. | Sittipon | Scripted lines per persona, chosen with the same selector, so both conditions show the same labels for the same events |
+| 2 | **Fixed in `feature/baseline-switch`.** **The scripted condition only speaks as the Fan.** On the evaluation set: 14 of 14 scripted lines are Fan, while the AI condition mixes Fan, Backseat and Lurker. The proposal says both conditions use "the same ... persona labels", so persona identification in the study would be one-sided. The pipeline already lists persona lines for the scripted baseline as W07 work. | Sittipon | Scripted lines per persona, chosen with the same selector, so both conditions show the same labels for the same events |
 | 3 | **Template lines (minor events) are all Fan**, in both conditions (20 of 20 on the evaluation set). Fine if intended; worth deciding before the study, since raters see persona labels. | Sittipon | Decide, and note it in `docs/personas.md` |
-| 4 | **Switching condition means restarting the service.** Fine for a demo; the study needs a switch the facilitator can use between conditions. | Shapphanyu | The game's switch (W07) |
+| 4 | **Fixed in `feature/baseline-switch`.** **Switching condition means restarting the service.** Fine for a demo; the study needs a switch the facilitator can use between conditions. | Shapphanyu | The game's switch (W07) |
 | 5 | **Reply quality, from the real-model run** (`docs/regression/2026-10-29.md`, samples): the Fan invented a score after a win ("15-14 now!" when the event said 14), and the Lurker answered a 5-kill streak with just "hi". Not check failures; things raters would mark down. | Sittipon | Add both to the known weaknesses in `docs/personas.md` for the prompt pass (W10) |
 
 Known and expected at the time: the Hater never appears and unsafe output isn't filtered

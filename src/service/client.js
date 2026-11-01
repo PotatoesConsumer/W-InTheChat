@@ -48,25 +48,45 @@ export function connectToService({
     if (validateChatMessage(message).ok) onMessage(message);
   });
 
+  async function call(path, init) {
+    try {
+      const res = await fetchImpl(`${base}${path}`, init);
+      return await res.json();
+    } catch (err) {
+      return {
+        ok: false,
+        errors: [{ path: "", message: `service unreachable: ${err.message}` }],
+      };
+    }
+  }
+
+  const postJson = (path, body) =>
+    call(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
   return {
     /**
      * Posts one event. Resolves the service's answer ({ok: true} or {ok: false, errors});
      * never rejects, so a game loop can fire and forget.
      */
-    async send(event) {
-      try {
-        const res = await fetchImpl(`${base}/events`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(event),
-        });
-        return await res.json();
-      } catch (err) {
-        return {
-          ok: false,
-          errors: [{ path: "", message: `service unreachable: ${err.message}` }],
-        };
-      }
+    send(event) {
+      return postJson("/events", event);
+    },
+
+    /** The service's condition: {ok: true, condition, conditions}. Never rejects. */
+    getCondition() {
+      return call("/condition");
+    },
+
+    /**
+     * Switches the service to "ai" or "scripted" (the baseline switch). The service
+     * restarts its pipeline, so stats and latency start fresh. Never rejects.
+     */
+    setCondition(condition) {
+      return postJson("/condition", { condition });
     },
     close() {
       source.close();

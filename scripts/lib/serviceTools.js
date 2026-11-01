@@ -8,15 +8,28 @@
  * @param {import("../../src/ai/ollamaClient.js").OllamaClient} client
  */
 export async function warmUp(client) {
-  const health = await client.health();
-  if (!health.ok) {
-    console.error(`Ollama not reachable: ${health.reason}`);
-    console.error("Start it (it usually runs after install) and try again.");
+  try {
+    await loadModel(client);
+  } catch (err) {
+    console.error(err.message);
     process.exit(1);
   }
+}
+
+/**
+ * Like warmUp, but throws instead of exiting, for a running service switching to the ai
+ * condition (POST /condition).
+ * @param {import("../../src/ai/ollamaClient.js").OllamaClient} client
+ */
+export async function loadModel(client) {
+  const health = await client.health();
+  if (!health.ok) {
+    throw new Error(
+      `Ollama not reachable (${health.reason}). Start it (it usually runs after install) and try again.`,
+    );
+  }
   if (!health.hasDefaultModel) {
-    console.error(`Model "${client.model}" not found. Run: ollama pull ${client.model}`);
-    process.exit(1);
+    throw new Error(`Model "${client.model}" not found. Run: ollama pull ${client.model}`);
   }
   process.stdout.write(`Loading ${client.model}... `);
   const started = Date.now();

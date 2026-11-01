@@ -9,6 +9,10 @@
  * replies come back over SSE into the overlay. The service URL can be changed with
  * `?service=http://localhost:8787`.
  *
+ * The baseline switch: `?condition=ai` or `?condition=scripted` sets the service's
+ * condition before the round starts. F2 opens the study panel, which reloads the page
+ * with the other condition. Without the parameter the service's own condition is used.
+ *
  * The scene is a placeholder until the mini-game is chosen: a box you move with
  * WASD/arrows, Space for a kill, and keys 1-5 for the major events (dev only).
  */
@@ -23,6 +27,7 @@ import { createGameEvent, createChatEvent } from "../events/schema.js";
 import { connectToService, DEFAULT_SERVICE_URL } from "../service/client.js";
 import { createChatOverlay } from "../ui/chatOverlay.js";
 import { createStatsHud } from "../ui/statsHud.js";
+import { createStudyPanel, conditionFromUrl } from "../ui/studyPanel.js";
 
 /** Logical scene size. The canvas is scaled to fit, keeping 16:9. */
 const WORLD = { width: 960, height: 540 };
@@ -83,13 +88,50 @@ bus.subscribe("*", async (event) => {
   }
 });
 
+// Baseline switch (W07): the researcher picks the condition in the study panel (F2).
+const wantedCondition = conditionFromUrl(location.search);
+let condition = null;
+const study = createStudyPanel(document.getElementById("study"), {
+  onPick(next) {
+    const url = new URL(location.href);
+    url.searchParams.set("condition", next);
+    location.assign(url);
+  },
+});
+
+/**
+ * Makes sure the service runs the condition in the URL (if any) and learns which one
+ * it runs. On every (re)connect, since a restarted service is back on its default.
+ * @returns {Promise<boolean>} false if the wanted condition couldn't be set
+ */
+async function syncCondition() {
+  const result = wantedCondition
+    ? await service.setCondition(wantedCondition)
+    : await service.getCondition();
+  condition = result.condition ?? null;
+  study.setCondition(condition);
+  if (result.ok) {
+    study.setError(null);
+    return true;
+  }
+  const why = result.error ?? result.errors?.[0]?.message ?? "unknown error";
+  study.setError(`Couldn't switch to ${wantedCondition}: ${why}`);
+  study.show();
+  console.warn("Condition switch failed:", result);
+  return false;
+}
+
 let roundStarted = false;
 
-function showStatus(status) {
-  // Start the round once chat can see it, so its reply isn't sent to nobody.
-  if (status === "connected" && !roundStarted) {
-    roundStarted = true;
-    bus.publish(createGameEvent("round_start"));
+async function showStatus(status) {
+  // Start the round once chat can see it, in the right condition, so its reply
+  // isn't sent to nobody or answered by the wrong condition.
+  if (status === "connected") {
+    const ready = await syncCondition();
+    if (ready && !roundStarted) {
+      roundStarted = true;
+      bus.publish(createGameEvent("round_start"));
+    }
   }
   const text = { connected: "chat live", reconnecting: "chat offline", closed: "chat off" };
   statusEl.textContent = text[status] ?? status;
@@ -108,6 +150,7 @@ function showLatency() {
 
 // For the demo and the bug bash: witc.latency() / witc.rows() / witc.stats() in the console.
 window.witc = {
+  condition: () => condition,
   latency: () => latency.summary(),
   rows: () => latency.rows(),
   stats: () => streamStats,
@@ -199,8 +242,14 @@ function resizeCanvas() {
 new ResizeObserver(resizeCanvas).observe(canvas);
 resizeCanvas();
 
-// Enter jumps to the chat box; Escape gives the keyboard back to the game.
+// Enter jumps to the chat box; Escape gives the keyboard back to the game; F2 toggles
+// the study panel.
 window.addEventListener("keydown", (event) => {
+  if (event.key === "F2") {
+    event.preventDefault();
+    study.toggle();
+    return;
+  }
   const typing = document.activeElement?.tagName === "INPUT";
   if (event.key === "Enter" && !typing) {
     event.preventDefault();

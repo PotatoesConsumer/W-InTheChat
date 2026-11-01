@@ -138,3 +138,85 @@ test("/health, /stats and unknown routes", async () => {
     assert.equal((await fetch(`${url}/nope`)).status, 404);
   });
 });
+
+const setCondition = (url, condition) =>
+  fetch(`${url}/condition`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ condition }),
+  });
+
+test("/condition: read it, switch it, and the new pipeline starts fresh", async () => {
+  const switched = [];
+  const prepared = [];
+  const service = createService({
+    port: 0,
+    deps: { condition: "scripted", generate: async () => ({ text: "what a play chat!!" }) },
+    prepare: (c) => prepared.push(c),
+    onCondition: (c, previous) => switched.push([c, previous.condition]),
+  });
+  const { url } = await service.start();
+  try {
+    assert.deepEqual(await (await fetch(`${url}/condition`)).json(), {
+      ok: true,
+      condition: "scripted",
+      conditions: ["ai", "scripted"],
+    });
+
+    await post(url, createGameEvent("win"));
+    await service.idle();
+    assert.equal(service.stats().replies.scripted, 1);
+
+    const res = await setCondition(url, "ai");
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { ok: true, condition: "ai" });
+    assert.deepEqual(prepared, ["ai"]);
+    assert.deepEqual(switched, [["ai", "scripted"]]);
+    assert.equal(service.condition(), "ai");
+    assert.equal(service.stats().replies.scripted, 0, "stats start fresh");
+
+    await post(url, createGameEvent("win", {}, { id: "after", ts: Date.now() }));
+    await service.idle();
+    assert.equal(service.stats().replies.ai, 1, "only the new pipeline answers");
+
+    assert.equal((await setCondition(url, "ai")).status, 200, "same condition: nothing to do");
+    assert.deepEqual(switched.length, 1);
+  } finally {
+    await service.close();
+  }
+});
+
+test("/condition refuses bad input, a failed prepare and a pipeline that can't start", async () => {
+  const service = createService({
+    port: 0,
+    deps: { condition: "scripted" }, // no model: ai can't start
+    prepare: (c) => {
+      if (c === "ai" && service.failPrepare) throw new Error("Ollama not reachable");
+    },
+  });
+  const { url } = await service.start();
+  try {
+    assert.equal((await setCondition(url, "both")).status, 400);
+
+    service.failPrepare = true;
+    const down = await setCondition(url, "ai");
+    assert.equal(down.status, 503);
+    assert.deepEqual(await down.json(), {
+      ok: false,
+      condition: "scripted",
+      error: "Ollama not reachable",
+    });
+
+    service.failPrepare = false;
+    const noModel = await setCondition(url, "ai");
+    assert.equal(noModel.status, 409);
+    assert.match((await noModel.json()).error, /generate/);
+
+    assert.equal(service.condition(), "scripted", "the old pipeline keeps running");
+    assert.equal((await post(url, createGameEvent("win"))).status, 202);
+    await service.idle();
+    assert.equal(service.stats().replies.scripted, 1);
+  } finally {
+    await service.close();
+  }
+});

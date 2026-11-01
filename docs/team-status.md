@@ -1,10 +1,10 @@
 # Team status and handoff
 
-Last updated 2026-11-01, for `fix/chat-coalescing-and-safety-filter` (the W07 safety
-filter, the Hater live, and the player-chat coalescing fix from #18's findings). Before
-that: #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
-selector, coalescing, rate limit) and #18 (W08 regression pass and Month-2 demo guide)
-merged. Merged feature branches are deleted; only `master` and `tawan` remain.
+Last updated 2026-11-01, for `feature/baseline-switch` (Shapphanyu's W07 scripted
+baseline switch, merged with `master`). Before that: #13 (team status), #14 (Month-1
+demo), #15 (persona prompts), #17 (persona selector, coalescing, rate limit), #18 (W08
+regression pass and Month-2 demo guide) and #19 (safety filter, the Hater live,
+player-chat coalescing fix) merged. Merged feature branches are deleted; only `master` and `tawan` remain.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -58,7 +58,7 @@ switch running on the same events.
 |------|-------------------------|------------------------------|------------------------|
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
 | W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
-| W07 | ✅ Output safety filter, the Hater live (this branch); fallbacks (#11). Still open: persona lines for the scripted baseline | 🟡 Scripted baseline switch: the service has `--condition scripted` (#11), the game has no switch yet | ✅ Edge-case checks and safety test set (#10) |
+| W07 | ✅ Output safety filter, the Hater live (#19); fallbacks (#11) | ✅ Scripted baseline switch: study panel (F2) and `?condition=`, `POST /condition`, scripted lines per persona (this branch) | ✅ Edge-case checks and safety test set (#10) |
 | W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | ⬜ Mini-game wired to AI reactions and the 3 stats; **blocked until the team picks the mini-game** | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
@@ -72,7 +72,7 @@ Nothing here has started.
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
 
-So far: 20 done, 2 started, 14 not started (counting this branch). `npm test` has no TODO
+So far: 21 done, 1 started, 14 not started (counting this branch). `npm test` has no TODO
 tests left.
 
 ## Decisions already made
@@ -104,8 +104,16 @@ Don't change these without talking to the team first. The reasons are in the lin
      shortcuts for the major events.
 2. **The mini-game.** When it's chosen, emit its events from the game instead of keys
    1–5, and replace the placeholder box scene. The facecam can stay.
-3. **Scripted baseline switch (W07):** the service already has the condition:
-   `npm run service -- --condition scripted`. The game needs a way to pick it.
+3. **Scripted baseline switch (W07), in a PR from `feature/baseline-switch`:**
+   - The game: **F2** opens a study panel (hidden from participants) with AI chat /
+     Scripted chat. Picking one reloads with `?condition=...`, so stats and chat start
+     fresh; the game sets that condition on the service before the round starts.
+   - The service: `GET`/`POST /condition` restarts the pipeline in the other
+     condition (`src/service/server.js`); switching to ai loads the model first.
+   - The scripted baseline now uses **the same persona selector** as the ai condition,
+     with per-persona lines (`SCRIPTED_LINES` in `src/service/templates.js`). Before,
+     every scripted line was the Fan's, so the two conditions didn't show the same
+     persona labels. **Sittipon: please review the `pipeline.js` / `server.js` part.**
 
 ## Prin (multimodal / QA): what changed in your area
 
@@ -138,7 +146,7 @@ study materials.
 |------|-------------|
 | W05 | Done (#15). Known weaknesses for a later prompt pass are in `docs/personas.md`; the Backseat Gamer's advice can name real actions once the mini-game is chosen |
 | W06 | Done (#17): persona selector, coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. Since this branch, player messages only coalesce when the same text repeats (a quick follow-up question used to get no reply, #18 finding 1) |
-| W07 | Safety filter done (this branch): `src/service/safetyFilter.js`, registered in `filters`, `unsafe` out of `pending`, the Hater in `aiPersonas`. Still open: the scripted baseline speaks only as the Fan (#18 finding 2); it needs lines per persona so both conditions show the same persona labels |
+| W07 | Done: the safety filter (#19), `src/service/safetyFilter.js`, registered in `filters`, the Hater in `aiPersonas`. Scripted lines per persona came with Shapphanyu's switch (this branch, #18 finding 2) |
 | Prompt pass | From #18's real-model samples: the Fan invented a score, the Lurker answered a 5-kill streak with "hi". Also decide whether template lines stay all-Fan (#18 finding 3) |
 | W08 | Laptop pilot: set `replyTimeoutMs`, `maxTokens`, event rate and message caps from measured p50/p95 and peak GPU memory |
 
@@ -149,5 +157,4 @@ study materials.
 | Choosing the mini-game (fixes the event catalog and the game scene) | the whole team |
 | Whether `tawan` can be deleted (fully merged) | Shapphanyu |
 | Recording the Month-1 demo clip | Prin (or anyone) |
-| W08 findings 1–3 and 5 (quick player messages dropped, scripted and template lines all Fan, reply quality) in `docs/demo-m2.md` | Sittipon |
-| W08 finding 4 (condition switch in the game) | Shapphanyu |
+| W08 findings 3 and 5 (template lines all Fan, reply quality) in `docs/demo-m2.md`; 1 was fixed in #19, 2 and 4 on this branch | Sittipon |

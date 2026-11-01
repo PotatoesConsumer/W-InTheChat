@@ -80,7 +80,8 @@ any of that, update the file in the same PR.
   - `coalesce.js`: runs of repeated events, measured with the events' own timestamps.
     Player messages count as repeats only when the text is the same.
   - `pacer.js`: the chat rate limit; delays lines, never drops them
-  - `server.js`: POST /events, GET /stream (SSE), /health, /stats. Localhost only.
+  - `server.js`: POST /events, GET /stream (SSE), /health, /stats, GET/POST /condition
+    (the baseline switch: restarts the pipeline in ai or scripted). Localhost only.
   - `client.js`: browser side for the game (`connectToService`)
   - `replyCheck.js`: rejects malformed replies and anything the safety filter blocks
   - `safetyFilter.js`: the output safety filter (slurs, threats, self-harm, doxxing,
@@ -88,7 +89,8 @@ any of that, update the file in the same PR.
     `blocklist.js` holds salted hashes, never the words; add one with
     `node scripts/blocklist-hash.js <word> <category>`.
   - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
-    every `GAME_EVENTS` name (a test checks).
+    every `GAME_EVENTS` name, and scripted lines per persona for every major one (tests
+    check). Scripted replies use the same persona selector as ai ones.
 - `src/game/`: browser game (`index.html` loads `main.js`)
   - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
     facecam react) and to the chat service through `connectToService`; replies come back
@@ -103,7 +105,9 @@ any of that, update the file in the same PR.
     and in the console as `witc.latency()`
 - `src/ui/`: chat overlay and HUD. `chatLog.js` is the DOM-free state (streamed updates by
   id), `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll,
-  whole replies typed in), `statsHud.js` the follower/donation counters and hype meter.
+  whole replies typed in), `statsHud.js` the follower/donation counters and hype meter,
+  `studyPanel.js` the researcher's condition switch (F2, hidden by default; reloads with
+  `?condition=ai|scripted`).
   The player's own lines are UI-only entries (`kind: "player"`, name "Player", ADMIN badge),
   not chat_messages. No login or name setting yet.
 - `scripts/serve.js`: `npm run dev` static server on localhost:5173 (no dotfiles/node_modules)

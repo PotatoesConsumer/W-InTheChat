@@ -31,6 +31,11 @@ npm run e2e -- --rounds 5 --gap 1500
 Both load the model before serving, because a cold load can take longer than a reply
 timeout. `npm run service` logs every finished reply; Ctrl+C prints p50/p95.
 
+`--condition` is only the starting condition. The game's study panel (F2) switches it
+while the service runs (`POST /condition`, below). Switching to `ai` loads the model
+first and is refused if Ollama isn't running; the scripted condition never needs it.
+Each switch prints the p50/p95 of the condition it replaced.
+
 ## Transport
 
 POST in, Server-Sent Events out, as proposed in [docs/events.md](events.md#transport).
@@ -42,6 +47,8 @@ Node's `http` module only; no dependencies.
 | `GET /stream` | SSE. Each `chat_message` update is one `event: chat_message` frame with the message as JSON `data`. A `: ping` comment every 15 s keeps it open. |
 | `GET /health` | `{ok: true, clients}` |
 | `GET /stats` | The pipeline's reply counts, failure reasons and p50/p95 latency |
+| `GET /condition` | `{ok: true, condition, conditions}` |
+| `POST /condition` | `{condition: "ai" \| "scripted"}`. Restarts the pipeline in that condition, so stats and latency start fresh; replies still in flight are dropped. `200 {ok: true, condition}`; `400` for an unknown condition; `503` if the model couldn't be loaded and `409` if the pipeline can't start (both keep the old condition running). |
 
 **Localhost only.** The server binds `127.0.0.1`, refuses requests whose `Host` isn't
 localhost (DNS rebinding), and only answers cross-origin requests from `localhost` /
@@ -65,8 +72,8 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 |-------|--------------|--------------------|
 | Repeat of a recent same-name event (or the same player message) | coalesced: no message | coalesced: no message |
 | Minor game event | `template` line (Fan) | `template` line (Fan) |
-| Major game event | model reply, persona from the selector | `scripted` line (Fan) |
-| Player message | model reply, persona from the selector | `scripted` line (Fan) |
+| Major game event | model reply, persona from the selector | `scripted` line, persona from the selector |
+| Player message | model reply, persona from the selector | `scripted` line, persona from the selector |
 | Model times out, fails, or its reply is rejected | `fallback` line | (model never called) |
 
 - **At most one reply per event**, always linked by `eventId`.
@@ -78,8 +85,12 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
   event, weights in `PERSONA_WEIGHTS` (for example a loss leans to the Hater and the
   Backseat Gamer, a win to the Fan; the Lurker only answers major game events, never
   chat). Only personas in `aiPersonas` can be picked; all four are, the Hater since the
-  safety filter (W07). Template and scripted lines are written in the Fan's
-  voice, so they stay with the Fan until the scripted baseline gets persona lines (W07).
+  safety filter (W07). The scripted condition uses the same selector, roll and
+  `aiPersonas`, so the same seed and events give **the same persona labels in both
+  conditions** (proposal: same events and persona labels); only the text differs. Its
+  lines are `SCRIPTED_LINES` in `templates.js`, per persona and event, written to the
+  voice and safety rules in `docs/personas.md`. Minor-event templates stay in the Fan's
+  voice in both conditions.
 - **Coalescing** ([`coalesce.js`](../src/service/coalesce.js)): same-name game events, or
   player messages with the same text (case and spacing ignored), less than
   `coalesceWindowMs` apart form a run. Different player messages are never repeats of
@@ -200,9 +211,3 @@ No fallbacks. For comparison, with `streamPartials` on, the first partial text s
 
 These are short runs, not the pilot benchmark (W08/W09). Earlier, the cold model load
 took about 60 s.
-
-## Not built yet
-
-| What | Task |
-|------|------|
-| Full scripted baseline (scripts, UI switch) | W07 |

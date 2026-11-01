@@ -4,7 +4,12 @@ import { createEventBus } from "../../src/events/bus.js";
 import { createGameEvent, createChatEvent } from "../../src/events/schema.js";
 import { validateChatMessage } from "../../src/events/chatMessage.js";
 import startPipeline, { PIPELINE_DEFAULTS } from "../../src/service/pipeline.js";
-import { EVENT_LINES, CHAT_LINES, FALLBACK_LINES, VIEWERS } from "../../src/service/templates.js";
+import {
+  EVENT_LINES,
+  FALLBACK_LINES,
+  SCRIPTED_LINES,
+  VIEWERS,
+} from "../../src/service/templates.js";
 
 /**
  * A generator that answers from `script`, one entry per call:
@@ -232,7 +237,30 @@ test("scripted condition: fixed lines for every event, the model is never called
       ["chat", "scripted"],
     ],
   );
-  assert.ok(CHAT_LINES.includes(messages[2].text));
+  const [, major, chat] = messages;
+  assert.ok(SCRIPTED_LINES[major.persona].win.includes(major.text), major.text);
+  assert.ok(SCRIPTED_LINES[chat.persona].chat.includes(chat.text), chat.text);
+  assert.ok(VIEWERS[chat.persona].includes(chat.viewer));
+});
+
+test("both conditions give the same persona labels for the same seed and events", async () => {
+  const labels = async (condition) => {
+    const { bus, messages, handle } = setup(["a good reply here"], {
+      condition,
+      random: seeded(3),
+    });
+    const names = ["win", "loss", "streak", "close_call", "new_best", "loss", "win"];
+    for (const [i, name] of names.entries()) {
+      bus.publish(game(name, {}, `e${i}`));
+      await handle.idle();
+    }
+    bus.publish(createChatEvent("hi chat", { id: "c1", ts: Date.now() }));
+    await handle.idle();
+    return finals(messages).map((m) => `${m.eventId} ${m.persona} ${m.viewer}`);
+  };
+  const ai = await labels("ai");
+  assert.deepEqual(await labels("scripted"), ai);
+  assert.ok(new Set(ai.map((l) => l.split(" ")[1])).size > 1, "more than one persona");
 });
 
 test("the same seed and events give the same chat, whatever the model returns", async () => {
@@ -400,15 +428,16 @@ test("an unsafe reply is never shown: the filter swaps in a fallback", async () 
   assert.deepEqual(handle.stats().failures, { unsafe: 1 });
 });
 
-test("template and scripted lines stay with the Fan, whose voice they're written in", async () => {
-  const { bus, messages, handle } = setup(["unused"], { condition: "scripted" });
-  bus.publish(game("kill", {}, "minor"));
-  bus.publish(game("loss", {}, "major"));
-  await handle.idle();
-  assert.deepEqual(
-    messages.map((m) => m.persona),
-    ["fan", "fan"],
-  );
+test("minor-event templates stay with the Fan, whose voice they're written in", async () => {
+  for (const condition of ["ai", "scripted"]) {
+    const { bus, messages, handle } = setup(["unused"], { condition });
+    bus.publish(game("kill", {}, "minor"));
+    await handle.idle();
+    assert.deepEqual(
+      messages.map((m) => m.persona),
+      ["fan"],
+    );
+  }
 });
 
 test("repeats are coalesced by the events' timestamps: 1st, 5th and 10th of a run", async () => {
