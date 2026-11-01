@@ -41,6 +41,10 @@ any of that, update the file in the same PR.
 - `npm run pilot`: the W08 laptop pilot: a bot plays the wave shooter into the pipeline
   with the real model at real time; latency, reply length, chat rate, GPU memory, checks
   and rejected replies. Results and the limits set from them: `docs/pilot-w08.md`.
+- `npm run benchmark -- --minutes 10`: the W09 benchmark: with `npm run service` and
+  `npm run dev` running, it prints a `?bot=` URL to open in Chrome, then samples the GPU
+  with the browser drawing and reads the service's latency. `--idle-test`: model calls
+  after 0-12 s idle. Results: `docs/benchmark-w09.md`.
 - `npm run regression [-- --model]`: full regression pass (static checks, every scenario ×
   fake-model mode × condition through the registered pipeline, comparisons, optionally the
   real model). Writes `docs/regression/<date>.md`, exits 1 on a regression. Run it before
@@ -98,7 +102,9 @@ any of that, update the file in the same PR.
   - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
     facecam react) and to the chat service through `connectToService`; replies come back
     over SSE into the overlay. `?service=<url>` changes the service URL. Runs the hub,
-    one keymap per game plus the menu keys, and the mouse.
+    one keymap per game plus the menu keys, and the mouse. `?bot=<skill>` (with
+    `&seed=`, `&minutes=`) lets `shooter/bot.js` play Wave Survival through the same
+    input path, for the benchmark only; `witc.benchmark()` reports the run.
   - `hub.js`: the game hub and pause menu as plain state (tested), and **the game
     module interface** every mini-game implements. `hubView.js` draws them;
     `games.js` lists the games. More games are planned: add one there.

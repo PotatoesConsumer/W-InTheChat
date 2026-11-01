@@ -1,10 +1,11 @@
 # Team status and handoff
 
-Last updated 2026-11-01, for `feature/w08-pilot` (Sittipon's W08 laptop pilot and the
-limits set from it). Before that: #13 (team status), #14 (Month-1 demo), #15 (persona
-prompts), #17 (persona selector, coalescing, rate limit), #18 (W08 regression pass and
-Month-2 demo guide), #19 (safety filter, the Hater live, player-chat coalescing fix),
-#20 (scripted baseline switch) and #21/#22 (wave shooter, game hub, coin store) merged.
+Last updated 2026-11-01, for `feature/w09-benchmark` (Sittipon's W09 full pipeline
+benchmark in Chrome, `docs/benchmark-w09.md`). Before that: #13 (team status), #14
+(Month-1 demo), #15 (persona prompts), #17 (persona selector, coalescing, rate limit),
+#18 (W08 regression pass and Month-2 demo guide), #19 (safety filter, the Hater live,
+player-chat coalescing fix), #20 (scripted baseline switch), #21/#22 (wave shooter, game
+hub, coin store) and #23 (W08 laptop pilot, limits) merged.
 Merged branches are deleted, `tawan` included; only `master` remains.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
@@ -64,7 +65,7 @@ switch running on the same events.
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
 | W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
 | W07 | ✅ Output safety filter, the Hater live (#19); fallbacks (#11) | ✅ Scripted baseline switch: study panel (F2) and `?condition=`, `POST /condition`, scripted lines per persona (#20) | ✅ Edge-case checks and safety test set (#10) |
-| W08 | ✅ Laptop pilot: `npm run pilot`, limits set from it (`docs/pilot-w08.md`, this branch) | ✅ Wave shooter wired to AI reactions and the 3 stats (#21, #22) | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
+| W08 | ✅ Laptop pilot: `npm run pilot`, limits set from it (#23, `docs/pilot-w08.md`) | ✅ Wave shooter wired to AI reactions and the 3 stats (#21, #22) | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
@@ -72,13 +73,13 @@ Nothing here has started.
 
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
-| W09 | ⬜ Full pipeline benchmark: first text and completion p50/p95, peak GPU memory | ⬜ Overlay and stats polish, per-persona styling | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
+| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (`docs/benchmark-w09.md`, this branch) | ⬜ Overlay and stats polish, per-persona styling | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
 | W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | ⬜ Fixes from the pilot; sound and reaction effects | ⬜ Participant sessions, about 15–20 people, both conditions |
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
 
-So far: 23 done, 1 started (Prin's W04 demo clip), 12 not started: SEG 02 is complete
-once this branch merges. `npm test` has no TODO
+So far: 24 done, 1 started (Prin's W04 demo clip), 11 not started. SEG 02 is complete;
+SEG 03 has started. `npm test` has no TODO
 tests left.
 
 ## Decisions already made
@@ -181,8 +182,9 @@ study materials.
 | W06 | Done (#17): persona selector, coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. Since #19, player messages only coalesce when the same text repeats (a quick follow-up question used to get no reply, #18 finding 1) |
 | W07 | Done: the safety filter (#19), `src/service/safetyFilter.js`, registered in `filters`, the Hater in `aiPersonas`. Scripted lines per persona came with Shapphanyu's switch (#20, #18 finding 2) |
 | Prompt pass | From #18's real-model samples: the Fan invented a score, the Lurker answered a 5-kill streak with "hi". Also decide whether template lines stay all-Fan (#18 finding 3) |
-| W08 | Done on `feature/w08-pilot`: `npm run pilot` (a bot plays the shooter into the real model) and `replyTimeoutMs` 3000, `minGenerationMs` 800, `maxTokens` 32 from its numbers (`docs/pilot-w08.md`) |
-| W09 | Full pipeline benchmark: first text and completion p50/p95, peak GPU memory, in Chrome. Check the pilot's guess that the idle GPU slows sparse replies (`docs/pilot-w08.md`, finding 2) |
+| W08 | Done (#23): `npm run pilot` (a bot plays the shooter into the real model) and `replyTimeoutMs` 3000, `minGenerationMs` 800, `maxTokens` 32 from its numbers (`docs/pilot-w08.md`) |
+| W09 | Done on `feature/w09-benchmark`: `npm run benchmark` with the bot in Chrome (`?bot=`): AI reply 507 / 721 ms p50 / p95, templates 6 ms, GPU 2.2 of 6 GB. Idle test: after ~2 s idle the GPU clocks down and replies run 2.4× slower per token, which is why the game is slower than `npm run e2e` (`docs/benchmark-w09.md`) |
+| W10 | Prompt tuning from pilot logs, plus a team decision on the idle GPU (NVIDIA power setting, keeping it warm, or accepting ~500 ms; `docs/benchmark-w09.md`) |
 
 ## Waiting on someone
 
