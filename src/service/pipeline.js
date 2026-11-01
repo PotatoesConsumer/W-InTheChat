@@ -39,19 +39,29 @@ import { selectPersona } from "./selector.js";
 import { createCoalescer, coalesceKey } from "./coalesce.js";
 import { createPacer } from "./pacer.js";
 
-/** Provisional; the laptop pilot (W08) sets the real numbers. */
+/**
+ * Set from the W08 laptop pilot (docs/pilot-w08.md: the wave shooter played by a bot at
+ * real time, qwen2.5:3b on the RTX 4050, 3 runs, 107 model replies).
+ */
 export const PIPELINE_DEFAULTS = Object.freeze({
   /**
    * Longest an event waits for its model reply, counted from when it arrived (queue time
-   * included). Past it the reply is aborted and a fallback is sent.
+   * included). Past it the reply is aborted and a fallback is sent. The pilot's slowest
+   * reply, queue included, took 933 ms; this leaves room for Chrome sharing the GPU.
    */
-  replyTimeoutMs: 5000,
+  replyTimeoutMs: 3000,
   /** Model replies generating at once. One GPU; Ollama would only queue extras anyway. */
   maxGenerationsInFlight: 1,
-  /** Don't start a generation with less time than this left; send the fallback instead. */
-  minGenerationMs: 500,
-  /** Cap on generated tokens per reply (Ollama num_predict). */
-  maxTokens: 48,
+  /**
+   * Don't start a generation with less time than this left; send the fallback instead.
+   * The pilot's model calls took up to 781 ms at p95.
+   */
+  minGenerationMs: 800,
+  /**
+   * Cap on generated tokens per reply (Ollama num_predict). The pilot's longest reply
+   * was 25 tokens, so this cuts nothing and still stops a runaway reply early.
+   */
+  maxTokens: 32,
   /**
    * Recent chat lines given to the context builder. Off for now: in the first e2e runs
    * qwen2.5:3b copied the lines' "viewer: text" format and phrasing, and invented

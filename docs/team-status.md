@@ -1,10 +1,11 @@
 # Team status and handoff
 
-Last updated 2026-11-01, for `feature/wave-shooter` (Shapphanyu's W08 wave shooter,
-game hub and coin store, built on #20, the W07 scripted baseline switch). Before that: #13 (team status), #14 (Month-1
-demo), #15 (persona prompts), #17 (persona selector, coalescing, rate limit), #18 (W08
-regression pass and Month-2 demo guide) and #19 (safety filter, the Hater live,
-player-chat coalescing fix) merged. Merged feature branches are deleted; only `master` and `tawan` remain.
+Last updated 2026-11-01, for `feature/w08-pilot` (Sittipon's W08 laptop pilot and the
+limits set from it). Before that: #13 (team status), #14 (Month-1 demo), #15 (persona
+prompts), #17 (persona selector, coalescing, rate limit), #18 (W08 regression pass and
+Month-2 demo guide), #19 (safety filter, the Hater live, player-chat coalescing fix),
+#20 (scripted baseline switch) and #21/#22 (wave shooter, game hub, coin store) merged.
+Merged branches are deleted, `tawan` included; only `master` remains.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -29,7 +30,7 @@ something here no longer matches the code, trust the code and say so.
   since the output safety filter (W07): every reply is filtered before display, and a
   fallback replaces anything blocked (`docs/service.md`, "Reply check and safety filter").
 - **The game opens on a game hub**, since we plan more than one mini-game
-  (`feature/wave-shooter`). The first is **Wave Survival**, a top-down wave shooter
+  (#21, merged through #22). The first is **Wave Survival**, a top-down wave shooter
   (Shapphanyu's pick): waves that get harder, a shop between waves, and a coin store
   where donations buy coin packs. It sends the catalog events itself; the old names
   are kept with phrases that describe the shooter, plus one new event,
@@ -63,7 +64,7 @@ switch running on the same events.
 | W05 | ✅ Hater, Backseat Gamer, Lurker prompts with voice and safety rules (#15) | ✅ Typed player chat into the pipeline (#14) | ✅ Fixed evaluation event set (#7) |
 | W06 | ✅ Persona selector, coalescing, rate limit (#17); minor events to templates (#11) | ✅ Replies typed in whole, once checked (#14) | ✅ Deterministic checks (#8) |
 | W07 | ✅ Output safety filter, the Hater live (#19); fallbacks (#11) | ✅ Scripted baseline switch: study panel (F2) and `?condition=`, `POST /condition`, scripted lines per persona (#20) | ✅ Edge-case checks and safety test set (#10) |
-| W08 | ⬜ Laptop pilot: message cap, output length, event rate, timeout from p50/p95 | 🟡 Wave shooter wired to AI reactions and the 3 stats (`feature/wave-shooter`, in a PR) | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
+| W08 | ✅ Laptop pilot: `npm run pilot`, limits set from it (`docs/pilot-w08.md`, this branch) | ✅ Wave shooter wired to AI reactions and the 3 stats (#21, #22) | ✅ Month-2 demo prep, full regression pass (#18): `npm run regression`, `docs/demo-m2.md` |
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
@@ -76,7 +77,8 @@ Nothing here has started.
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
 
-So far: 21 done, 2 started, 13 not started (counting #20; the wave shooter is the started W08). `npm test` has no TODO
+So far: 23 done, 1 started (Prin's W04 demo clip), 12 not started: SEG 02 is complete
+once this branch merges. `npm test` has no TODO
 tests left.
 
 ## Decisions already made
@@ -106,8 +108,7 @@ Don't change these without talking to the team first. The reasons are in the lin
      updates still work.
    - `src/game/main.js`: events go to the stats and to the service; keys 1–5 are dev
      shortcuts for the major events.
-2. **The mini-game (W08), in a PR from `feature/wave-shooter`** (built on
-   #20, so merge that first): a top-down wave shooter in
+2. **The mini-game (W08), merged (#21, #22)**: a top-down wave shooter in
    `src/game/shooter/`. Keys 1–5 and the box scene are gone.
    - Each wave has more enemies, spawning faster, with more HP and speed; bats from
      wave 3, brutes from wave 5 (`waves.js`).
@@ -180,13 +181,15 @@ study materials.
 | W06 | Done (#17): persona selector, coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. Since #19, player messages only coalesce when the same text repeats (a quick follow-up question used to get no reply, #18 finding 1) |
 | W07 | Done: the safety filter (#19), `src/service/safetyFilter.js`, registered in `filters`, the Hater in `aiPersonas`. Scripted lines per persona came with Shapphanyu's switch (#20, #18 finding 2) |
 | Prompt pass | From #18's real-model samples: the Fan invented a score, the Lurker answered a 5-kill streak with "hi". Also decide whether template lines stay all-Fan (#18 finding 3) |
-| W08 | Laptop pilot: set `replyTimeoutMs`, `maxTokens`, event rate and message caps from measured p50/p95 and peak GPU memory |
+| W08 | Done on `feature/w08-pilot`: `npm run pilot` (a bot plays the shooter into the real model) and `replyTimeoutMs` 3000, `minGenerationMs` 800, `maxTokens` 32 from its numbers (`docs/pilot-w08.md`) |
+| W09 | Full pipeline benchmark: first text and completion p50/p95, peak GPU memory, in Chrome. Check the pilot's guess that the idle GPU slows sparse replies (`docs/pilot-w08.md`, finding 2) |
 
 ## Waiting on someone
 
 | What | Waiting on |
 |------|------------|
 | A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
-| Whether `tawan` can be deleted (fully merged) | Shapphanyu |
+| Whether half the kills going without a chat line is fine for the study (`docs/pilot-w08.md`, finding 1) | the whole team |
+| Tightening `QA_LIMITS` with the pilot's numbers (`docs/pilot-w08.md`, finding 5) | Prin |
 | Recording the Month-1 demo clip | Prin (or anyone) |
 | W08 findings 3 and 5 (template lines all Fan, reply quality) in `docs/demo-m2.md`; 1 was fixed in #19, 2 and 4 in #20 | Sittipon |
