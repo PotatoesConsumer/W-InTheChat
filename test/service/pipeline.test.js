@@ -375,7 +375,7 @@ const spaced = (name, count, gapMs) =>
     createGameEvent(name, {}, { id: `${name}-${i}`, ts: 1_000_000 + i * gapMs }),
   );
 
-test("the selector picks the persona for model replies; no Hater by default", async () => {
+test("the selector picks the persona for model replies, the Hater included", async () => {
   const personas = async (deps) => {
     const { bus, messages, handle } = setup(["nice one chat"], {
       maxMessagesPerSecond: 1_000,
@@ -385,9 +385,19 @@ test("the selector picks the persona for model replies; no Hater by default", as
     await handle.idle();
     return new Set(finals(messages).map((m) => m.persona));
   };
-  assert.deepEqual([...(await personas())].sort(), ["backseat", "fan", "lurker"]);
-  const all = await personas({ aiPersonas: ["fan", "hater", "backseat", "lurker"] });
-  assert.ok(all.has("hater"));
+  assert.deepEqual([...(await personas())].sort(), ["backseat", "fan", "hater", "lurker"]);
+  const noHater = await personas({ aiPersonas: ["fan", "backseat", "lurker"] });
+  assert.ok(!noHater.has("hater"));
+});
+
+test("an unsafe reply is never shown: the filter swaps in a fallback", async () => {
+  const { bus, messages, handle } = setup(["you're worthless, quit streaming"]);
+  bus.publish(game("loss", {}, "major"));
+  await handle.idle();
+  const [final] = finals(messages);
+  assert.equal(final.source, "fallback");
+  assert.ok(!messages.some((m) => m.text.includes("worthless")));
+  assert.deepEqual(handle.stats().failures, { unsafe: 1 });
 });
 
 test("template and scripted lines stay with the Fan, whose voice they're written in", async () => {
@@ -444,4 +454,18 @@ test("rejects aiPersonas without a prompt", () => {
   const generate = async () => ({ text: "x" });
   assert.throws(() => startPipeline(bus, () => {}, { generate, aiPersonas: ["mod"] }), /mod/);
   assert.throws(() => startPipeline(bus, () => {}, { generate, aiPersonas: [] }), /aiPersonas/);
+});
+
+test("a quick follow-up player message is answered; the same line spammed is coalesced", async () => {
+  const { bus, messages, handle } = setup(["good question chat"], { maxMessagesPerSecond: 1_000 });
+  const at = (text, i) => createChatEvent(text, { id: `c${i}`, ts: 1_000_000 + i * 500 });
+  ["ok chat", "should I go left?", "spam", "spam", "SPAM "].forEach((text, i) =>
+    bus.publish(at(text, i)),
+  );
+  await handle.idle();
+  assert.deepEqual(
+    finals(messages).map((m) => m.eventId),
+    ["c0", "c1", "c2"],
+  );
+  assert.equal(handle.stats().coalesced, 2);
 });

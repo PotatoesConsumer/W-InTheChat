@@ -4,7 +4,8 @@
  * Chat pipeline (W04, W06): bus events in, chat_message updates out. Contract:
  * docs/harness.md ("Pipeline contract"). Behavior and limits: docs/service.md.
  *
- *   repeat of a recent event      -> coalesced: no message (coalesce.js)
+ *   repeat of a recent event      -> coalesced: no message (coalesce.js; player messages
+ *                                    only when the same text repeats)
  *   minor game event              -> template line (both conditions)
  *   major game event / chat       -> reply from the model, persona from the selector (ai)
  *                                 -> scripted line, model never called     (scripted)
@@ -22,8 +23,8 @@
  * same-choices). Bursts are handled by coalescing instead, and the pacer (pacer.js) keeps
  * the chat under maxMessagesPerSecond by delaying lines, never by dropping them.
  *
- * Not yet: the safety filter (W07, see replyCheck.js; the Hater stays out of
- * aiPersonas until it's in) and the full scripted baseline with persona lines (W07).
+ * Every model reply passes the reply check, safety filter included (replyCheck.js),
+ * before it's shown. Not yet: the scripted baseline's persona lines (W07).
  */
 
 import { IMPORTANCE } from "../events/schema.js";
@@ -35,7 +36,7 @@ import { checkReply, canShowPartial } from "./replyCheck.js";
 import { VIEWERS, FALLBACK_LINES, lineFor, pick } from "./templates.js";
 import { createLatencyLog } from "./latency.js";
 import { selectPersona } from "./selector.js";
-import { createCoalescer } from "./coalesce.js";
+import { createCoalescer, coalesceKey } from "./coalesce.js";
 import { createPacer } from "./pacer.js";
 
 /** Provisional; the laptop pilot (W08) sets the real numbers. */
@@ -69,10 +70,11 @@ export const PIPELINE_DEFAULTS = Object.freeze({
   /** With streamPartials, a reply is held back until it has this many characters. */
   minStreamChars: 12,
   /**
-   * Personas the selector may pick for a model reply. No Hater until the output safety
-   * filter (W07) is in: its prompt alone still let insults through (docs/personas.md).
+   * Personas the selector may pick for a model reply. The Hater is in since the output
+   * safety filter (W07, safetyFilter.js): its prompt alone still let insults through
+   * (docs/personas.md), and the filter replaces those with a fallback.
    */
-  aiPersonas: Object.freeze(["fan", "backseat", "lurker"]),
+  aiPersonas: Object.freeze(["fan", "hater", "backseat", "lurker"]),
   /**
    * Same-name game events (or player messages) less than this apart form one run of
    * repeats, measured with the events' own timestamps. Matches QA_LIMITS.coalesceWindowMs.
@@ -332,8 +334,7 @@ export default function startPipeline(bus, emit, deps = {}) {
     const viewer = pick(VIEWERS[persona], random);
     const roll = random();
 
-    const key = ctx.kind === "chat" ? "chat" : `game:${ctx.name}`;
-    if (!coalescer.admit(key, ctx.ts)) {
+    if (!coalescer.admit(coalesceKey(ctx), ctx.ts)) {
       coalesced++;
     } else if (ctx.importance === IMPORTANCE.MINOR) {
       replyWithLine(ctx, { persona, viewer, source: "template", text: lineFor(ctx, () => roll) });
