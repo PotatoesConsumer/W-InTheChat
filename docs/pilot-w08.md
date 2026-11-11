@@ -105,7 +105,8 @@ The slowest reply (903 ms) used under a third of the new 3000 ms timeout.
 5. **`QA_LIMITS` in `src/harness/checks.js` are still provisional** (Prin's). With these
    numbers, `replyTimeoutMs` could come down from 10 000 ms. Mind that a burst of
    fallbacks is paced at 4 a second, so a check limit right at 3000 ms could fail on
-   pacing alone. *Prin to decide.*
+   pacing alone. *Decided:* `replyTimeoutMs` 3000 ms with 1000 ms of grace for pacing
+   (`docs/pipeline-contract.md`, "Limits").
 
 ## What this pilot doesn't cover
 

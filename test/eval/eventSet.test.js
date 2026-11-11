@@ -11,6 +11,10 @@ import { GAME_EVENTS, IMPORTANCE, validateEvent } from "../../src/events/schema.
 import { eventForStep } from "../../src/harness/scenario.js";
 import { loadScenario } from "../../src/harness/load.js";
 import { runScenario } from "../../src/harness/runner.js";
+import { playShooter } from "../../src/harness/shooterBot.js";
+import { ENEMY_TYPES } from "../../src/game/shooter/waves.js";
+import { SHOP_ITEMS, COIN_PACKS } from "../../src/game/shooter/shop.js";
+import { LOW_HP_FRACTION } from "../../src/game/shooter/game.js";
 
 const EVAL_DIR = new URL("../../eval/", import.meta.url);
 const SET = "eval/event-set-v1.json";
@@ -74,6 +78,46 @@ test(`major events are at least ${MIN_MAJOR_GAP_MS} ms apart`, () => {
   for (let i = 1; i < majors.length; i++) {
     const gap = majors[i].at - majors[i - 1].at;
     assert.ok(gap >= MIN_MAJOR_GAP_MS, `${majors[i - 1].id} -> ${majors[i].id}: ${gap} ms`);
+  }
+});
+
+test("game events carry the data the wave shooter sends", () => {
+  // What the real game sends, from bot-played runs: a sloppy bot gets close calls, a sharp
+  // one new bests. The bot never buys coin packs.
+  const sent = { coin_purchase: new Set(["coins,dollars,pack"]) };
+  const runs = [1, 2, 3].flatMap((seed) => [0.3, 0.9].map((skill) => ({ seed, skill })));
+  for (const { seed, skill } of runs) {
+    for (const step of playShooter({ seed, skill, durationMs: 300_000, chatEveryMs: 0 }).steps) {
+      (sent[step.game] ??= new Set()).add(
+        Object.keys(step.data ?? {})
+          .sort()
+          .join(","),
+      );
+    }
+  }
+  const items = SHOP_ITEMS.map((i) => i.name);
+  for (const { id, payload } of game) {
+    const { name, data = {} } = payload;
+    if (GAME_EVENTS[name].optional) continue;
+    const keys = Object.keys(data).sort().join(",");
+    assert.ok(
+      sent[name]?.has(keys),
+      `${id}: ${name} {${keys}}, the game sends {${[...(sent[name] ?? [])]}}`,
+    );
+    if (name === "kill") assert.ok(data.enemy in ENEMY_TYPES, `${id}: unknown enemy ${data.enemy}`);
+    if (name === "item_pickup")
+      assert.ok(items.includes(data.item), `${id}: unknown item ${data.item}`);
+    if (name === "coin_purchase") {
+      assert.ok(
+        COIN_PACKS.some(
+          (p) => p.name === data.pack && p.dollars === data.dollars && p.coins === data.coins,
+        ),
+        `${id}: no such coin pack`,
+      );
+    }
+    const low = data.hp <= data.maxHp * LOW_HP_FRACTION;
+    if (name === "close_call") assert.ok(low, `${id}: close_call needs low HP`);
+    if (name === "win") assert.ok(!low, `${id}: a win on low HP is a close_call`);
   }
 });
 

@@ -6,23 +6,26 @@ relevance, persona and variety ratings compare like with like.
 
 | File | What |
 |------|------|
-| [`eval/event-set-v1.json`](../eval/event-set-v1.json) | The set: scenario format (`docs/harness.md`), 46 steps over 141 s |
+| [`eval/event-set-v1.json`](../eval/event-set-v1.json) | The set: scenario format (`docs/harness.md`), 58 steps over 155 s |
 | [`eval/manifest.json`](../eval/manifest.json) | Status (`draft` / `frozen`) and hash of each set |
 | [`eval/safety-cases-v1.json`](../eval/safety-cases-v1.json) | Output filter test set (block / allow / review), see `docs/pipeline-contract.md` |
 | [`test/eval/eventSet.test.js`](../test/eval/eventSet.test.js) | Coverage rules below, plus the freeze check |
 
-> **v1 is a draft.** It uses the placeholder event catalog. When the mini-game is chosen
-> and `GAME_EVENTS` changes, rewrite the set (the coverage test lists missing events), then
-> freeze it before the pilot.
+> **v1 is a draft.** It now follows the wave shooter: every game event carries the data
+> the game sends (a test checks against bot-played games). Freeze it once the team has
+> looked at it, before the pilot: set its `status` to `frozen` and its `sha256` in
+> `eval/manifest.json`.
 
 ## What v1 contains
 
-Four rounds (win, loss, win with a personal best, loss):
+Two runs of the wave shooter. Run 1 clears waves 1 and 2 and dies on wave 3; run 2 clears
+waves 1 to 4, with a new best at wave 3, and dies on wave 5 to a brute. HP is out of 5,
+and every `close_call` is on 2 HP or less, as the game decides it.
 
 | | Count |
 |-|-------|
 | Major game events (may get an AI reply) | 10: `close_call` ×3, `streak` ×2, `win` ×2, `loss` ×2, `new_best` ×1 |
-| Minor game events (templates) | 22 |
+| Minor game events (templates) | 34 |
 | Player messages | 14, two of most categories |
 
 Every player message has a `note` starting with its category, so raters know what kind of
@@ -30,9 +33,9 @@ input a reply was answering:
 
 | Category | Example |
 |----------|---------|
-| `greeting` | "hey chat, we're live! let's get this first win" |
-| `question` | "is this level always this hard?" |
-| `advice-request` | "which way do I go, left path or the bridge?" |
+| `greeting` | "hey chat, we're live! let's see how many waves we can clear" |
+| `question` | "do the bats always show up on wave 3?" |
+| `advice-request` | "rapid fire or an extra heart, what should I buy first?" |
 | `reaction` | "I was ONE hit from dying there" (right after a close call) |
 | `thanks` | "thank you chat, you guys carried me" |
 | `banter` | "ok chat, who jinxed that? be honest" |
