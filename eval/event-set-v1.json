@@ -1,102 +1,422 @@
 {
   "name": "event-set-v1",
-  "description": "Fixed evaluation event set v1 (DRAFT until the mini-game is chosen). Four rounds, every catalog event, 14 typed player messages. Both chat conditions play exactly this file. See docs/evaluation.md.",
+  "description": "Fixed evaluation event set v1 (DRAFT until the team freezes it). Two runs of the wave shooter, every catalog event with the data the game sends, 14 typed player messages. Both chat conditions play exactly this file. See docs/evaluation.md.",
   "steps": [
-    { "at": 0, "game": "round_start", "data": { "round": 1 } },
+    {
+      "at": 0,
+      "game": "round_start",
+      "data": {
+        "wave": 1
+      }
+    },
     {
       "at": 2000,
-      "chat": "hey chat, we're live! let's get this first win",
+      "chat": "hey chat, we're live! let's see how many waves we can clear",
       "note": "greeting: stream start"
     },
-    { "at": 4500, "game": "item_pickup", "data": { "item": "shield" } },
-    { "at": 7000, "game": "kill" },
-    { "at": 9500, "game": "damage_taken", "data": { "hp": 70 } },
+    {
+      "at": 4500,
+      "game": "kill",
+      "data": {
+        "enemy": "slime",
+        "wave": 1
+      }
+    },
+    {
+      "at": 7000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 4,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 9500,
+      "game": "kill",
+      "data": {
+        "enemy": "slime",
+        "wave": 1
+      }
+    },
     {
       "at": 12000,
-      "chat": "which way do I go, left path or the bridge?",
-      "note": "advice-request: asks chat for directions"
+      "chat": "rapid fire or an extra heart, what should I buy first?",
+      "note": "advice-request: asks chat what to buy"
     },
-    { "at": 15000, "game": "kill", "data": { "combo": 2 } },
-    { "at": 18000, "game": "close_call", "data": { "hp": 4 } },
     {
-      "at": 21000,
-      "chat": "I was ONE hit from dying there",
-      "note": "reaction: to the close call at 18s"
+      "at": 14500,
+      "game": "damage_taken",
+      "data": {
+        "hp": 3,
+        "maxHp": 5
+      }
     },
-    { "at": 24000, "game": "item_pickup", "data": { "item": "medkit" } },
-    { "at": 27000, "game": "streak", "data": { "count": 3 } },
-    { "at": 30000, "game": "damage_taken", "data": { "hp": 55 } },
-    { "at": 33000, "game": "kill" },
-    { "at": 36000, "game": "win", "data": { "round": 1, "score": 14 } },
+    {
+      "at": 16500,
+      "game": "damage_taken",
+      "data": {
+        "hp": 2,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 19000,
+      "game": "close_call",
+      "data": {
+        "wave": 1,
+        "hp": 2,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 22000,
+      "chat": "I was ONE hit from dying there",
+      "note": "reaction: to the close call at 19s"
+    },
+    {
+      "at": 25000,
+      "game": "item_pickup",
+      "data": {
+        "item": "Medkit",
+        "wave": 1
+      }
+    },
+    {
+      "at": 27000,
+      "game": "round_start",
+      "data": {
+        "wave": 2
+      }
+    },
+    {
+      "at": 30000,
+      "game": "kill",
+      "data": {
+        "enemy": "slime",
+        "wave": 2
+      }
+    },
+    {
+      "at": 33000,
+      "game": "streak",
+      "data": {
+        "kills": 10
+      }
+    },
+    {
+      "at": 36000,
+      "game": "kill",
+      "data": {
+        "enemy": "slime",
+        "wave": 2
+      }
+    },
     {
       "at": 39000,
-      "chat": "thank you chat, you guys carried me",
-      "note": "thanks: after the round-1 win"
+      "game": "win",
+      "data": {
+        "wave": 2,
+        "hp": 4,
+        "maxHp": 5
+      }
     },
     {
       "at": 42000,
-      "game": "coin_purchase",
-      "data": { "pack": "Bag of Coins", "dollars": 25, "coins": 70 }
+      "chat": "thank you chat, you guys carried me",
+      "note": "thanks: after clearing wave 2"
     },
-
-    { "at": 45000, "game": "round_start", "data": { "round": 2 } },
+    {
+      "at": 45000,
+      "game": "coin_purchase",
+      "data": {
+        "pack": "Bag of Coins",
+        "dollars": 25,
+        "coins": 70
+      }
+    },
     {
       "at": 48000,
+      "game": "round_start",
+      "data": {
+        "wave": 3
+      }
+    },
+    {
+      "at": 51000,
       "chat": "anyone else hungry? I could go for some noodles",
-      "note": "irrelevant: off-topic, mid-round"
+      "note": "irrelevant: off-topic, mid-wave"
     },
-    { "at": 51000, "game": "damage_taken", "data": { "hp": 60 } },
-    { "at": 53000, "game": "damage_taken", "data": { "hp": 25 } },
-    { "at": 56000, "game": "close_call", "data": { "hp": 2 } },
-    { "at": 59000, "chat": "is this level always this hard?", "note": "question: about the game" },
-    { "at": 62000, "game": "kill" },
-    { "at": 65000, "game": "damage_taken", "data": { "hp": 8 } },
-    { "at": 68000, "game": "loss", "data": { "round": 2, "score": 6 } },
     {
-      "at": 71000,
+      "at": 54000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 3,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 56000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 2,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 59000,
+      "chat": "do the bats always show up on wave 3?",
+      "note": "question: about the game"
+    },
+    {
+      "at": 62000,
+      "game": "kill",
+      "data": {
+        "enemy": "bat",
+        "wave": 3
+      }
+    },
+    {
+      "at": 65000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 1,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 67000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 0,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 67000,
+      "game": "loss",
+      "data": {
+        "wave": 3,
+        "kills": 17
+      }
+    },
+    {
+      "at": 70000,
       "chat": "ok chat, who jinxed that? be honest",
-      "note": "banter: after the round-2 loss"
+      "note": "banter: after dying on wave 3"
     },
-
-    { "at": 78000, "game": "round_start", "data": { "round": 3 } },
-    { "at": 81000, "chat": "😤😤", "note": "minimal: emoji only" },
-    { "at": 84000, "game": "kill" },
-    { "at": 86000, "game": "kill", "data": { "combo": 2 } },
-    { "at": 89000, "game": "item_pickup", "data": { "item": "speed boots" } },
-    { "at": 92000, "game": "streak", "data": { "count": 5 } },
     {
-      "at": 95000,
-      "chat": "five in a row, I'm actually locked in",
-      "note": "reaction: to the streak at 92s"
+      "at": 76000,
+      "game": "round_start",
+      "data": {
+        "wave": 1
+      }
     },
-    { "at": 98000, "game": "kill" },
-    { "at": 101000, "game": "damage_taken", "data": { "hp": 40 } },
-    { "at": 104000, "game": "close_call", "data": { "hp": 6 } },
-    { "at": 107000, "game": "kill" },
-    { "at": 110000, "game": "new_best", "data": { "score": 22 } },
-    { "at": 113000, "game": "win", "data": { "round": 3, "score": 22 } },
     {
-      "at": 116000,
-      "chat": "should I try hard mode next round?",
-      "note": "question: asks for a decision"
+      "at": 79000,
+      "chat": "😤😤",
+      "note": "minimal: emoji only"
     },
-
-    { "at": 123000, "game": "round_start", "data": { "round": 4 } },
+    {
+      "at": 82000,
+      "game": "kill",
+      "data": {
+        "enemy": "slime",
+        "wave": 1
+      }
+    },
+    {
+      "at": 86000,
+      "game": "win",
+      "data": {
+        "wave": 1,
+        "hp": 5,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 89000,
+      "game": "item_pickup",
+      "data": {
+        "item": "Rapid fire",
+        "wave": 1
+      }
+    },
+    {
+      "at": 91000,
+      "game": "round_start",
+      "data": {
+        "wave": 2
+      }
+    },
+    {
+      "at": 94000,
+      "game": "streak",
+      "data": {
+        "kills": 10
+      }
+    },
+    {
+      "at": 97000,
+      "chat": "ten in a row without getting hit, I'm actually locked in",
+      "note": "reaction: to the streak at 94s"
+    },
+    {
+      "at": 100000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 4,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 102000,
+      "game": "kill",
+      "data": {
+        "enemy": "slime",
+        "wave": 2
+      }
+    },
+    {
+      "at": 104000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 3,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 106000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 2,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 109000,
+      "game": "close_call",
+      "data": {
+        "wave": 2,
+        "hp": 2,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 112000,
+      "game": "item_pickup",
+      "data": {
+        "item": "Medkit",
+        "wave": 2
+      }
+    },
+    {
+      "at": 114000,
+      "game": "round_start",
+      "data": {
+        "wave": 3
+      }
+    },
+    {
+      "at": 117000,
+      "game": "kill",
+      "data": {
+        "enemy": "bat",
+        "wave": 3
+      }
+    },
+    {
+      "at": 120000,
+      "game": "new_best",
+      "data": {
+        "wave": 3,
+        "previousBest": 2
+      }
+    },
+    {
+      "at": 123000,
+      "chat": "how many waves do you think I can clear this run?",
+      "note": "question: asks chat for a prediction"
+    },
     {
       "at": 126000,
+      "game": "round_start",
+      "data": {
+        "wave": 4
+      }
+    },
+    {
+      "at": 129000,
       "chat": "backseaters, now's your chance, what am I doing wrong",
       "note": "advice-request: invites criticism"
     },
-    { "at": 129000, "game": "damage_taken", "data": { "hp": 30 } },
-    { "at": 132000, "game": "loss", "data": { "round": 4, "score": 3 } },
     {
-      "at": 135000,
+      "at": 131000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 3,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 134000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 2,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 137000,
+      "game": "kill",
+      "data": {
+        "enemy": "bat",
+        "wave": 4
+      }
+    },
+    {
+      "at": 140000,
+      "game": "close_call",
+      "data": {
+        "wave": 4,
+        "hp": 2,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 143000,
+      "game": "round_start",
+      "data": {
+        "wave": 5
+      }
+    },
+    {
+      "at": 146000,
       "chat": "my cat just walked across the keyboard lol",
       "note": "irrelevant: blames the cat"
     },
-    { "at": 138000, "chat": "lol", "note": "minimal: one word" },
     {
-      "at": 141000,
+      "at": 149000,
+      "game": "damage_taken",
+      "data": {
+        "hp": 0,
+        "maxHp": 5
+      }
+    },
+    {
+      "at": 149000,
+      "game": "loss",
+      "data": {
+        "wave": 5,
+        "kills": 41
+      }
+    },
+    {
+      "at": 152000,
+      "chat": "lol",
+      "note": "minimal: one word"
+    },
+    {
+      "at": 155000,
       "chat": "thanks for watching everyone, see you next stream",
       "note": "thanks: stream end"
     }

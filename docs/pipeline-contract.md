@@ -74,18 +74,18 @@ means the text must not be shown, and the pipeline sends a `fallback` instead.
 
 ## Limits
 
-`QA_LIMITS` in `checks.js` are **provisional**. The laptop pilot (W08,
-[`docs/pilot-w08.md`](pilot-w08.md)) measured the slowest reply at 933 ms and at most 3 new
-messages in a second, and set the pipeline's own `replyTimeoutMs` to 3000 ms; these check
-limits are Prin's to tighten:
+`QA_LIMITS` in `checks.js` are set from the laptop pilot (W08,
+[`docs/pilot-w08.md`](pilot-w08.md)): the slowest of 107 real replies took 933 ms from its
+event, queue included, and at most 3 new messages showed in a second.
 
-| Limit | Provisional value | Used by |
-|-------|-------------------|---------|
-| `maxMessagesPerEvent` | 3 | `response-limits`, `repeat-coalescing` |
-| `replyTimeoutMs` (+ `timeoutGraceMs`) | 10 000 ms (+ 500 ms) | `reply-timeout`, `fallback-on-failure` |
-| `maxGenerationsInFlight` | 1 (one 6 GB GPU) | `generation-concurrency` |
-| `maxMessagesPerSecond` | 5 | `burst-rate` |
-| `coalesceWindowMs` | 2 000 ms | `repeat-coalescing` |
+| Limit | Value | Why | Used by |
+|-------|-------|-----|---------|
+| `maxMessagesPerEvent` | 3 | The pipeline's `maxRepliesPerRun` | `response-limits`, `repeat-coalescing` |
+| `replyTimeoutMs` | 3 000 ms (was 10 000) | The pipeline's own timeout, over 3× the slowest pilot reply | `reply-timeout`, `fallback-on-failure` |
+| `timeoutGraceMs` | 1 000 ms (was 500) | One second of pacing: fallbacks that time out together leave at 4 a second. With 500 ms, `player-chat` with a slow model failed at 3602 ms on pacing alone. | `reply-timeout` |
+| `maxGenerationsInFlight` | 1 (one 6 GB GPU) | A settled decision | `generation-concurrency` |
+| `maxMessagesPerSecond` | 5 | The pacer allows 4, one under, so clock differences can't push it over; the pilot peaked at 3 | `burst-rate` |
+| `coalesceWindowMs` | 2 000 ms | The pipeline's window | `repeat-coalescing` |
 
 ## Edge cases (W07)
 

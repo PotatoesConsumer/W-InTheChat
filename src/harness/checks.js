@@ -19,16 +19,20 @@ import { validateChatMessage } from "../events/chatMessage.js";
 import { isPlainObject } from "../events/schema.js";
 
 /**
- * PROVISIONAL limits. The proposal sets the real numbers during the laptop pilot
- * (Sittipon's W08); update them here when it does. Override per run with `limits`.
+ * Limits every run is judged by, set from the laptop pilot (docs/pilot-w08.md): the
+ * slowest real reply took 933 ms and the pipeline times out at 3000 ms. Override per run
+ * with `limits`.
  */
 export const QA_LIMITS = Object.freeze({
   /** Distinct chat messages that may answer one event. */
   maxMessagesPerEvent: 3,
   /** Longest an event may wait for its completed reply, fallback included. */
-  replyTimeoutMs: 10_000,
-  /** Slack on top of replyTimeoutMs for the fallback itself to be sent. */
-  timeoutGraceMs: 500,
+  replyTimeoutMs: 3_000,
+  /**
+   * Slack on top of replyTimeoutMs for the fallback to be sent: one second of pacing,
+   * since fallbacks that time out together leave at maxMessagesPerSecond.
+   */
+  timeoutGraceMs: 1_000,
   /** Generations running at once (one 6 GB GPU). */
   maxGenerationsInFlight: 1,
   /** New chat messages in any one-second window. */

@@ -1,9 +1,10 @@
 # Team status and handoff
 
-Last updated 2026-11-12, for `fix/chat-fits-the-moment` (chat in the shop: a `shop`
-scene and a Backseat buying rule; fewer bat lines; no fixed line twice in a row, in both
-conditions. **Prompts and templates changed**: rerun `npm run eval:runs` before the
-study). Before that: #41 (the optional voice input with subtitles, joke rules, the menu
+Last updated 2026-11-12, for `feature/eval-set-shooter` (#36, Prin: the evaluation set
+rewritten for the wave shooter, `QA_LIMITS` from the laptop pilot; still a draft, freeze
+it before the study). Before that: #42 (chat in the shop: a `shop` scene and a Backseat
+buying rule; fewer bat lines; no fixed line twice in a row, in both conditions.
+**Prompts and templates changed**: rerun `npm run eval:runs` before the study), #41 (the optional voice input with subtitles, joke rules, the menu
 scene), #40 (the stream
 page opens offline, a LIVE pill, a chat summary per past stream), #39 (the home page, profile and Go live recorded as extras in the report),
 #38 (Go live / End stream with an offline screen; a profile page
@@ -258,10 +259,16 @@ before every demo and after big merges; reports go in `docs/regression/`.
 lane's tasks; read them before the pilot): `docs/study/protocol.md` is the session
 script, with `consent.md`, `questionnaire.md` and `responses-template.csv` next to it.
 `npm run study:order` prints the counterbalanced schedule. `npm run service -- --log
-study-logs` logs every half to its own file, labelled by the game's `?session=`. Still
-yours: **freeze the evaluation event set** (its `data` could use the shooter's wave /
-hp fields first), **run the pilot with 2 people**, then the participant sessions (W10).
-Fill in the advisor's name on the consent form.
+study-logs` logs every half to its own file, labelled by the game's `?session=`.
+
+**Ready for the pilot** (`feature/eval-set-shooter`): the evaluation set is rewritten for
+the wave shooter, two runs with the data the game sends (a test checks it against
+bot-played games), and `QA_LIMITS` are set from the laptop pilot: replies within
+3000 ms plus 1000 ms for pacing (`docs/pipeline-contract.md`, "Limits"). Still yours:
+**freeze the set** once the team has looked at it, **a dry run of the full protocol**
+(consent, questionnaire, session logs; Shapphanyu's 3-person game pilot is in #43), then
+the participant sessions (W10). Fill in the advisor's name on the consent form (the
+proposal leaves it blank too).
 
 ## Sittipon (backend / AI): what's next
 
@@ -281,10 +288,9 @@ Fill in the advisor's name on the consent form.
 
 | What | Waiting on |
 |------|------------|
-| A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
+| A look at the wave shooter and the rewritten evaluation set (`eval/event-set-v1.json`, `docs/evaluation.md`) before both are frozen | the whole team |
 | OK for W11's CDN exception, and keeping the camera off in the study | the whole team |
 | A second game, as 2 of 3 pilot players asked (W10 pilot) | the whole team |
 | Whether half the kills going without a chat line is fine for the study (`docs/pilot-w08.md`, finding 1) | the whole team |
-| Tightening `QA_LIMITS` with the pilot's numbers (`docs/pilot-w08.md`, finding 5) | Prin |
 | Recording the Month-1 demo clip | Prin (or anyone) |
 | W08 findings 3 and 5 (template lines all Fan, reply quality) in `docs/demo-m2.md`; 1 was fixed in #19, 2 and 4 in #20 | Sittipon |
