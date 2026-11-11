@@ -171,6 +171,38 @@ button.button {
   background: #26262c;
 }
 
+/* Whether you're live, at a glance: red with the uptime, grey when offline. */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 24px;
+}
+
+.live-pill::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.live-pill.on {
+  background: var(--live);
+  color: #fff;
+}
+
+.live-pill.on::before {
+  background: #fff;
+}
+
 /* The study and the benchmark stay on the stream: no way off it. */
 body[data-locked] .topnav,
 body[data-locked] .topbar-avatar,

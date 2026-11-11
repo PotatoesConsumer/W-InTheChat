@@ -1,8 +1,11 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `docs/report-extras` (the home page, profile and Go live
-recorded as extras beyond the proposal in the report's deviations table, with defense
-answers). Before that: #38 (Go live / End stream with an offline screen; a profile page
+Last updated 2026-11-11, for `feature/live-pill-chat-history` (the stream page opens
+offline and leaving it ends the stream; a red LIVE pill with the uptime next to Go live /
+End stream; each past stream on the profile page opens to a chat summary: lines per
+persona and the first reply to each of your messages, plain counts, no model call).
+Before that: #39 (the home page, profile and Go live recorded as extras in the report),
+#38 (Go live / End stream with an offline screen; a profile page
 with a display name, avatar colour, bio and the past streams; Home / Stream / Profile
 nav. The display name reaches the prompts through `POST /condition`. Study links
 (`?session=`) stay live with no name, so the study is unchanged), #37 (the home page; the stream moved to
