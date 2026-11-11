@@ -1,9 +1,11 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/home-page` (a home page at `/`, like a streaming
-site's front page; the stream moved to `stream.html`, and old links with a query are
-forwarded there, so the study and benchmark URLs still work). Before that: #35 (the
-stream page restyled like Twitch), #34
+Last updated 2026-11-11, for `feature/profile-and-live` (Go live / End stream with an
+offline screen; a profile page with a display name, avatar colour, bio and the past
+streams; Home / Stream / Profile nav on every page. The display name reaches the
+prompts through `POST /condition`. Study links (`?session=`) stay live with no name, so
+the study is unchanged). Before that: #37 (the home page; the stream moved to
+`stream.html`), #35 (the stream page restyled like Twitch), #34
 (Twitch-style donation alerts), #33 (chat
 calls: "W in the chat" gets viewers spamming W, the same in both conditions; modern
 slang for the Fan and the Hater), #32 (the last gaps against the proposal:

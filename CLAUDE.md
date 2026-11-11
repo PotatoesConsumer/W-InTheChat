@@ -119,7 +119,14 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
 - `index.html`: the home page, like a streaming site's front page (`src/ui/home.js`,
   `home.css`): the featured stream with a live preview, who's in the chat, how it works.
   A URL with a query (`?condition=`, `?session=`, `?bot=`, `?service=`) is forwarded to
-  `stream.html`, so old links still open the game.
+  `stream.html`, so old links still open the game. Every page has the nav (Home, Stream,
+  Profile) and the avatar link to the profile.
+- `profile.html`: the profile page (`src/ui/profilePage.js`): display name, avatar colour
+  and bio, totals and the past streams. `src/ui/profile.js` is the DOM-free store
+  (localStorage, tested): the profile, the live switch, and one record per stream (Go
+  live to End stream), saved as it goes. `src/ui/channel.js` puts the channel's name,
+  avatar and live state on any page. The display name goes to the service with
+  `POST /condition` (`streamer`) for the prompts and shows on the player's chat lines.
 - `src/game/`: browser game (`stream.html` loads `main.js`)
   - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
     facecam react) and to the chat service through `connectToService`; replies come back
@@ -127,6 +134,10 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     one keymap per game plus the menu keys, and the mouse. `?bot=<skill>` (with
     `&seed=`, `&minutes=`) lets `shooter/bot.js` play Wave Survival through the same
     input path, for the benchmark only; `witc.benchmark()` reports the run.
+    Go live / End stream in the top bar: offline, the video shows an offline screen
+    (`drawOffline` in `hubView.js`), the game stops, the chat box is off and nothing
+    goes to the service. The study's links (`?session=`) and the bot are always live,
+    with no name, no history and the nav hidden.
   - `hub.js`: the game hub and pause menu as plain state (tested), and **the game
     module interface** every mini-game implements. `hubView.js` draws them;
     `games.js` lists the games (Wave Survival for now). More games are planned: add one
@@ -178,8 +189,9 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
 - `src/study/order.js`: the study's counterbalanced condition order and game URLs
   (`npm run study:order`). Study materials: `docs/study/` (protocol, consent,
   questionnaire, responses template).
-  The player's own lines are UI-only entries (`kind: "player"`, name "Player", ADMIN badge),
-  not chat_messages. No login or name setting yet.
+  The player's own lines are UI-only entries (`kind: "player"`, the profile's display
+  name or "Player", broadcaster badge), not chat_messages. No login: the profile lives
+  in the browser.
 - `scripts/serve.js`: `npm run dev` static server on localhost:5173 (no dotfiles/node_modules)
 - `src/harness/`: mock-event harness (Node only). `scenario.js` (format), `runner.js`
   (plays a scenario, returns a JSON run record), `fakeGenerator.js` (OllamaClient stand-in

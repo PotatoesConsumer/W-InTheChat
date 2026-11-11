@@ -229,8 +229,8 @@ export function createChatOverlay(
      * Shows the player's own message, from the chat event that was published.
      * Always scrolls down: you want to see what you just sent.
      */
-    pushPlayer(chatEvent) {
-      return show(log.addPlayerMessage(chatEvent), { stick: true });
+    pushPlayer(chatEvent, name) {
+      return show(log.addPlayerMessage(chatEvent, name), { stick: true });
     },
 
     /**
@@ -243,7 +243,14 @@ export function createChatOverlay(
     },
 
     focusInput() {
-      input.focus();
+      if (!input.disabled) input.focus();
+    },
+
+    /** Turns the chat box on or off (off while the stream is offline). */
+    setEnabled(enabled) {
+      input.disabled = !enabled;
+      send.disabled = !enabled;
+      input.placeholder = enabled ? "Send a message" : "Chat opens when you go live";
     },
   };
 }

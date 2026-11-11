@@ -1,32 +1,9 @@
 /*
- * The home page (index.html), laid out like a streaming site's front page: who's in the
+ * The site pages: the home page (index.html), laid out like a streaming site's front
+ * page, and the profile page (profile.html). Home: who's in the
  * chat on the left, the featured live stream, then how it works and the categories.
  * Colours and the top bar come from overlay.css.
  */
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 4px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.button:hover {
-  background: var(--accent-hover);
-}
-
-.button-big {
-  height: 38px;
-  padding: 0 18px;
-  font-size: 14px;
-}
 
 .home {
   flex: 1;
@@ -145,6 +122,10 @@
   font-size: 13px;
   font-weight: 700;
   line-height: 20px;
+}
+
+.live-tag.offline {
+  background: rgba(0, 0, 0, 0.7);
 }
 
 .featured-info {
@@ -281,5 +262,238 @@
 @media (prefers-reduced-motion: reduce) {
   .tile-art {
     transition: none;
+  }
+}
+
+/* The profile page (profile.html) */
+
+.page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 30px 48px;
+}
+
+.profile-head {
+  margin: 0 -30px;
+}
+
+.profile-banner {
+  height: 120px;
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+.profile-id {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  margin-top: -36px;
+  padding: 0 30px;
+}
+
+.profile-avatar.channel-avatar {
+  width: 88px;
+  height: 88px;
+  border-width: 3px;
+  font-size: 36px;
+}
+
+/* Under the banner, however long the bio wraps. */
+.profile-who {
+  min-width: 0;
+  padding-top: 44px;
+}
+
+.profile-name {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.profile-bio {
+  margin: 4px 0 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.profile-bio.muted {
+  color: var(--faint);
+}
+
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 48px;
+}
+
+.totals .stat-value {
+  font-size: 24px;
+}
+
+.totals .stat-label {
+  font-size: 13px;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.streams {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.streams th,
+.streams td {
+  padding: 9px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.streams th {
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.streams tbody tr:nth-child(odd) {
+  background: var(--panel);
+}
+
+.streams .num {
+  text-align: right;
+}
+
+.empty {
+  margin: 0;
+  padding: 24px;
+  background: var(--panel);
+  color: var(--muted);
+  text-align: center;
+}
+
+.note {
+  margin: 10px 0 0;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 520px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field-label {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field input[type="text"],
+.field textarea {
+  padding: 7px 10px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.field input[type="text"]:focus,
+.field textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.field [aria-invalid="true"] {
+  border-color: var(--live);
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field-error {
+  color: #ff8280;
+  font-size: 12px;
+}
+
+.swatches {
+  display: flex;
+  gap: 10px;
+}
+
+.swatch {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.swatch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.swatch:has(input:checked) {
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--text);
+}
+
+.swatch:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.saved {
+  color: var(--good);
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 0 16px 40px;
+  }
+  .profile-head {
+    margin: 0 -16px;
+  }
+  .profile-id {
+    padding: 0 16px;
   }
 }

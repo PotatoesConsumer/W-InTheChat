@@ -2,12 +2,26 @@
  * home.js
  *
  * The home page (index.html): draws the featured stream's live preview and the category
- * box art with the game's own thumbnail, and says whether the chat service is up.
+ * box art with the game's own thumbnail, shows the profile's channel and whether it's
+ * live, and says whether the chat service is up.
  * Nothing here talks to the model or sends events; the stream page (stream.html) does.
  */
 
 import { drawThumbnail } from "../game/shooter/view.js";
 import { DEFAULT_SERVICE_URL } from "../service/client.js";
+import { createProfileStore } from "./profile.js";
+import { showChannel } from "./channel.js";
+
+// The channel: the profile's name and avatar, and whether the stream is live.
+const store = createProfileStore();
+const live = store.isLive();
+showChannel(document, store.profile(), { live });
+for (const id of ["go-live", "watch"]) {
+  const link = document.getElementById(id);
+  link.href = live ? "stream.html" : "stream.html#live";
+  if (id === "go-live") link.textContent = live ? "Watch stream" : "Go live";
+  else link.textContent = live ? "Watch and play" : "Go live";
+}
 
 /** The thumbnail's own size: drawThumbnail places its scene around the centre. */
 const SCENE = { width: 320, height: 180 };
