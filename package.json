@@ -8,6 +8,7 @@
     "dev": "node scripts/serve.js",
     "ai:demo": "node src/ai/demo.js",
     "ai:personas": "node scripts/persona-trial.js",
+    "ai:voice": "node scripts/voice-trial.js",
     "pilot": "node scripts/pilot.js",
     "benchmark": "node scripts/benchmark.js",
     "service": "node scripts/service.js",

@@ -47,7 +47,7 @@ first** (W09) with 2 people, fix what it finds, then run the 15–20 participant
 3. Open Chrome (desktop Chrome, not a preview pane), full screen, sound on at a
    comfortable level.
 4. **Leave the camera off.** It's an optional extension and off on every page load. The
-   study doesn't use it.
+   study doesn't use it. The mic (voice input) is hidden on the study's links.
 5. Do a 1-minute check run with `?condition=ai&session=CHECK`: AI lines appear in chat
    and the top bar shows reply latency. Then delete the `CHECK-*` files in `study-logs/`.
 

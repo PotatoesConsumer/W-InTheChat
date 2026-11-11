@@ -1,10 +1,10 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/live-pill-chat-history` (the stream page opens
-offline and leaving it ends the stream; a red LIVE pill with the uptime next to Go live /
-End stream; each past stream on the profile page opens to a chat summary: lines per
-persona and the first reply to each of your messages, plain counts, no model call).
-Before that: #39 (the home page, profile and Go live recorded as extras in the report),
+Last updated 2026-11-12, for `feature/voice-input` (the optional voice input: a mic
+button with a consent prompt, subtitles of what it hears, spoken chat events the
+personas react to, and joke rules in every prompt. **Prompts changed**: rerun
+`npm run eval:runs` before the study. Off in the study). Before that: #40 (the stream
+page opens offline, a LIVE pill, a chat summary per past stream), #39 (the home page, profile and Go live recorded as extras in the report),
 #38 (Go live / End stream with an offline screen; a profile page
 with a display name, avatar colour, bio and the past streams; Home / Stream / Profile
 nav. The display name reaches the prompts through `POST /condition`. Study links
@@ -119,7 +119,7 @@ Don't change these without talking to the team first. The reasons are in the lin
 | Idle GPU: accept ~500 ms p50 / ~720 ms p95 in the game (W10) | Well inside the 3 s timeout; keeping the GPU warm would queue with real replies, and a required driver setting is one more thing to get wrong on a study laptop. The NVIDIA "prefer maximum performance" setting stays an optional step in the setup docs | `docs/benchmark-w09.md` |
 | Template lines for minor events stay the Fan's (#18 finding 3) | They're the same in both conditions, so they don't change the comparison, and the rating sheet leaves them out | `docs/evaluation.md` |
 | Chat calls ("W in the chat") get 3 fixed lines in both conditions, not a model reply | Real chat spams the token, which one persona reply can't do; fixed lines keep the comparison fair and never wait on the model | `docs/service.md` |
-| Voice input (optional in the proposal) is not added | Chrome's Web Speech may send audio to a remote service, and the study doesn't need it | `docs/report/evaluation-report.md`, "Deviations" |
+| Voice input (optional in the proposal) is added, off in the study (2026-11-12; it was left out until then) | The player asked for it. Chrome's Web Speech may send the audio to Google, so it's off until the player agrees to a prompt that says so; only text is used, never audio. The study's links hide it, so the comparison is unchanged | `docs/report/evaluation-report.md`, "Deviations" |
 | Prompts are frozen once the participant sessions start | Results must name one prompt version (the git commit); a change mid-study splits the data | `docs/study/protocol.md` |
 
 ## Shapphanyu (frontend / game): what's next

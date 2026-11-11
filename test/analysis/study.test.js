@@ -147,6 +147,10 @@ test("rating sheet: only replies to major events and chat, shuffled, nothing tha
   assert.equal(items[0].category, "question");
   assert.equal(items[1].trigger, "The streamer died and lost the run (wave 3)");
   assert.equal(describeTrigger({ kind: "chat", text: "hi" }), 'The streamer typed in chat: "hi"');
+  assert.equal(
+    describeTrigger({ kind: "chat", text: "hi", spoken: true }),
+    'The streamer said on stream: "hi"',
+  );
 
   const { sheet, key } = ratingSheet(items, { seed: 3 });
   assert.deepEqual(ratingSheet(items, { seed: 3 }).sheet, sheet, "same seed, same order");

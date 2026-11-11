@@ -8,7 +8,9 @@
  * Kinds:
  *   - "game": something happened in the mini-game. `name` must be in GAME_EVENTS,
  *     which is also the single source of each event's importance.
- *   - "chat": the player typed a message to chat.
+ *   - "chat": the player typed a message to chat, or said it out loud (`spoken: true`,
+ *     the optional voice input). `scene` says where the player was: in the game's menu,
+ *     playing, or paused (SCENES), so chat doesn't react to a game that isn't running.
  *
  * Uses nothing beyond globalThis.crypto, so the game and the service import the
  * same file. Events are plain JSON so they survive the browser -> service hop.
@@ -52,6 +54,9 @@ export const GAME_EVENTS = Object.freeze({
  * Input limits. Provisional: the proposal sets numeric limits during the laptop
  * pilot. `data` is the only game context the model ever sees, so it stays small and flat.
  */
+/** Where the player is when they chat: the game hub (menu), a run, or the pause menu. */
+export const SCENES = Object.freeze(["menu", "playing", "paused"]);
+
 export const LIMITS = Object.freeze({
   maxIdLength: 64,
   maxChatLength: 200,
@@ -61,7 +66,7 @@ export const LIMITS = Object.freeze({
 
 const FIELDS_BY_KIND = {
   game: new Set(["v", "id", "kind", "ts", "name", "data"]),
-  chat: new Set(["v", "id", "kind", "ts", "text"]),
+  chat: new Set(["v", "id", "kind", "ts", "text", "spoken", "scene"]),
 };
 
 const DATA_KEY_PATTERN = /^[a-z][a-zA-Z0-9_]*$/;
@@ -86,14 +91,27 @@ export function createGameEvent(name, data = {}, { id = newId(), ts = Date.now()
 }
 
 /**
- * @param {string} text - What the player typed. Surrounding whitespace is trimmed.
- * @param {{id?: string, ts?: number}} [opts]
+ * @param {string} text - What the player typed (or said). Surrounding whitespace is trimmed.
+ * @param {{id?: string, ts?: number, spoken?: boolean, scene?: string}} [opts] - `spoken`:
+ *   said out loud on stream (voice input), not typed; typed events have no `spoken` field
+ *   at all. `scene`: one of SCENES, left out when unknown (e.g. the evaluation sets).
  * @returns {Readonly<object>} a frozen, validated chat event
  * @throws {EventValidationError}
  */
-export function createChatEvent(text, { id = newId(), ts = Date.now() } = {}) {
+export function createChatEvent(
+  text,
+  { id = newId(), ts = Date.now(), spoken = false, scene } = {},
+) {
   const trimmed = typeof text === "string" ? text.trim() : text;
-  return finalize({ v: SCHEMA_VERSION, id, kind: "chat", ts, text: trimmed });
+  return finalize({
+    v: SCHEMA_VERSION,
+    id,
+    kind: "chat",
+    ts,
+    text: trimmed,
+    ...(spoken && { spoken: true }),
+    ...(scene !== undefined && { scene }),
+  });
 }
 
 /**
@@ -202,6 +220,12 @@ function validateChatFields(event, fail) {
     fail("text", "must not be empty");
   } else if (event.text.length > LIMITS.maxChatLength) {
     fail("text", `must be at most ${LIMITS.maxChatLength} characters`);
+  }
+  if ("spoken" in event && event.spoken !== true) {
+    fail("spoken", "must be true when present (leave it out for typed messages)");
+  }
+  if ("scene" in event && !SCENES.includes(event.scene)) {
+    fail("scene", `must be one of ${SCENES.join(", ")} when present`);
   }
 }
 

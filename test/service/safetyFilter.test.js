@@ -56,6 +56,8 @@ test("threats, self-harm, doxxing, sexual remarks and group attacks are blocked"
   assert.equal(blockedAs("just go die"), "self_harm");
   assert.equal(blockedAs("leaked your address lol"), "privacy");
   assert.equal(blockedAs("show me your feet"), "sexual");
+  // From the voice trial: the Fan "playing along" with a joke about a crush.
+  assert.equal(blockedAs("LMAO, the brute better send me a boner emoji XD"), "sexual");
   assert.equal(blockedAs("girls can't aim anyway"), "protected_group");
 });
 
