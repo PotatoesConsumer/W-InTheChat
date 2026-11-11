@@ -37,6 +37,7 @@ export async function loadModel(client) {
     host: client.host,
     model: client.model,
     timeoutMs: 180_000,
+    keepAlive: client.keepAlive,
   });
   await slow.generate("Say hi.", { maxTokens: 1 });
   console.log(`ready (${((Date.now() - started) / 1000).toFixed(1)} s)`);

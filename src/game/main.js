@@ -48,14 +48,24 @@ import { seededRandom } from "./random.js";
 
 /** Logical scene size. The canvas is scaled to fit, keeping 16:9. */
 const WORLD = { width: 960, height: 540 };
-const FACECAM = { width: 200, height: 150, margin: 16 };
-/** The facecam sits on the scene's corner, so games treat it as solid. */
-const FACECAM_BLOCK = {
-  x: WORLD.width - FACECAM.width - FACECAM.margin,
-  y: WORLD.height - FACECAM.height - FACECAM.margin,
-  width: FACECAM.width + FACECAM.margin,
-  height: FACECAM.height + FACECAM.margin,
+const FACECAM_MARGIN = 16;
+/**
+ * The facecam on the scene's corner. Not solid (the W10 pilot read a wall there as a
+ * bug): the player can go under it, and it fades while anything is behind it.
+ */
+const FACECAM = {
+  x: WORLD.width - 200 - FACECAM_MARGIN,
+  y: WORLD.height - 150 - FACECAM_MARGIN,
+  width: 200,
+  height: 150,
 };
+const FACECAM_FADED = 0.3;
+
+/** Whether the player or an enemy is under the facecam (it's in the bottom-right corner). */
+function behindFacecam(state) {
+  const things = [state?.player, ...(state?.enemies ?? [])];
+  return things.some((t) => t && t.x + t.r > FACECAM.x && t.y + t.r > FACECAM.y);
+}
 
 /** Keys for the hub and the pause menu. Each game has its own keymap. */
 const MENU_BINDINGS = Object.freeze({
@@ -238,7 +248,6 @@ const hub = createHub({
     gameInputs.set(game.id, createInput(window, game.bindings));
     return game.create({
       world: WORLD,
-      obstacles: [FACECAM_BLOCK],
       stream: { donations: () => streamStats.donations },
     });
   },
@@ -283,6 +292,7 @@ function update(dt) {
     const { game, instance } = hub.current;
     instance.update(dt, { input: gameInputs.get(game.id), mouse });
   }
+  playShotSound();
   publishGameEvents();
   streamer.update(dt);
   effects.update(dt);
@@ -291,6 +301,14 @@ function update(dt) {
   // opened a screen doesn't also act in it.
   menuInput.endFrame();
   for (const input of gameInputs.values()) input.endFrame();
+}
+
+// Firing isn't a catalog event (chat doesn't need it), so the sound reads the shot count.
+let lastShots = 0;
+function playShotSound() {
+  const shots = hub.current?.instance.state?.player?.shots ?? 0;
+  if (shots > lastShots) sound.play("shot");
+  lastShots = shots; // drops back to 0 on a new run
 }
 
 /** One step of the benchmark bot: it plays, chats on a timer, and stops when time's up. */
@@ -333,21 +351,18 @@ function render(alpha) {
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     effects.draw(ctx, {
       world: WORLD,
-      alertAt: { x: FACECAM_BLOCK.x, y: FACECAM_BLOCK.y, width: FACECAM.width },
+      alertAt: FACECAM,
     });
     if (paused) drawPause(ctx, hub, { world: WORLD });
   }
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  const facecam = {
-    x: WORLD.width - FACECAM.width - FACECAM.margin,
-    y: WORLD.height - FACECAM.height - FACECAM.margin,
-    width: FACECAM.width,
-    height: FACECAM.height,
-  };
+  const playing = hub.screen === "playing" ? hub.current.instance.state : null;
+  if (behindFacecam(playing)) ctx.globalAlpha = FACECAM_FADED;
   // With the optional camera on, the facecam shows the player instead of the avatar.
-  if (camera) drawCamera(ctx, camera.video, facecam, tracker.current);
-  else streamer.draw(ctx, { ...facecam, hype: streamStats.hype });
+  if (camera) drawCamera(ctx, camera.video, FACECAM, tracker.current);
+  else streamer.draw(ctx, { ...FACECAM, hype: streamStats.hype });
+  ctx.globalAlpha = 1;
 }
 
 /** Pointer position in world coordinates. */

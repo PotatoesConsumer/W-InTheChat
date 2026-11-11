@@ -74,7 +74,7 @@ Sittipon's W09 benchmark is done (#24); the rest hasn't started.
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
 | W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (`feature/w09-w12-polish`): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
-| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | 🟡 Sound and reaction effects done (`feature/w09-w12-polish`); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | ✅ Sound and reaction effects; fixes from Shapphanyu's 3-person pilot: AI replies stopping (model unloaded), facecam blocking the player, a shot sound (`feature/w09-w12-polish`, see below) | ⬜ Participant sessions, about 15–20 people, both conditions |
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | 🟡 Optional camera done (`feature/w09-w12-polish`): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
 
@@ -125,6 +125,25 @@ Don't change these without talking to the team first. The reasons are in the lin
      dependencies"; and it's marked `optional`, so the evaluation set leaves it out:
      keep it off in the study. Thresholds are a first guess: tune `EXPRESSION_RULES`
      with `witc.camera()` on a real face.
+   - **W10, pilot with 3 classmates** (Shapphanyu ran it; Prin's pilot hasn't happened).
+     What they said and what changed:
+     - "The AI answers slowly or never answers" (2 of 3). The service log showed why:
+       after a few fast replies, every model reply timed out at 3 s and got a fallback.
+       Ollama unloads an idle model after 5 minutes by default; a cold load (about 7 s)
+       is longer than `replyTimeoutMs`, and each timeout cancels the load, so the model
+       never came back. **Fix:** the service asks Ollama to keep the model loaded
+       (`keep_alive: -1`, `OllamaClient({keepAlive})`); `ollama ps` now says "Forever".
+       It stays in GPU memory (2.2 GB) after the service stops, until Ollama quits.
+       **This affects every earlier run with a pause over 5 minutes, the study
+       included:** run on this branch or later.
+     - "The character can't go under the facecam" (1 of 3): it was a solid wall. Now
+       the player can go under it, and it fades while the player or an enemy is behind
+       it.
+     - "Should have more sound" (1 of 3): every event already had one, so firing got a
+       short, quiet shot sound.
+     - "Should have more games" (2 of 3): not done; a team call (the hub has a "More
+       games" slot). Nobody missed a donation or the hype meter, and nothing was too
+       loud or too fast.
 
 1. **Your W01–W04 is done** (#12, plus #14, which Sittipon wrote with the team's OK; it's
    your area, so read through it). Start new work from `master` on a `feature/...`
@@ -221,7 +240,7 @@ study materials.
 |------|------------|
 | A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
 | OK for W11's CDN exception, and keeping the camera off in the study | the whole team |
-| Fixes from the pilot session with people (W10) | Prin's W09 pilot, then Shapphanyu |
+| A second game, as 2 of 3 pilot players asked (W10 pilot) | the whole team |
 | Whether half the kills going without a chat line is fine for the study (`docs/pilot-w08.md`, finding 1) | the whole team |
 | Tightening `QA_LIMITS` with the pilot's numbers (`docs/pilot-w08.md`, finding 5) | Prin |
 | Recording the Month-1 demo clip | Prin (or anyone) |

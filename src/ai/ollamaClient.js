@@ -38,6 +38,9 @@ export class OllamaClient {
    * @param {number} [opts.maxRetries] - Retries for transient failures.
    * @param {number} [opts.retryDelayMs] - Base delay between retries (backs off linearly).
    * @param {number} [opts.timeoutMs] - Per-request timeout.
+   * @param {number | string} [opts.keepAlive] - How long Ollama keeps the model loaded
+   *   after each call (Ollama `keep_alive`; -1 = until Ollama quits). Unset: Ollama's
+   *   default, 5 minutes.
    */
   constructor({
     host = DEFAULT_HOST,
@@ -45,12 +48,14 @@ export class OllamaClient {
     maxRetries = 2,
     retryDelayMs = 400,
     timeoutMs = 15000,
+    keepAlive,
   } = {}) {
     this.host = host.replace(/\/+$/, "");
     this.model = model;
     this.maxRetries = maxRetries;
     this.retryDelayMs = retryDelayMs;
     this.timeoutMs = timeoutMs;
+    this.keepAlive = keepAlive;
   }
 
   /** Quick reachability + model-loaded check. Does not throw; returns a status object. */
@@ -88,6 +93,7 @@ export class OllamaClient {
     const body = { model: model || this.model, prompt, stream };
     if (system) body.system = system;
     if (maxTokens) body.options = { num_predict: maxTokens };
+    if (this.keepAlive !== undefined) body.keep_alive = this.keepAlive;
 
     const res = await this.#postWithRetry("/api/generate", body, signal);
     const data = stream
