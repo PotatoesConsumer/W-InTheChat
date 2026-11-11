@@ -90,6 +90,11 @@ test("getCondition and setCondition talk to the service's /condition", async () 
     assert.deepEqual(await chat.setCondition("ai"), { ok: true, condition: "ai" });
     assert.equal((await chat.setCondition("nope")).ok, false);
     assert.equal((await chat.getCondition()).condition, "ai");
+    assert.deepEqual(await chat.setCondition("ai", undefined, "Pu"), {
+      ok: true,
+      condition: "ai",
+      streamer: "Pu",
+    });
     chat.close();
   } finally {
     await service.close();

@@ -45,6 +45,64 @@ export function pauseLayout() {
   }));
 }
 
+/** The offline screen's Go live button. */
+export function offlineLayout(world) {
+  return { x: world.width / 2 - 70, y: world.height / 2 + 74, width: 140, height: 40 };
+}
+
+/** Whether (x, y) is on the offline screen's Go live button. */
+export function offlineHit(world, x, y) {
+  return inside(offlineLayout(world), x, y);
+}
+
+/**
+ * The stream while it's offline, like a channel page's offline banner: the avatar, the
+ * last stream if there was one, and a Go live button.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{world: {width: number, height: number}, name: string, letter: string,
+ *   color: string, last: string | null}} opts - `last` sums up the last stream.
+ */
+export function drawOffline(ctx, { world, name, letter, color, last }) {
+  ctx.fillStyle = UI.bg;
+  ctx.fillRect(0, 0, world.width, world.height);
+  const cx = world.width / 2;
+  const cy = world.height / 2 - 60;
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 44, 0, Math.PI * 2);
+  ctx.fill();
+  text(ctx, letter, cx, cy + 14, { size: 38, weight: 800, align: "center", color: "#fff" });
+
+  ctx.fillStyle = UI.raised;
+  roundRect(ctx, cx - 38, cy + 34, 76, 20, 4);
+  ctx.fill();
+  text(ctx, "OFFLINE", cx, cy + 49, { size: 12, weight: 700, align: "center", color: UI.muted });
+
+  text(ctx, `${name} is offline.`, cx, cy + 96, {
+    size: 22,
+    weight: 700,
+    align: "center",
+    color: UI.text,
+  });
+  text(ctx, last ?? "Go live and chat will start watching.", cx, cy + 122, {
+    size: 14,
+    align: "center",
+    color: UI.muted,
+  });
+
+  const button = offlineLayout(world);
+  ctx.fillStyle = UI.accent;
+  roundRect(ctx, button.x, button.y, button.width, button.height, 4);
+  ctx.fill();
+  text(ctx, "Go live", cx, button.y + 26, {
+    size: 15,
+    weight: 700,
+    align: "center",
+    color: "#fff",
+  });
+}
+
 /** The index of the card or button at (x, y) on the current screen, or -1. */
 export function hubHit(hub, x, y) {
   if (hub.screen === "hub") return hubLayout(hub.games.length).findIndex((r) => inside(r, x, y));

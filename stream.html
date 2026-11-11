@@ -9,6 +9,11 @@
   <body>
     <header class="topbar">
       <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">W</span>W-InTheChat</a>
+      <nav class="topnav" aria-label="Site">
+        <a href="./">Home</a>
+        <a href="stream.html" aria-current="page">Stream</a>
+        <a href="profile.html">Profile</a>
+      </nav>
       <span class="topbar-right">
         <span id="latency" class="latency"></span>
         <button
@@ -21,6 +26,10 @@
         <span id="service-status" class="service-status" data-status="connecting">
           connecting…
         </span>
+        <button id="live-toggle" class="button" type="button" hidden></button>
+        <a class="topbar-avatar" href="profile.html" data-channel="avatar" title="Your profile"
+          >W</a
+        >
       </span>
     </header>
     <main class="broadcast">
@@ -29,9 +38,11 @@
           <canvas id="game" aria-label="Game"></canvas>
         </div>
         <div class="stream-info">
-          <span class="channel-avatar" aria-hidden="true">W</span>
+          <span class="channel-avatar" data-channel="avatar" data-live="avatar" aria-hidden="true"
+            >W</span
+          >
           <div class="stream-meta">
-            <div class="channel-name">W-InTheChat</div>
+            <div class="channel-name" data-channel="name">W-InTheChat</div>
             <div class="stream-title">surviving waves until chat says stop</div>
             <div class="stream-tags">
               <span class="category">Wave Survival</span>

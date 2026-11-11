@@ -130,3 +130,11 @@ test("donations are UI-only lines with the amount and the donor's message", () =
   assert.equal(log.addDonation({ ...donation, id: "d2", amount: -1 }).type, "ignored");
   assert.equal(log.addDonation({ ...donation, id: "d3", message: null }).type, "ignored");
 });
+
+test("the player's line uses the profile's display name, or Player", () => {
+  const log = createChatLog();
+  const named = log.addPlayerMessage(createChatEvent("hey", { id: "p2", ts: 6 }), "Pu");
+  assert.equal(named.message.viewer, "Pu");
+  const unnamed = log.addPlayerMessage(createChatEvent("yo", { id: "p3", ts: 7 }), "");
+  assert.equal(unnamed.message.viewer, PLAYER_NAME);
+});

@@ -136,6 +136,15 @@ export function createHub({ games, makeGame }) {
 
     pause,
     resume: () => choosePause("resume"),
+
+    /** Drops the current run and goes back to the hub (ending the stream). */
+    quit() {
+      if (!current) return false;
+      current.instance.quit();
+      current = null;
+      screen = "hub";
+      return true;
+    },
   };
 }
 

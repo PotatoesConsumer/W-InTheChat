@@ -91,6 +91,98 @@ button {
   font-size: 17px;
 }
 
+/* Site navigation, like the platform's top links */
+
+.topnav {
+  display: flex;
+  align-self: stretch;
+  gap: 4px;
+  margin-left: 16px;
+}
+
+.topnav a {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-bottom: 2px solid transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.topnav a:hover {
+  color: #bf94ff;
+}
+
+.topnav a[aria-current="page"] {
+  border-bottom-color: var(--accent);
+  color: #bf94ff;
+}
+
+.topbar-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button:hover {
+  background: var(--accent-hover);
+}
+
+.button-big {
+  height: 38px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+
+button.button {
+  border: 0;
+  cursor: pointer;
+}
+
+.button.secondary {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.button.secondary:hover {
+  background: #26262c;
+}
+
+/* The study and the benchmark stay on the stream: no way off it. */
+body[data-locked] .topnav,
+body[data-locked] .topbar-avatar,
+body[data-locked] .brand {
+  pointer-events: none;
+}
+
+body[data-locked] .topnav,
+body[data-locked] .topbar-avatar {
+  visibility: hidden;
+}
+
 .topbar-right {
   display: flex;
   align-items: center;
@@ -225,6 +317,15 @@ button {
   font-weight: 700;
   line-height: 15px;
   letter-spacing: 0.02em;
+}
+
+.channel-avatar.offline {
+  border-color: var(--faint);
+}
+
+.channel-avatar.offline::after {
+  content: "OFFLINE";
+  background: #53535f;
 }
 
 .stream-meta {
@@ -592,6 +693,12 @@ button {
   background: var(--accent-hover);
 }
 
+.chat-send:disabled {
+  background: var(--raised);
+  color: var(--faint);
+  cursor: default;
+}
+
 /* Narrow windows: drop the latency readout and the tags first. */
 @media (max-width: 1100px) {
   .latency,
@@ -660,4 +767,24 @@ button {
 .study-error {
   color: #ff8a8a;
   font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .topbar {
+    gap: 6px;
+    padding: 0 10px;
+  }
+  .brand {
+    font-size: 0;
+  }
+  .topnav {
+    margin-left: 0;
+  }
+  .topnav a {
+    padding: 0 6px;
+    font-size: 14px;
+  }
+  .service-status {
+    display: none;
+  }
 }

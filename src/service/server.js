@@ -9,10 +9,12 @@
  *   GET  /health  {ok: true, clients}
  *   GET  /stats   the pipeline's counts and p50/p95 latency
  *   GET  /condition  {ok: true, condition, conditions}
- *   POST /condition  {condition: "ai" | "scripted", session?}: restarts the pipeline in
- *                    that condition, with fresh stats and latency. The game's baseline
- *                    switch. A new `session` label (a participant id, e.g. "P07")
+ *   POST /condition  {condition: "ai" | "scripted", session?, streamer?}: restarts the
+ *                    pipeline in that condition, with fresh stats and latency. The game's
+ *                    baseline switch. A new `session` label (a participant id, e.g. "P07")
  *                    restarts it too, and with a session log starts a new log file.
+ *                    `streamer` is the player's display name (the profile page) for the
+ *                    prompts; "" goes back to "the streamer". A new name restarts it too.
  *
  * Localhost only: it binds 127.0.0.1, refuses other Host headers (DNS rebinding) and
  * only answers cross-origin requests from localhost pages, such as the game dev server.
@@ -23,6 +25,7 @@ import { createEventBus } from "../events/bus.js";
 import startPipeline, { CONDITIONS } from "./pipeline.js";
 import { formatSse } from "./sse.js";
 import { SESSION_LABEL } from "./sessionLog.js";
+import { STREAMER_NAME } from "../ai/contextBuilder.js";
 
 export const SERVICE_DEFAULTS = Object.freeze({
   host: "127.0.0.1",
@@ -77,6 +80,7 @@ export function createService({
   const pipelineDeps = (cond) => ({
     ...deps,
     condition: cond,
+    ...(streamer && { streamerName: streamer }),
     onReply: sessionLog
       ? (row) => {
           sessionLog.write({ type: "reply", ...row });
@@ -87,8 +91,14 @@ export function createService({
   let handle = null;
   let condition = deps.condition ?? "ai";
   let session = null;
+  let streamer = "";
   let switching = Promise.resolve();
-  const current = () => ({ ok: true, condition, ...(session && { session }) });
+  const current = () => ({
+    ok: true,
+    condition,
+    ...(session && { session }),
+    ...(streamer && { streamer }),
+  });
 
   const server = createServer((req, res) => {
     route(req, res).catch((err) => {
@@ -159,15 +169,25 @@ export function createService({
         errors: [{ path: "session", message: "must be 1-32 letters, digits, - or _" }],
       });
     }
+    const name = body.streamer;
+    if (
+      name !== undefined &&
+      !(typeof name === "string" && (name === "" || STREAMER_NAME.test(name)))
+    ) {
+      return json(res, 400, {
+        ok: false,
+        errors: [{ path: "streamer", message: "must be 1-25 letters, digits, spaces, _ . or -" }],
+      });
+    }
     // One switch at a time, in the order they arrive.
-    const result = switching.then(() => switchTo(wanted, label ?? session));
+    const result = switching.then(() => switchTo(wanted, label ?? session, name ?? streamer));
     switching = result.catch(() => {});
     const { status, answer } = await result;
     return json(res, status, answer);
   }
 
-  async function switchTo(wanted, wantedSession) {
-    if (wanted === condition && wantedSession === session) {
+  async function switchTo(wanted, wantedSession, wantedStreamer) {
+    if (wanted === condition && wantedSession === session && wantedStreamer === streamer) {
       return { status: 200, answer: current() };
     }
     const refuse = (status, err) => ({
@@ -180,11 +200,14 @@ export function createService({
       log(`could not switch to ${wanted}`, err);
       return refuse(503, err);
     }
+    const previousStreamer = streamer;
+    streamer = wantedStreamer; // pipelineDeps reads it
     let next;
     try {
       // Start the new pipeline before stopping the old one, so a bad config keeps the old.
       next = normalize(pipeline(bus, emit, pipelineDeps(wanted)));
     } catch (err) {
+      streamer = previousStreamer;
       return refuse(409, err);
     }
     const previous = handle;

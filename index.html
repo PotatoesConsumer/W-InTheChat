@@ -15,11 +15,19 @@
   <body>
     <header class="topbar">
       <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">W</span>W-InTheChat</a>
+      <nav class="topnav" aria-label="Site">
+        <a href="./" aria-current="page">Home</a>
+        <a href="stream.html">Stream</a>
+        <a href="profile.html">Profile</a>
+      </nav>
       <span class="topbar-right">
         <span id="service-status" class="service-status" data-status="connecting">
           checking chat…
         </span>
-        <a class="button" href="stream.html">Go live</a>
+        <a id="go-live" class="button" href="stream.html">Go live</a>
+        <a class="topbar-avatar" href="profile.html" data-channel="avatar" title="Your profile"
+          >W</a
+        >
       </span>
     </header>
 
@@ -64,13 +72,19 @@
         <section class="featured" aria-label="Featured stream">
           <a class="preview" href="stream.html" aria-label="Watch W-InTheChat">
             <canvas id="preview" aria-hidden="true"></canvas>
-            <span class="live-tag">LIVE</span>
+            <span class="live-tag" data-live="tag">LIVE</span>
           </a>
           <div class="featured-info">
             <div class="featured-channel">
-              <span class="channel-avatar" aria-hidden="true">W</span>
+              <span
+                class="channel-avatar"
+                data-channel="avatar"
+                data-live="avatar"
+                aria-hidden="true"
+                >W</span
+              >
               <div>
-                <div class="channel-name">W-InTheChat</div>
+                <div class="channel-name" data-channel="name">W-InTheChat</div>
                 <div class="category">Wave Survival</div>
                 <div class="stream-tags">
                   <span class="tag">English</span>
@@ -83,7 +97,7 @@
               You're the streamer. Play a few waves and the chat reacts to every kill, death and
               shop buy, and answers what you type.
             </p>
-            <a class="button button-big" href="stream.html">Watch and play</a>
+            <a id="watch" class="button button-big" href="stream.html">Watch and play</a>
           </div>
         </section>
 

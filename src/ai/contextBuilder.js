@@ -23,6 +23,13 @@ export const CONTEXT_LIMITS = Object.freeze({
 });
 
 /**
+ * A display name the player may set (the profile page): letters (with marks, for Thai),
+ * digits, spaces, `_`, `.` and `-`, up to maxStreamerNameLength. The service refuses
+ * anything else, so a name can't carry instructions into the prompt.
+ */
+export const STREAMER_NAME = /^[\p{L}\p{N}][\p{L}\p{M}\p{N} _.-]{0,24}$/u;
+
+/**
  * @param {ReturnType<import("../events/context.js").toContext>} ctx
  * @param {object} [opts]
  * @param {string} [opts.persona] - Key of PERSONA_PROMPTS.

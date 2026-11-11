@@ -21,7 +21,7 @@
 import { validateChatMessage } from "../events/chatMessage.js";
 import { validateEvent } from "../events/schema.js";
 
-/** Display name for the player until there's login / a name setting. */
+/** The player's name in chat when the profile has none. */
 export const PLAYER_NAME = "Player";
 
 /**
@@ -72,7 +72,7 @@ export function createChatLog({ maxMessages = 150 } = {}) {
      * @param {unknown} event - The player's chat event (from createChatEvent).
      * @returns the same shape as apply(); the message has `kind: "player"`.
      */
-    addPlayerMessage(event) {
+    addPlayerMessage(event, name = PLAYER_NAME) {
       if (event?.kind !== "chat" || !validateEvent(event).ok) {
         return { type: "ignored", reason: "invalid" };
       }
@@ -82,7 +82,7 @@ export function createChatLog({ maxMessages = 150 } = {}) {
           id: event.id,
           kind: "player",
           ts: event.ts,
-          viewer: PLAYER_NAME,
+          viewer: name || PLAYER_NAME,
           text: event.text,
           done: true,
         }),

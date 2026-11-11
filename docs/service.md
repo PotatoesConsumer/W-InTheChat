@@ -47,8 +47,8 @@ Node's `http` module only; no dependencies.
 | `GET /stream` | SSE. Each `chat_message` update is one `event: chat_message` frame with the message as JSON `data`. A `: ping` comment every 15 s keeps it open. |
 | `GET /health` | `{ok: true, clients}` |
 | `GET /stats` | The pipeline's reply counts, failure reasons and p50/p95 latency |
-| `GET /condition` | `{ok: true, condition, session?, conditions}` |
-| `POST /condition` | `{condition: "ai" \| "scripted", session?}`. Restarts the pipeline in that condition, so stats and latency start fresh; replies still in flight are dropped. A new `session` label (a participant id like `P07`: 1–32 letters, digits, `-` or `_`) restarts it too, even in the same condition; leaving it out keeps the current one. `200 {ok: true, condition, session?}`; `400` for an unknown condition or a bad label; `503` if the model couldn't be loaded and `409` if the pipeline can't start (both keep the old condition running). |
+| `GET /condition` | `{ok: true, condition, session?, streamer?, conditions}` |
+| `POST /condition` | `{condition: "ai" \| "scripted", session?, streamer?}`. Restarts the pipeline in that condition, so stats and latency start fresh; replies still in flight are dropped. A new `session` label (a participant id like `P07`: 1–32 letters, digits, `-` or `_`) restarts it too, even in the same condition; leaving it out keeps the current one. `streamer` is the player's display name from the profile page, for the prompts (`STREAMER_NAME` in `contextBuilder.js`: 1–25 letters, digits, spaces, `_ . -`); `""` goes back to "the streamer", and a new name restarts the pipeline too. `200 {ok: true, condition, session?, streamer?}`; `400` for an unknown condition, a bad label or a bad name; `503` if the model couldn't be loaded and `409` if the pipeline can't start (both keep the old condition running). |
 
 **Localhost only.** The server binds `127.0.0.1`, refuses requests whose `Host` isn't
 localhost (DNS rebinding), and only answers cross-origin requests from `localhost` /

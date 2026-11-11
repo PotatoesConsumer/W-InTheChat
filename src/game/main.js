@@ -17,6 +17,13 @@
  * own keymap and sends catalog events; Escape or P pauses it (pause menu: resume,
  * restart, quit to the hub), and so does leaving the window.
  *
+ * Live switch and profile: Go live / End stream in the top bar. Offline, the video shows
+ * an offline screen, the game stops, the chat box is off and nothing goes to the service.
+ * Each stream (Go live to End stream) is saved to the profile page's history, and the
+ * player's display name (profile page) is sent to the service for the prompts. The
+ * study's links (`?session=`) and the bot (`?bot=`) are always live, with no name and no
+ * history, and the nav is hidden so a participant can't leave the stream.
+ *
  * Benchmark bot (W09): `?bot=<skill 0-1>` plays Wave Survival by itself (the bot from
  * shooter/bot.js, through the game's normal input path) and types a player message every
  * 25 s; `&seed=` picks its seed and `&minutes=` stops it after that much play and logs
@@ -34,7 +41,7 @@ import { createExpressionTracker } from "./expression.js";
 import { startCamera, drawCamera } from "./camera.js";
 import { createReplyLatency } from "./replyLatency.js";
 import { createHub } from "./hub.js";
-import { drawHub, drawPause, hubHit } from "./hubView.js";
+import { drawHub, drawPause, drawOffline, hubHit, offlineHit } from "./hubView.js";
 import { GAMES } from "./games.js";
 import { createEventBus } from "../events/bus.js";
 import { createGameEvent, createChatEvent } from "../events/schema.js";
@@ -42,6 +49,15 @@ import { connectToService, DEFAULT_SERVICE_URL } from "../service/client.js";
 import { createChatOverlay } from "../ui/chatOverlay.js";
 import { createStatsHud } from "../ui/statsHud.js";
 import { createStudyPanel, conditionFromUrl, sessionFromUrl } from "../ui/studyPanel.js";
+import {
+  createProfileStore,
+  DEFAULT_PROFILE,
+  avatarLetter,
+  channelName,
+  formatDuration,
+  tallyStream,
+} from "../ui/profile.js";
+import { showChannel } from "../ui/channel.js";
 import { createBot, createBotInput, BOT_CHAT } from "./shooter/bot.js";
 import { HUD_HEIGHT } from "./shooter/view.js";
 import { seededRandom } from "./random.js";
@@ -81,7 +97,7 @@ const overlay = createChatOverlay(document.getElementById("chat"), { onSend: sen
 /** A message from the player (typed, or the benchmark bot's). */
 function sendChat(text) {
   const result = bus.publish(createChatEvent(text));
-  if (result.ok) overlay.pushPlayer(result.event);
+  if (result.ok) overlay.pushPlayer(result.event, profile.name);
   else console.warn("Chat message rejected:", result.errors);
 }
 
@@ -99,6 +115,18 @@ const bot = params.has("bot")
       input: null,
     }
   : null;
+
+// The profile and the live switch. Locked (study, bot): always live, nothing saved.
+const locked = bot !== null || params.has("session");
+if (locked) document.body.dataset.locked = "";
+const store = createProfileStore();
+const profile = locked ? DEFAULT_PROFILE : store.profile();
+if (!locked) store.recover(); // a stream left open by a closed tab ends where it stopped
+const goLiveNow = location.hash === "#live"; // the home page's Go live button
+if (goLiveNow) history.replaceState(null, "", location.pathname + location.search);
+let live = locked || goLiveNow || store.isLive();
+let streamRecord = null;
+let lastStream = null;
 
 // Stats: a pure reducer over the bus, so chat replies can never change them.
 let streamStats = stats.initial();
@@ -119,6 +147,11 @@ bus.subscribe("*", (event) => {
     overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
     effects.donation(gift);
   }
+  if (streamRecord) {
+    const now = { followers: streamStats.followers, donated: gift?.amount ?? 0 };
+    now.game = hub.current?.game.title;
+    streamRecord = store.saveStream(tallyStream(streamRecord, event, now), Date.now());
+  }
 });
 
 // Chat service: every event goes out, chat_message updates come back.
@@ -128,6 +161,7 @@ const serviceUrl = params.get("service") ?? DEFAULT_SERVICE_URL;
 const service = connectToService({
   url: serviceUrl,
   onMessage(message) {
+    if (!live) return; // replies still on their way when the stream ended
     overlay.push(message);
     const row = latency.message(message);
     if (row) showLatency();
@@ -135,6 +169,7 @@ const service = connectToService({
   onStatus: showStatus,
 });
 bus.subscribe("*", async (event) => {
+  if (!live) return; // offline: nothing reaches chat
   latency.sent(event.id);
   const result = await service.send(event);
   if (!result.ok) {
@@ -163,9 +198,11 @@ const study = createStudyPanel(document.getElementById("study"), {
  * @returns {Promise<boolean>} false if the wanted condition couldn't be set
  */
 async function syncCondition() {
-  const result = wantedCondition
-    ? await service.setCondition(wantedCondition, session)
-    : await service.getCondition();
+  const running = wantedCondition ? null : await service.getCondition();
+  const result =
+    running && !running.ok
+      ? running
+      : await service.setCondition(wantedCondition ?? running.condition, session, profile.name);
   condition = result.condition ?? null;
   study.setCondition(condition);
   if (result.ok) {
@@ -173,7 +210,7 @@ async function syncCondition() {
     return true;
   }
   const why = result.error ?? result.errors?.[0]?.message ?? "unknown error";
-  study.setError(`Couldn't switch to ${wantedCondition}: ${why}`);
+  study.setError(`Couldn't switch to ${wantedCondition ?? "the service's condition"}: ${why}`);
   study.show();
   console.warn("Condition switch failed:", result);
   return false;
@@ -266,6 +303,12 @@ function hubHint() {
 
 function update(dt) {
   clock += dt;
+  if (!live) {
+    effects.update(dt);
+    menuInput.endFrame();
+    for (const input of gameInputs.values()) input.endFrame();
+    return;
+  }
   const pressed = (action) => menuInput.wasPressed(action);
   const step =
     (pressed("right") || pressed("down") ? 1 : 0) - (pressed("left") || pressed("up") ? 1 : 0);
@@ -327,6 +370,17 @@ function render(alpha) {
   const shake = effects.shake();
   ctx.setTransform(scale, 0, 0, scale, shake.x * scale, shake.y * scale);
 
+  if (!live) {
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    drawOffline(ctx, {
+      world: WORLD,
+      name: channelName(profile),
+      letter: avatarLetter(profile),
+      color: profile.color,
+      last: lastStream,
+    });
+    return;
+  }
   if (hub.screen === "hub") {
     drawHub(ctx, hub, { world: WORLD, clock, hint: hubHint() });
   } else {
@@ -376,6 +430,10 @@ canvas.addEventListener("pointerdown", (event) => {
   // Clicking the game takes the keyboard back from the chat box.
   if (document.activeElement?.tagName === "INPUT") document.activeElement.blur();
   mouse.pointer = toWorld(event);
+  if (!live) {
+    if (offlineHit(WORLD, mouse.pointer.x, mouse.pointer.y)) goLive();
+    return;
+  }
   canvas.setPointerCapture(event.pointerId);
   if (hub.screen === "playing") {
     mouse.down = true;
@@ -437,7 +495,7 @@ function onScores(scores) {
   if (!change) return;
   showCamera(`camera on · ${change.expression}`);
   const event = createGameEvent("expression", { expression: change.expression });
-  if (change.emit) bus.publish(event);
+  if (change.emit && live) bus.publish(event);
   else streamer.react(event); // the face still follows, without a chat line
 }
 
@@ -505,5 +563,53 @@ window.addEventListener("keydown", (event) => {
     document.activeElement.blur();
   }
 });
+
+// Go live / End stream. Each stream starts with fresh stats and is saved as it goes.
+const liveButton = document.getElementById("live-toggle");
+
+function showLive() {
+  showChannel(document, profile, { live });
+  overlay.setEnabled(live);
+  liveButton.hidden = locked;
+  liveButton.textContent = live ? "End stream" : "Go live";
+  liveButton.classList.toggle("secondary", live);
+  const last = locked ? null : store.streams()[0];
+  lastStream = last
+    ? `Last stream: ${formatDuration(last.endedAt - last.startedAt)}, ` +
+      `best wave ${last.bestWave}, +${last.followers} followers, $${last.donations} donated.`
+    : null;
+}
+
+function goLive() {
+  live = true;
+  streamStats = stats.initial();
+  hud.set(streamStats);
+  if (!locked) {
+    store.setLive(true);
+    streamRecord = store.startStream(Date.now());
+  }
+  showLive();
+}
+
+function endStream() {
+  hub.current?.instance.takeEvents(); // a run's last events stay off chat
+  hub.quit();
+  live = false;
+  streamRecord = null;
+  store.setLive(false);
+  store.endStream(Date.now());
+  showLive();
+}
+
+liveButton.addEventListener("click", () => {
+  liveButton.blur(); // so Space goes back to the game
+  if (live) endStream();
+  else goLive();
+});
+if (live && !locked) {
+  store.setLive(true);
+  streamRecord = store.startStream(Date.now());
+}
+showLive();
 
 createGameLoop({ update, render }).start();
