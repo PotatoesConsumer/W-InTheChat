@@ -38,7 +38,10 @@ if (!["ai", "scripted"].includes(values.condition)) {
   process.exit(2);
 }
 
-const client = new OllamaClient();
+// Keep the model loaded while the service runs. With Ollama's 5-minute default, a pause
+// unloads it, every reply then needs a cold load longer than replyTimeoutMs, and each
+// timeout cancels the load: the W10 pilot got only fallbacks from then on.
+const client = new OllamaClient({ keepAlive: -1 });
 if (values.condition === "ai") await warmUp(client);
 
 /** The code version, which pins the prompts: the study report has to name it. */

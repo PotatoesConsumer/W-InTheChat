@@ -31,8 +31,8 @@
  *                                chat events then say where the player is (SCENES)
  *   state                        for the console (witc.game())
  *
- * `world` is the scene size ({width, height}); `obstacles` are solid rectangles (the
- * facecam). `stream` gives a game read-only stream numbers (`donations()`); games never change
+ * `world` is the scene size ({width, height}); `obstacles` are optional solid rectangles (none
+ * now). `stream` gives a game read-only stream numbers (`donations()`); games never change
  * the stats themselves, they send events. Entries with `comingSoon: true` are shown in
  * the hub but can't be played.
  */

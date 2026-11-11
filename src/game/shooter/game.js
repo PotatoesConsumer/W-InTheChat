@@ -69,7 +69,7 @@ export function playerStats(levels) {
  * @param {object} opts
  * @param {{x: number, y: number, width: number, height: number}} opts.arena - Play area.
  * @param {{x: number, y: number, width: number, height: number}[]} [opts.obstacles] -
- *   Solid rectangles (the facecam).
+ *   Solid rectangles (none in the game since W10; tests use them).
  * @param {() => number} [opts.random] - In [0, 1); seed it for reproducible games.
  */
 export function createShooter({ arena, obstacles = [], random = Math.random }) {
@@ -112,6 +112,7 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
       maxHp: PLAYER.hp,
       invulnerableMs: 0,
       fireCooldownMs: 0,
+      shots: 0, // read by main.js for the shot sound
       aimX: 1,
       aimY: 0,
     };
@@ -174,6 +175,7 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
       });
     }
     p.fireCooldownMs = fireDelayMs;
+    p.shots++;
   }
 
   function spawnEnemies(dt) {

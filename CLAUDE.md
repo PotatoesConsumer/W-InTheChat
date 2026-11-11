@@ -73,7 +73,7 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
 
 ## Layout
 
-- `src/ai/ollamaClient.js`: Ollama REST wrapper (health, retry/backoff, timeout, model select)
+- `src/ai/ollamaClient.js`: Ollama REST wrapper (health, retry/backoff, timeout, model select, keep-alive)
 - `src/ai/contextBuilder.js`: `buildPrompt(ctx, {persona, streamerName, history})`, the
   context payload -> `{system, prompt}` for one persona reply. Uses only `ctx.facts`.
 - `src/ai/personas/`: one file per persona (system prompt), registered in `index.js` with

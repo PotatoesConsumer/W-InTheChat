@@ -94,14 +94,14 @@ raters, a real face for the camera thresholds, the video and the rehearsal.
 
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
-| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (#26): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | 🟡 Study materials done (#27): protocol, consent, questionnaire, `npm run study:order`, session log (`--log`); **the pilot session with 2 people still to run** |
-| W10 | ✅ Prompt pass for the wave shooter from the bot pilot and #18's samples (#29, `docs/personas.md`): copied examples, loss-as-win, he/she and long Backseat lines all 0 of 44; local stays (no hosted API). Idle GPU: accept ~500 ms | 🟡 Sound and reaction effects done (#26); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (#26): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | 🟡 Study materials done (#27): protocol, consent, questionnaire, `npm run study:order`, session log (`--log`). Shapphanyu ran a 3-person pilot of the game (#43); **a dry run of the full protocol (consent, questionnaire, session logs) is still to do** |
+| W10 | ✅ Prompt pass for the wave shooter from the bot pilot and #18's samples (#29, `docs/personas.md`): copied examples, loss-as-win, he/she and long Backseat lines all 0 of 44; local stays (no hosted API). Idle GPU: accept ~500 ms | ✅ Sound and reaction effects (#26); fixes from Shapphanyu's 3-person pilot: AI replies stopping (model unloaded), facecam blocking the player, a shot sound (#43, see below) | ⬜ Participant sessions, about 15–20 people, both conditions |
 | W11 | 🟡 Variety metrics (repeat rate, distinct-2), latency and failure analysis built (#28, `npm run study:analyze`); **the numbers come after the participant sessions** | 🟡 Optional camera done (#26): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | 🟡 Blind rating sheet, rater guide and analysis built (`npm run eval:runs`, `study:rating-sheet`, `study:analyze`); **needs 2–3 raters from outside the team** |
 | W12 | ✅ Setup docs: Ollama install, model pull, prompt versions, troubleshooting (`docs/setup.md`, #30) | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | 🟡 Report drafted with the measured parts filled (`docs/report/evaluation-report.md`) and a defense checklist (`docs/report/defense.md`); **results after the sessions, rehearsal with the team** |
 
-So far: 27 done, 8 started (Prin's W04 demo clip, W09 pilot, W11 rating and W12 report,
-Shapphanyu's W10–W12, Sittipon's W11 analysis), 1 not started (Prin's W10 participant
-sessions). **Everything left needs people**: the pilot and the sessions, the raters, a
+So far: 28 done, 7 started (Prin's W04 demo clip, W09 protocol dry run, W11 rating and
+W12 report, Shapphanyu's W11–W12, Sittipon's W11 analysis), 1 not started (Prin's W10
+participant sessions). **Everything left needs people**: the protocol dry run and the sessions, the raters, a
 real face for the camera, the video, the results in the report, and the rehearsal.
 SEG 02 is complete; SEG 03 has started. `npm test` has no TODO
 tests left.
@@ -158,6 +158,25 @@ Don't change these without talking to the team first. The reasons are in the lin
      dependencies"; and it's marked `optional`, so the evaluation set leaves it out:
      keep it off in the study. Thresholds are a first guess: tune `EXPRESSION_RULES`
      with `witc.camera()` on a real face.
+   - **W10, pilot with 3 classmates** (Shapphanyu ran it; Prin's pilot hasn't happened).
+     What they said and what changed:
+     - "The AI answers slowly or never answers" (2 of 3). The service log showed why:
+       after a few fast replies, every model reply timed out at 3 s and got a fallback.
+       Ollama unloads an idle model after 5 minutes by default; a cold load (about 7 s)
+       is longer than `replyTimeoutMs`, and each timeout cancels the load, so the model
+       never came back. **Fix:** the service asks Ollama to keep the model loaded
+       (`keep_alive: -1`, `OllamaClient({keepAlive})`); `ollama ps` now says "Forever".
+       It stays in GPU memory (2.2 GB) after the service stops, until Ollama quits.
+       **This affects every earlier run with a pause over 5 minutes, the study
+       included:** run on this branch or later.
+     - "The character can't go under the facecam" (1 of 3): it was a solid wall. Now
+       the player can go under it, and it fades while the player or an enemy is behind
+       it.
+     - "Should have more sound" (1 of 3): every event already had one, so firing got a
+       short, quiet shot sound.
+     - "Should have more games" (2 of 3): not done; a team call (the hub draws one
+       tile per game in `games.js`). Nobody missed a donation or the hype meter, and nothing was too
+       loud or too fast.
 
 1. **Your W01–W04 is done** (#12, plus #14, which Sittipon wrote with the team's OK; it's
    your area, so read through it). Start new work from `master` on a `feature/...`
@@ -264,7 +283,7 @@ Fill in the advisor's name on the consent form.
 |------|------------|
 | A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
 | OK for W11's CDN exception, and keeping the camera off in the study | the whole team |
-| Fixes from the pilot session with people (W10) | Prin's W09 pilot, then Shapphanyu |
+| A second game, as 2 of 3 pilot players asked (W10 pilot) | the whole team |
 | Whether half the kills going without a chat line is fine for the study (`docs/pilot-w08.md`, finding 1) | the whole team |
 | Tightening `QA_LIMITS` with the pilot's numbers (`docs/pilot-w08.md`, finding 5) | Prin |
 | Recording the Month-1 demo clip | Prin (or anyone) |

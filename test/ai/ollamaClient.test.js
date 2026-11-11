@@ -56,6 +56,14 @@ test("generate sends model, system and token cap, and returns text and timing", 
   });
 });
 
+test("keepAlive is sent as keep_alive only when set", async () => {
+  const calls = fakeFetch([() => json({ response: "hi", done: true })]);
+  await client({ keepAlive: -1 }).generate("p");
+  await client().generate("p");
+  assert.equal(calls[0].body.keep_alive, -1);
+  assert.equal("keep_alive" in calls[1].body, false);
+});
+
 test("streams: onText gets the growing text, even when chunks split lines", async () => {
   const lines = [
     { response: "LETS", done: false },

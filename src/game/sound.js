@@ -6,12 +6,14 @@
  * the player has clicked or pressed a key, so the first sounds of a page can be silent.
  */
 
-/** Notes per sound: [Hz, ms, wave] played one after another. */
+/** Notes per sound: [Hz, ms, wave, volume?] played one after another; volume scales VOLUME. */
 export const SOUNDS = Object.freeze({
   round_start: [
     [330, 70, "square"],
     [660, 90, "square"],
   ],
+  // Up to a few shots a second, so short and quiet.
+  shot: [[520, 35, "triangle", 0.5]],
   kill: [[880, 45, "square"]],
   damage_taken: [[140, 160, "sawtooth"]],
   item_pickup: [
@@ -79,12 +81,12 @@ export function createSound(win = globalThis.window) {
       if (muted || !Object.hasOwn(SOUNDS, name) || !win.AudioContext) return;
       const ac = audio();
       let at = ac.currentTime;
-      for (const [hz, ms, type] of SOUNDS[name]) {
+      for (const [hz, ms, type, volume = 1] of SOUNDS[name]) {
         const osc = ac.createOscillator();
         const gain = ac.createGain();
         osc.type = type;
         osc.frequency.value = hz;
-        gain.gain.setValueAtTime(VOLUME, at);
+        gain.gain.setValueAtTime(VOLUME * volume, at);
         gain.gain.exponentialRampToValueAtTime(0.0001, at + ms / 1000);
         osc.connect(gain).connect(ac.destination);
         osc.start(at);
