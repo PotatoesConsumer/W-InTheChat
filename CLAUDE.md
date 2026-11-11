@@ -122,6 +122,17 @@ any of that, update the file in the same PR.
   - `stats.js`: followers / donations / hype as a pure reducer (`stats.initial/reduce`),
     registered in the contract tests. The model's replies never reach it.
   - `streamer.js`: the facecam avatar; mood from events (tested), `draw()` on the canvas
+  - `effects.js`: stream reactions over any game: a banner on big moments, a shake on a
+    hit, donation alerts by the facecam (state tested, `draw()` on the canvas).
+    `sound.js`: Web Audio sound effects per event, no audio files; M or the top-bar
+    button mutes.
+  - `expression.js` + `camera.js`: the optional camera (W11), off until the player opts
+    in with the top-bar button and a consent prompt. MediaPipe Face Landmarker (loaded
+    from a CDN, pinned, only when turned on; CPU, not the GPU) gives blendshape scores in
+    the tab; only one word (smiling / surprised / frowning) leaves it, as the minor,
+    `optional` catalog event `expression`. The facecam shows the live camera (this
+    screen only); frames are never saved or sent.
+    `witc.camera()` shows live scores for tuning `EXPRESSION_RULES`.
   - `replyLatency.js`: p50/p95 from the game's send to the reply, shown in the top bar
     and in the console as `witc.latency()`
 - `src/ui/`: chat overlay and HUD. `chatLog.js` is the DOM-free state (streamed updates by

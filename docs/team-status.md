@@ -1,12 +1,13 @@
 # Team status and handoff
 
-Last updated 2026-11-01, after #24 (Sittipon's W09 full pipeline benchmark in Chrome,
-`docs/benchmark-w09.md`) merged. Before that: #13 (team status), #14 (Month-1 demo), #15
-(persona prompts), #17 (persona selector, coalescing, rate limit), #18 (W08 regression
-pass and Month-2 demo guide), #19 (safety filter, the Hater live, player-chat coalescing
-fix), #20 (scripted baseline switch), #21/#22 (wave shooter, game hub, coin store) and
-#23 (W08 laptop pilot, limits) merged.
-Merged branches are deleted, `tawan` included; only `master` remains.
+Last updated 2026-11-11, for `feature/w09-w12-polish` (Shapphanyu's W09–W12 overlay
+polish, study panel fix, sound and effects, optional camera, draft demo clip). Before
+that: #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
+selector, coalescing, rate limit), #18 (W08 regression pass and Month-2 demo guide), #19
+(safety filter, the Hater live, player-chat coalescing fix), #20 (scripted baseline
+switch), #21/#22 (wave shooter, game hub, coin store), #23 (W08 laptop pilot, limits),
+#24 (W09 full pipeline benchmark, `docs/benchmark-w09.md`) and #25 (status) merged.
+Merged branches are deleted, `tawan` included.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -69,17 +70,18 @@ switch running on the same events.
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
-Sittipon's W09 benchmark is done (#24); the rest hasn't started.
+Sittipon's W09 benchmark (#24) and Shapphanyu's W09 polish are done, and Shapphanyu has
+started W10–W12; Prin's study work and Sittipon's W10–W12 haven't started.
 
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
-| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ⬜ Overlay and stats polish, per-persona styling | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
-| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | ⬜ Fixes from the pilot; sound and reaction effects | ⬜ Participant sessions, about 15–20 people, both conditions |
-| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
-| W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
+| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (`feature/w09-w12-polish`): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
+| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | 🟡 Sound and reaction effects done (`feature/w09-w12-polish`); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | 🟡 Optional camera done (`feature/w09-w12-polish`): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
+| W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
 
-So far: 24 done, 1 started (Prin's W04 demo clip), 11 not started. SEG 02 is complete;
-SEG 03 has started. `npm test` has no TODO
+So far: 25 done, 4 started (Prin's W04 demo clip, Shapphanyu's W10–W12), 7 not started.
+SEG 02 is complete; SEG 03 has started. `npm test` has no TODO
 tests left.
 
 ## Decisions already made
@@ -95,6 +97,36 @@ Don't change these without talking to the team first. The reasons are in the lin
 | Chat history is not sent to the model (`historySize: 0`) | The model copied the history's format and invented follow-ups | `docs/service.md` |
 
 ## Shapphanyu (frontend / game): what's next
+
+0. **W09–W12 in `feature/w09-w12-polish`:**
+   - **Bug, important for the study: the study panel (AI chat / Scripted chat) was visible
+     at startup** since #20. `.study-panel { display: flex }` beat the `hidden`
+     attribute, so participants could see their condition. Fixed with a global
+     `[hidden] { display: none !important }` in `overlay.css`, and a test guards it.
+     **Prin: check this before the pilot session**; any session run on `master` before
+     this merge showed the panel.
+   - Reaction effects (`src/game/effects.js`): "WAVE CLEARED!" / "CLOSE CALL!" /
+     "NEW BEST!" / "N KILL STREAK!" banners, a screen shake on a hit, and a donation
+     alert by the facecam. Sound (`src/game/sound.js`): Web Audio blips per event and a
+     donation chime, no audio files; M or the top-bar button mutes. Both react to bus
+     events, so the same events give the same effects in both conditions.
+   - Coin store: the pack price buttons overlapped "Back to the shop"; fixed. Lurker
+     lines are dimmer than the rest of chat (per-persona styling).
+   - W12: a 75 s draft clip and the shot list for the real video (`docs/demo-final.md`).
+     **Warm the model before recording: the first load took 84 s.**
+   - **W11, the optional camera:** a "camera off" button in the top bar asks for
+     consent, then MediaPipe Face Landmarker reads the webcam in the tab (CPU, so the
+     model keeps the GPU) and turns blendshapes into one word: smiling, surprised or
+     frowning (`src/game/expression.js`, `camera.js`). The facecam copies it, and at
+     most every 8 s it goes to chat as a new **minor** catalog event, `expression`.
+     Minor on purpose: chat answers with fixed lines, so the model (and the Hater)
+     never comments on the streamer's real face. The facecam shows the live camera
+     on this screen only; frames are never saved or sent. If the camera drops (Iriun),
+     the button says so; it's off on every page load. **Team calls:** MediaPipe loads from a CDN
+     (pinned 0.10.14, about 6 MB, only when turned on), an exception to "no runtime
+     dependencies"; and it's marked `optional`, so the evaluation set leaves it out:
+     keep it off in the study. Thresholds are a first guess: tune `EXPRESSION_RULES`
+     with `witc.camera()` on a real face.
 
 1. **Your W01–W04 is done** (#12, plus #14, which Sittipon wrote with the team's OK; it's
    your area, so read through it). Start new work from `master` on a `feature/...`
@@ -190,6 +222,8 @@ study materials.
 | What | Waiting on |
 |------|------------|
 | A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
+| OK for W11's CDN exception, and keeping the camera off in the study | the whole team |
+| Fixes from the pilot session with people (W10) | Prin's W09 pilot, then Shapphanyu |
 | Whether half the kills going without a chat line is fine for the study (`docs/pilot-w08.md`, finding 1) | the whole team |
 | Tightening `QA_LIMITS` with the pilot's numbers (`docs/pilot-w08.md`, finding 5) | Prin |
 | Recording the Month-1 demo clip | Prin (or anyone) |

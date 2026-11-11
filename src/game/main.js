@@ -28,6 +28,10 @@ import { createInput } from "./input.js";
 import { stats } from "./stats.js";
 import { donationFor } from "./donations.js";
 import { createStreamer } from "./streamer.js";
+import { createEffects } from "./effects.js";
+import { createSound } from "./sound.js";
+import { createExpressionTracker } from "./expression.js";
+import { startCamera, drawCamera } from "./camera.js";
 import { createReplyLatency } from "./replyLatency.js";
 import { createHub } from "./hub.js";
 import { drawHub, drawPause, hubHit } from "./hubView.js";
@@ -100,13 +104,21 @@ const bot = params.has("bot")
 let streamStats = stats.initial();
 const hud = createStatsHud(document.getElementById("stats"), streamStats);
 const streamer = createStreamer();
+const effects = createEffects();
+const sound = createSound();
 bus.subscribe("*", (event) => {
   streamStats = stats.reduce(streamStats, event);
   hud.set(streamStats);
   streamer.react(event);
+  effects.react(event);
+  if (event.kind === "game") sound.play(event.name);
   // The same donation the stats just added (same event, same hype), shown in chat.
   const gift = donationFor(event, streamStats.hype);
-  if (gift) overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
+  if (gift) {
+    overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
+    effects.donation(gift);
+    sound.play("donation");
+  }
 });
 
 // Chat service: every event goes out, chat_message updates come back.
@@ -196,6 +208,8 @@ window.witc = {
   rows: () => latency.rows(),
   stats: () => streamStats,
   game: () => hub.current?.instance.state ?? null,
+  /** The camera's live expression and blendshape scores, for tuning EXPRESSION_RULES. */
+  camera: () => ({ on: Boolean(camera), expression: tracker.current, scores: cameraScores }),
   /** The benchmark bot's run so far (null without `?bot=`). */
   benchmark: () =>
     bot && {
@@ -271,6 +285,7 @@ function update(dt) {
   }
   publishGameEvents();
   streamer.update(dt);
+  effects.update(dt);
 
   // Every keymap sees every key; presses not used this step are dropped, so a key that
   // opened a screen doesn't also act in it.
@@ -303,7 +318,8 @@ function playBot(dt) {
 
 function render(alpha) {
   const scale = canvas.width / WORLD.width;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  const shake = effects.shake();
+  ctx.setTransform(scale, 0, 0, scale, shake.x * scale, shake.y * scale);
 
   if (hub.screen === "hub") {
     drawHub(ctx, hub, { world: WORLD, clock, hint: hubHint() });
@@ -314,16 +330,24 @@ function render(alpha) {
       pointer: paused ? null : mouse.pointer,
       clock,
     });
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    effects.draw(ctx, {
+      world: WORLD,
+      alertAt: { x: FACECAM_BLOCK.x, y: FACECAM_BLOCK.y, width: FACECAM.width },
+    });
     if (paused) drawPause(ctx, hub, { world: WORLD });
   }
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  streamer.draw(ctx, {
+  const facecam = {
     x: WORLD.width - FACECAM.width - FACECAM.margin,
     y: WORLD.height - FACECAM.height - FACECAM.margin,
     width: FACECAM.width,
     height: FACECAM.height,
-    hype: streamStats.hype,
-  });
+  };
+  // With the optional camera on, the facecam shows the player instead of the avatar.
+  if (camera) drawCamera(ctx, camera.video, facecam, tracker.current);
+  else streamer.draw(ctx, { ...facecam, hype: streamStats.hype });
 }
 
 /** Pointer position in world coordinates. */
@@ -342,6 +366,7 @@ canvas.addEventListener("pointermove", (event) => {
 });
 canvas.addEventListener("pointerdown", (event) => {
   if (event.button !== 0) return;
+  sound.unlock();
   // Clicking the game takes the keyboard back from the chat box.
   if (document.activeElement?.tagName === "INPUT") document.activeElement.blur();
   mouse.pointer = toWorld(event);
@@ -381,16 +406,93 @@ function resizeCanvas() {
 new ResizeObserver(resizeCanvas).observe(canvas);
 resizeCanvas();
 
+// Optional camera (W11): off until the player opts in. Only an expression word leaves
+// the tab: it moves the facecam and, at most every 8 s, goes to chat as an event.
+const cameraButton = document.getElementById("camera");
+const tracker = createExpressionTracker();
+let camera = null; // {stop} while on
+let cameraStarting = false;
+let cameraScores = null;
+const CONSENT =
+  "Turn on the camera?\n\n" +
+  "You'll show in the facecam corner on this screen, and your face is read in this " +
+  "browser tab to tell whether you're smiling, surprised or frowning. The video is never " +
+  "saved or sent anywhere: only that one word goes to the chat.\n\n" +
+  "Turn it off any time with the same button.";
+
+function showCamera(text) {
+  cameraButton.textContent = text;
+  cameraButton.setAttribute("aria-pressed", String(Boolean(camera)));
+}
+
+function onScores(scores) {
+  cameraScores = scores;
+  const change = tracker.push(scores, performance.now());
+  if (!change) return;
+  showCamera(`camera on · ${change.expression}`);
+  const event = createGameEvent("expression", { expression: change.expression });
+  if (change.emit) bus.publish(event);
+  else streamer.react(event); // the face still follows, without a chat line
+}
+
+cameraButton.addEventListener("click", async () => {
+  cameraButton.blur(); // so Space goes back to the game
+  if (cameraStarting) return;
+  if (camera) {
+    camera.stop();
+    camera = null;
+    cameraScores = null;
+    showCamera("camera off");
+    return;
+  }
+  if (!window.confirm(CONSENT)) return;
+  cameraStarting = true;
+  showCamera("camera starting…");
+  try {
+    camera = await startCamera(onScores, () => {
+      camera = null;
+      cameraScores = null;
+      showCamera("camera lost · click to retry");
+      console.warn("The camera disconnected (unplugged, or Iriun dropped).");
+    });
+    showCamera("camera on · neutral");
+  } catch (err) {
+    showCamera("camera off");
+    console.warn("Camera failed:", err);
+    window.alert(`The camera couldn't start: ${err.message}`);
+  } finally {
+    cameraStarting = false;
+  }
+});
+showCamera("camera off");
+
+// Sound: M or the top-bar button mutes (remembered in this browser).
+const soundButton = document.getElementById("sound");
+function showMute() {
+  soundButton.textContent = sound.muted ? "sound off" : "sound on";
+  soundButton.setAttribute("aria-pressed", String(!sound.muted));
+}
+soundButton.addEventListener("click", () => {
+  sound.toggleMute();
+  showMute();
+  soundButton.blur(); // so Space goes back to the game
+});
+showMute();
+
 // Enter jumps to the chat box; Escape gives the keyboard back to the game; F2 toggles
-// the study panel.
+// the study panel; M mutes.
 window.addEventListener("keydown", (event) => {
+  sound.unlock();
   if (event.key === "F2") {
     event.preventDefault();
     study.toggle();
     return;
   }
   const typing = document.activeElement?.tagName === "INPUT";
-  if (event.key === "Enter" && !typing) {
+  if (event.code === "KeyM" && !typing) {
+    sound.toggleMute();
+    showMute();
+  } else if (event.key === "Enter" && !typing) {
     event.preventDefault();
     overlay.focusInput();
   } else if (event.key === "Escape" && typing) {

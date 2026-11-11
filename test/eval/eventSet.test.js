@@ -47,7 +47,10 @@ test("every step is a valid game or chat event (no raw or rejected input)", () =
 
 test("covers every event in the catalog", () => {
   const used = new Set(game.map((s) => s.payload.name));
-  const missing = Object.keys(GAME_EVENTS).filter((name) => !used.has(name));
+  // Optional extensions (the camera) are off in the study, so the set leaves them out.
+  const missing = Object.keys(GAME_EVENTS).filter(
+    (name) => !used.has(name) && !GAME_EVENTS[name].optional,
+  );
   assert.deepEqual(missing, [], "add these events to the set (or a new version of it)");
 });
 

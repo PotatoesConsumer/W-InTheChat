@@ -60,7 +60,7 @@ export function shopLayout() {
     x: panel.x + pad + i * (packW + gap),
     y: panel.y + 92,
     width: packW,
-    height: 240,
+    height: 214,
   }));
   return {
     panel,
@@ -477,18 +477,18 @@ function drawStore(ctx, s, donations, pointer, clock) {
       });
     }
 
-    drawCoinPile(ctx, card.x + card.width / 2, y + 92, i + 1, clock);
+    drawCoinPile(ctx, card.x + card.width / 2, y + 76, i + 1, clock);
     const cx = card.x + card.width / 2;
-    text(ctx, `${pack.coins}`, cx, y + 150, {
+    text(ctx, `${pack.coins}`, cx, y + 126, {
       size: 26,
       weight: 800,
       align: "center",
       color: COLORS.gold,
     });
-    text(ctx, pack.name, cx, y + 172, { size: 13, align: "center", color: "#dfe6ff" });
+    text(ctx, pack.name, cx, y + 146, { size: 13, align: "center", color: "#dfe6ff" });
     const bonus = packBonus(pack);
     if (bonus > 0) {
-      text(ctx, `+${bonus}% bonus`, cx, y + 192, {
+      text(ctx, `+${bonus}% bonus`, cx, y + 164, {
         size: 12,
         weight: 700,
         align: "center",

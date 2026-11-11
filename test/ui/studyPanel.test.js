@@ -14,3 +14,10 @@ test("conditionFromUrl reads ?condition= and ignores anything else", () => {
 test("the panel offers exactly the service's conditions", () => {
   assert.deepEqual(Object.keys(CONDITION_LABELS).sort(), [...CONDITIONS].sort());
 });
+
+test("the hidden attribute really hides (the study panel must stay hidden from participants)", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const css = await readFile(new URL("../../src/ui/overlay.css", import.meta.url), "utf8");
+  // .study-panel sets display: flex, which beats the browser's own [hidden] rule.
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
+});
