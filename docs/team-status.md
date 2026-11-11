@@ -1,7 +1,9 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/study-analysis` (variety metrics, the blind rating
-sheet and the study's analysis, `npm run study:analyze`), stacked on `feature/study-kit`
+Last updated 2026-11-11, for `feature/prompt-pass` (W10: the persona prompts know the
+wave shooter, `docs/personas.md`; the idle-GPU decision), stacked on
+`feature/study-analysis` (variety metrics, the blind rating sheet and the study's
+analysis, `npm run study:analyze`) and `feature/study-kit`
 (the study materials: protocol, consent, questionnaire, counterbalanced order, session
 log; `docs/study/`). Before that:
 #26 (Shapphanyu's W09–W12 overlay polish, study panel fix, sound and effects, optional
@@ -81,12 +83,12 @@ raters, a real face for the camera thresholds, the video and the rehearsal.
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
 | W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (#26): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | 🟡 Study materials done (`feature/study-kit`): protocol, consent, questionnaire, `npm run study:order`, session log (`--log`); **the pilot session with 2 people still to run** |
-| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | 🟡 Sound and reaction effects done (#26); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W10 | ✅ Prompt pass for the wave shooter from the bot pilot and #18's samples (`feature/prompt-pass`, `docs/personas.md`): copied examples, loss-as-win, he/she and long Backseat lines all 0 of 44; local stays (no hosted API). Idle GPU: accept ~500 ms | 🟡 Sound and reaction effects done (#26); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
 | W11 | 🟡 Variety metrics (repeat rate, distinct-2), latency and failure analysis built (`feature/study-analysis`, `npm run study:analyze`); **the numbers come after the participant sessions** | 🟡 Optional camera done (#26): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | 🟡 Blind rating sheet, rater guide and analysis built (`npm run eval:runs`, `study:rating-sheet`, `study:analyze`); **needs 2–3 raters from outside the team** |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
 
-So far: 25 done, 7 started (Prin's W04 demo clip, W09 pilot and W11 rating, Shapphanyu's
-W10–W12, Sittipon's W11 analysis), 4 not started.
+So far: 26 done, 7 started (Prin's W04 demo clip, W09 pilot and W11 rating, Shapphanyu's
+W10–W12, Sittipon's W11 analysis), 3 not started.
 SEG 02 is complete; SEG 03 has started. `npm test` has no TODO
 tests left.
 
@@ -101,6 +103,9 @@ Don't change these without talking to the team first. The reasons are in the lin
 | Model replies run **one at a time** from a first-in, first-out queue, with deadlines counted from event arrival | One 6 GB GPU; and routing on "is the model busy" made the same events get different chat | `docs/service.md` |
 | No routing decision may depend on timing | The same seed and events must give the same chat (`same-choices`) | `docs/pipeline-contract.md` |
 | Chat history is not sent to the model (`historySize: 0`) | The model copied the history's format and invented follow-ups | `docs/service.md` |
+| Idle GPU: accept ~500 ms p50 / ~720 ms p95 in the game (W10) | Well inside the 3 s timeout; keeping the GPU warm would queue with real replies, and a required driver setting is one more thing to get wrong on a study laptop. The NVIDIA "prefer maximum performance" setting stays an optional step in the setup docs | `docs/benchmark-w09.md` |
+| Template lines for minor events stay the Fan's (#18 finding 3) | They're the same in both conditions, so they don't change the comparison, and the rating sheet leaves them out | `docs/evaluation.md` |
+| Prompts are frozen once the participant sessions start | Results must name one prompt version (the git commit); a change mid-study splits the data | `docs/study/protocol.md` |
 
 ## Shapphanyu (frontend / game): what's next
 
@@ -226,10 +231,12 @@ Fill in the advisor's name on the consent form.
 | W05 | Done (#15). Known weaknesses for a later prompt pass are in `docs/personas.md`; the Backseat Gamer's advice can name real actions once the mini-game is chosen |
 | W06 | Done (#17): persona selector, coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. Since #19, player messages only coalesce when the same text repeats (a quick follow-up question used to get no reply, #18 finding 1) |
 | W07 | Done: the safety filter (#19), `src/service/safetyFilter.js`, registered in `filters`, the Hater in `aiPersonas`. Scripted lines per persona came with Shapphanyu's switch (#20, #18 finding 2) |
-| Prompt pass | From #18's real-model samples: the Fan invented a score, the Lurker answered a 5-kill streak with "hi". Also decide whether template lines stay all-Fan (#18 finding 3) |
+| Prompt pass | Done with W10 (`feature/prompt-pass`): numbers only from the details, the Lurker's "hi" only to a greeting, and template lines stay all-Fan (decided below) |
 | W08 | Done (#23): `npm run pilot` (a bot plays the shooter into the real model) and `replyTimeoutMs` 3000, `minGenerationMs` 800, `maxTokens` 32 from its numbers (`docs/pilot-w08.md`) |
 | W09 | Done (#24): `npm run benchmark` with the bot in Chrome (`?bot=`): AI reply 507 / 721 ms p50 / p95, templates 6 ms, GPU 2.2 of 6 GB. Idle test: after ~2 s idle the GPU clocks down and replies run 2.4× slower per token, which is why the game is slower than `npm run e2e` (`docs/benchmark-w09.md`) |
-| W10 | Prompt tuning from pilot logs, plus a team decision on the idle GPU (NVIDIA power setting, keeping it warm, or accepting ~500 ms; `docs/benchmark-w09.md`) |
+| W10 | Done (`feature/prompt-pass`): every prompt describes the shooter (`GAME_CONTEXT`), the Fan answers questions, the Backseat names real actions and is cut at 15 words; the trial's before/after is in `docs/personas.md`. Idle GPU: accepted ~500 ms (decision below). If Prin's pilot with people turns up new problems, do one more pass before the sessions, then freeze the prompts |
+| W11 | Built (`feature/study-analysis`): `npm run study:analyze`. Run it after the sessions |
+| W12 | Setup docs (`docs/setup.md`) and the report template (`feature/report-kit`) |
 
 ## Waiting on someone
 

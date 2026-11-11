@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createGameEvent, createChatEvent } from "../../src/events/schema.js";
 import { toContext } from "../../src/events/context.js";
 import { AI_PERSONAS } from "../../src/ai/personas/index.js";
-import { trialInputs, flagReply, checkNames } from "../../src/ai/personaTrial.js";
+import { trialInputs, flagReply, checkNames, promptExamples } from "../../src/ai/personaTrial.js";
 
 const loss = toContext(createGameEvent("loss", {}));
 const win = toContext(createGameEvent("win", {}));
@@ -43,4 +43,35 @@ test("persona checks catch the known weaknesses", () => {
   assert.deepEqual(flagReply("lurker", "that was a close one", win), ["over4Words"]);
   assert.deepEqual(flagReply("lurker", ":L扑", loss), ["oddChars"]);
   assert.deepEqual(flagReply("lurker", "gg 🔥", win), []);
+  assert.deepEqual(flagReply("lurker", "hi", toContext(createGameEvent("streak", {}))), [
+    "hiOnEvent",
+  ]);
+  assert.deepEqual(flagReply("lurker", "hi", chat), []);
+  assert.deepEqual(flagReply("backseat", "kite the brutes, buy the medkit", loss), []);
+  assert.deepEqual(flagReply("backseat", "save your ammo", loss), ["invented"]);
+});
+
+test("copiesPrompt: a quoted example of 3+ words from the persona's own prompt", () => {
+  const [example] = promptExamples("hater");
+  assert.ok(example, "the Hater prompt has quoted examples");
+  assert.deepEqual(flagReply("hater", `${example.toUpperCase()}!!`, loss), ["copiesPrompt"]);
+  assert.ok(!promptExamples("lurker").includes("gg"), "short reactions may repeat");
+});
+
+test("inventedNumber: numbers only from the event's details or the player's message", () => {
+  const cleared = toContext(createGameEvent("win", { wave: 4, hp: 2, maxHp: 5 }));
+  assert.deepEqual(flagReply("fan", "wave 4 down with 2 hp!!", cleared), []);
+  assert.deepEqual(flagReply("fan", "score 9000, insane", cleared), ["inventedNumber"]);
+  assert.deepEqual(flagReply("fan", "you're up 3-0!", win), ["inventedNumber"]);
+  const asked = toContext(createChatEvent("is wave 10 possible?"));
+  assert.deepEqual(flagReply("fan", "wave 10 for sure", asked), []);
+});
+
+test("trial inputs carry the shooter's details, plus one loss without any", () => {
+  const inputs = trialInputs().map(toContext);
+  const losses = inputs.filter((c) => c.name === "loss");
+  assert.deepEqual(
+    losses.map((c) => c.facts.details),
+    [{ wave: 3, kills: 14 }, {}],
+  );
 });

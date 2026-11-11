@@ -27,3 +27,22 @@ export function parseChatLine(raw) {
     .replace(/^["'*`]+|["'*`]+$/g, "")
     .trim();
 }
+
+/**
+ * Keeps whole sentences while the line stays within `maxWords`, and always the first
+ * one. For a persona the 3B model can't keep short by prompt alone: the Backseat Gamer
+ * writes a second sentence about a quarter of the time. It only cuts at sentence ends,
+ * so a line still only grows as more of the reply comes in.
+ * @param {string} line - A parsed chat line.
+ * @param {number} maxWords
+ */
+export function limitSentences(line, maxWords) {
+  const sentences = line.match(/[^.!?]+[.!?]*\s*/g) ?? [line];
+  let out = "";
+  for (const sentence of sentences) {
+    const next = out + sentence;
+    if (out && next.trim().split(/\s+/).length > maxWords) break;
+    out = next;
+  }
+  return out.trim();
+}
