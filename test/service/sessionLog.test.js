@@ -47,6 +47,22 @@ test("a file per session and condition, from start to end", () =>
     });
   }));
 
+test("the end record carries the GPU's peak for that half, reset when a file opens", () =>
+  withDir((dir) => {
+    let peak = { peakMiB: 2165, totalMiB: 6141 };
+    let resets = 0;
+    const gpu = { reset: () => resets++, peak: () => peak };
+    const log = createSessionLog({ dir, gpu });
+    const file = log.open({ session: "P01", condition: "ai" });
+    log.close({});
+    assert.equal(resets, 1);
+    assert.deepEqual(lines(file).at(-1).gpu, { peakMiB: 2165, totalMiB: 6141 });
+    peak = null; // no nvidia-smi
+    const second = log.open({ session: "P02", condition: "ai" });
+    log.close({});
+    assert.equal("gpu" in lines(second).at(-1), false);
+  }));
+
 test("the service logs events in, finished lines out and replies, per session", () =>
   withDir(async (dir) => {
     const service = createService({

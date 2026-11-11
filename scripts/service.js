@@ -20,6 +20,7 @@ import { execFileSync } from "node:child_process";
 import { OllamaClient } from "../src/ai/ollamaClient.js";
 import { createService, SERVICE_DEFAULTS } from "../src/service/server.js";
 import { createSessionLog } from "../src/service/sessionLog.js";
+import { watchGpuMemory } from "./lib/gpu.js";
 import { warmUp, loadModel, formatStats } from "./lib/serviceTools.js";
 
 const { values } = parseArgs({
@@ -51,8 +52,13 @@ function codeVersion() {
   }
 }
 
+const gpu = values.log ? watchGpuMemory() : null;
 const sessionLog = values.log
-  ? createSessionLog({ dir: values.log, about: { version: codeVersion(), model: client.model } })
+  ? createSessionLog({
+      dir: values.log,
+      about: { version: codeVersion(), model: client.model },
+      gpu,
+    })
   : null;
 const service = createService({
   port: Number(values.port),
@@ -87,5 +93,6 @@ if (sessionLog) console.log(`Session log: ${sessionLog.file()}`);
 process.on("SIGINT", async () => {
   console.log(`\n${formatStats(service.stats())}`);
   await service.close();
+  gpu?.stop();
   process.exit(0);
 });

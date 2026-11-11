@@ -428,6 +428,26 @@ test("an unsafe reply is never shown: the filter swaps in a fallback", async () 
   assert.deepEqual(handle.stats().failures, { unsafe: 1 });
 });
 
+test("onReply logs what was rejected, for review, without ever showing it", async () => {
+  const rows = [];
+  const { bus, messages, handle } = setup(["you're worthless, quit streaming", "gg wp"], {
+    onReply: (row) => rows.push(row),
+  });
+  bus.publish(game("loss", {}, "major"));
+  await handle.idle();
+  bus.publish(game("win", {}, "major"));
+  await handle.idle();
+  const [rejected, ok] = rows;
+  assert.equal(rejected.source, "fallback");
+  assert.equal(rejected.failure, "unsafe");
+  assert.equal(rejected.rejected.text, "you're worthless, quit streaming");
+  assert.equal(typeof rejected.rejected.category, "string");
+  assert.equal(typeof rejected.persona, "string");
+  assert.ok(!messages.some((m) => m.text.includes("worthless")));
+  assert.equal(ok.failure, null);
+  assert.equal("rejected" in ok, false);
+});
+
 test("minor-event templates stay with the Fan, whose voice they're written in", async () => {
   for (const condition of ["ai", "scripted"]) {
     const { bus, messages, handle } = setup(["unused"], { condition });

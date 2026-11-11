@@ -180,7 +180,7 @@ export default function startPipeline(bus, emit, deps = {}) {
     });
   }
 
-  function finished(ctx, { source, text, viewer, firstAt, doneAt, failure }) {
+  function finished(ctx, { source, persona, text, viewer, firstAt, doneAt, failure, rejected }) {
     counts[source]++;
     if (failure) failures[failure] = (failures[failure] ?? 0) + 1;
     remember(viewer, text);
@@ -191,13 +191,13 @@ export default function startPipeline(bus, emit, deps = {}) {
       completionMs: doneAt - ctx.ts,
     };
     latency.record(row);
-    onReply?.({ ...row, text, failure: failure ?? null });
+    onReply?.({ ...row, persona, text, failure: failure ?? null, ...(rejected && { rejected }) });
   }
 
   /** One-update reply from a fixed line (template, scripted). */
   function replyWithLine(ctx, { persona, viewer, source, text }) {
     send({ eventId: ctx.eventId, persona, viewer, source, text, done: true }, (sent) =>
-      finished(ctx, { source, text, viewer, firstAt: sent.ts, doneAt: sent.ts }),
+      finished(ctx, { source, persona, text, viewer, firstAt: sent.ts, doneAt: sent.ts }),
     );
   }
 
@@ -239,6 +239,7 @@ export default function startPipeline(bus, emit, deps = {}) {
           (sent) =>
             finished(ctx, {
               source: "fallback",
+              persona,
               text: fallbackText,
               viewer,
               firstAt: sent.ts,
@@ -289,6 +290,7 @@ export default function startPipeline(bus, emit, deps = {}) {
     const task = (async () => {
       let reply = null;
       let failure = null;
+      let rejected = null;
       try {
         const result = await generate(prompt, {
           system,
@@ -296,9 +298,14 @@ export default function startPipeline(bus, emit, deps = {}) {
           signal: controller.signal,
           onText: limits.streamPartials ? onText : undefined,
         });
-        const check = checkReply(parse(String(result?.text ?? "")));
+        const parsed = parse(String(result?.text ?? ""));
+        const check = checkReply(parsed);
         if (check.ok) reply = check.text;
-        else failure = check.reason;
+        else {
+          failure = check.reason;
+          // Never shown; kept for the log so failures can be reviewed (proposal).
+          rejected = { text: parsed.slice(0, 200), category: check.category ?? null };
+        }
       } catch (err) {
         failure = err?.name === "TimeoutError" ? "timeout" : "error";
       } finally {
@@ -320,7 +327,16 @@ export default function startPipeline(bus, emit, deps = {}) {
         text = fallbackText;
       }
       update(text, true, source, (sent) =>
-        finished(ctx, { source, text, viewer, firstAt, doneAt: sent.ts, failure }),
+        finished(ctx, {
+          source,
+          persona,
+          text,
+          viewer,
+          firstAt,
+          doneAt: sent.ts,
+          failure,
+          rejected,
+        }),
       );
     })().finally(() => {
       active.delete(id);

@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mean, median, distribution, wilcoxonSignedRank } from "../../src/analysis/stats.js";
+import {
+  mean,
+  median,
+  distribution,
+  wilcoxonSignedRank,
+  wilsonInterval,
+  bootstrapInterval,
+} from "../../src/analysis/stats.js";
 import { parseCsv, toCsv } from "../../src/analysis/csv.js";
 import { normalize, repeatRate, distinct2, variety } from "../../src/analysis/variety.js";
 
@@ -48,4 +55,40 @@ test("variety: repeats after normalizing, and distinct-2 inside lines", () => {
     repeatRate: 0.5,
     distinct2: 0.5,
   });
+});
+
+test("Wilson interval: the textbook values, and inside 0..1 at the edges", () => {
+  const { low, high } = wilsonInterval(10, 20);
+  assert.equal(low.toFixed(3), "0.299");
+  assert.equal(high.toFixed(3), "0.701");
+  assert.equal(wilsonInterval(0, 5).low, 0);
+  assert.equal(wilsonInterval(5, 5).high, 1);
+  assert.equal(wilsonInterval(0, 0), null);
+});
+
+test("bootstrap interval: seeded, holds the estimate, two-sample differences", () => {
+  const diffs = [1, 1, 2, 0, 1, 2, 1];
+  const a = bootstrapInterval([diffs], (d) => mean(d));
+  assert.deepEqual(
+    bootstrapInterval([diffs], (d) => mean(d)),
+    a,
+    "same every run",
+  );
+  assert.ok(a.low <= mean(diffs) && mean(diffs) <= a.high);
+  const two = bootstrapInterval(
+    [
+      [3, 4, 5],
+      [1, 2, 2],
+    ],
+    (x, y) => mean(x) - mean(y),
+  );
+  assert.ok(two.low > 0, "clearly apart");
+  assert.equal(
+    bootstrapInterval([[]], (d) => mean(d)),
+    null,
+  );
+  assert.deepEqual(
+    bootstrapInterval([[2, 2, 2]], (d) => mean(d)),
+    { low: 2, high: 2 },
+  );
 });
