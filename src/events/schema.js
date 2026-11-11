@@ -8,7 +8,8 @@
  * Kinds:
  *   - "game": something happened in the mini-game. `name` must be in GAME_EVENTS,
  *     which is also the single source of each event's importance.
- *   - "chat": the player typed a message to chat.
+ *   - "chat": the player typed a message to chat, or said it out loud (`spoken: true`,
+ *     the optional voice input).
  *
  * Uses nothing beyond globalThis.crypto, so the game and the service import the
  * same file. Events are plain JSON so they survive the browser -> service hop.
@@ -61,7 +62,7 @@ export const LIMITS = Object.freeze({
 
 const FIELDS_BY_KIND = {
   game: new Set(["v", "id", "kind", "ts", "name", "data"]),
-  chat: new Set(["v", "id", "kind", "ts", "text"]),
+  chat: new Set(["v", "id", "kind", "ts", "text", "spoken"]),
 };
 
 const DATA_KEY_PATTERN = /^[a-z][a-zA-Z0-9_]*$/;
@@ -86,14 +87,16 @@ export function createGameEvent(name, data = {}, { id = newId(), ts = Date.now()
 }
 
 /**
- * @param {string} text - What the player typed. Surrounding whitespace is trimmed.
- * @param {{id?: string, ts?: number}} [opts]
+ * @param {string} text - What the player typed (or said). Surrounding whitespace is trimmed.
+ * @param {{id?: string, ts?: number, spoken?: boolean}} [opts] - `spoken`: said out loud
+ *   on stream (voice input), not typed. Typed events have no `spoken` field at all.
  * @returns {Readonly<object>} a frozen, validated chat event
  * @throws {EventValidationError}
  */
-export function createChatEvent(text, { id = newId(), ts = Date.now() } = {}) {
+export function createChatEvent(text, { id = newId(), ts = Date.now(), spoken = false } = {}) {
   const trimmed = typeof text === "string" ? text.trim() : text;
-  return finalize({ v: SCHEMA_VERSION, id, kind: "chat", ts, text: trimmed });
+  const event = { v: SCHEMA_VERSION, id, kind: "chat", ts, text: trimmed };
+  return finalize(spoken ? { ...event, spoken: true } : event);
 }
 
 /**
@@ -202,6 +205,9 @@ function validateChatFields(event, fail) {
     fail("text", "must not be empty");
   } else if (event.text.length > LIMITS.maxChatLength) {
     fail("text", `must be at most ${LIMITS.maxChatLength} characters`);
+  }
+  if ("spoken" in event && event.spoken !== true) {
+    fail("spoken", "must be true when present (leave it out for typed messages)");
   }
 }
 

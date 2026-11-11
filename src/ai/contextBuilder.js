@@ -65,7 +65,8 @@ export function buildPrompt(
   }
 
   if (typeof facts.playerMessage === "string") {
-    lines.push(`${name} typed in chat: "${oneLine(facts.playerMessage)}"`);
+    const how = facts.spoken === true ? "said on stream" : "typed in chat";
+    lines.push(`${name} ${how}: "${oneLine(facts.playerMessage)}"`);
   } else if (typeof facts.event === "string") {
     lines.push(`Event: ${name} just ${facts.event}.`);
     const details = formatDetails(facts.details);

@@ -60,6 +60,13 @@ createChatEvent("  gg chat  ")
 
 - `text` is trimmed, must not be empty, max 200 chars.
 - Chat events have no importance. Every valid player message is eligible for a response.
+- `spoken: true` marks something the player **said out loud** (the optional voice input,
+  `createChatEvent(text, { spoken: true })`), not typed. Typed messages have no `spoken`
+  field at all; when present it must be `true`. The context payload's facts carry it
+  (`{ playerMessage, spoken: true }`), and the prompt says "said on stream" instead of
+  "typed in chat". Spoken messages don't show as chat lines (the streamer's speech isn't
+  chat); the game shows them as subtitles. The study never sends them (voice is off for
+  `?session=` links).
 
 ## Game event catalog
 

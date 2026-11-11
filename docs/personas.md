@@ -139,6 +139,48 @@ Full trial after the change (176 replies): every check at 0 or near it, as befor
 Hater reply failed the reply check, and a fallback would replace it. The Lurker's
 distinct replies went from 14% to 20%.
 
+## Voice input: playing along with jokes (2026-11-12)
+
+With the optional voice input, the streamer's speech reaches the prompt as `Pu said on
+stream: "…"` (typed messages stay `typed in chat`). Every prompt now says it may get
+either, and each persona plays along with a joke in its own voice:
+
+- **Fan:** laughs with the streamer (LMAO, KEKW) and adds to the joke. Only a joke gets a
+  laugh: a question or a hello gets a real answer. Keep it clean.
+- **Hater:** roasts the joke, not the streamer: it wasn't funny, or their gameplay is the
+  real joke.
+- **Backseat:** tells them to stop joking and focus, then gives advice anyway.
+- **Lurker:** "lol", "lmao", "kekw" or "real" are in its reaction list for a joke.
+
+`npm run ai:voice` runs every persona on seven spoken lines (five jokes, a question and
+a hello), each reply through the reply check. What the runs showed:
+
+- **Fan and Hater riff on the joke:** "LMAO! The brute must really like the way you play
+  champ!", "so this is how you pass waves then? Just test the respawn mechanic". The Fan
+  said "LMAO" to a question too until "only laugh at a joke" was added.
+- **One Fan reply was sexual and passed the filter** (to "chat I think the brute has a
+  crush on me"). That word and its plural are now in the filter's sexual list, with a
+  test.
+- **The Backseat** mostly gives advice, as its rules say.
+- **The Lurker stays weak at jokes:** it often says "sheesh", its kill-streak word.
+  - Telling it "sheesh is only for a kill streak" made it say "sheesh" to everything.
+  - The wordings that got it to say "lol" more also made it copy the streamer's greeting
+    word for word in the main trial (3 of 44 replies, against 0–1 before).
+  - The kept wording has the joke words only in its reaction list, and the main trial
+    matches master: 0 copies, distinct 0.14–0.16.
+
+Main trial (`npm run ai:personas`, 44 replies per persona) against master's prompts, same
+day:
+
+| Persona | Flags, this version | Flags, master |
+|---|---|---|
+| Fan | inventedNumber 2, lossAsWin 1 | inventedNumber 4 |
+| Hater | inventedNumber 1 | failed 1, copiesPrompt 1, inventedNumber 1, nameCalling 1 |
+| Backseat | praiseFirst 1, assistant 1, over15Words 1 | none |
+| Lurker | 0 over4Words, distinct 0.14–0.16 | 0–1 over4Words, distinct 0.16–0.18 |
+
+The spoken-line run: 28 replies, 0 rejected, about 60–400 ms each.
+
 ## Trials with qwen2.5:3b (2026-10-27)
 
 Rerun with `npm run ai:personas` (options: `--persona hater,backseat`, `--repeats 2`,

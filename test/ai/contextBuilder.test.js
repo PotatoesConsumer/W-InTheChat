@@ -85,3 +85,12 @@ test("rejects unknown personas and things that aren't context payloads", () => {
   assert.throws(() => buildPrompt({ facts: {} }), /event or a playerMessage/);
   assert.throws(() => buildPrompt(ctx, { history: "nope" }), /history must be an array/);
 });
+
+test("something the streamer said out loud is quoted as said on stream", () => {
+  const ctx = toContext(createChatEvent("these slimes are my friends", { ...FIXED, spoken: true }));
+  assert.deepEqual(ctx.facts, { playerMessage: "these slimes are my friends", spoken: true });
+  assert.equal(
+    buildPrompt(ctx, { streamerName: "Pu" }).prompt,
+    'Pu said on stream: "these slimes are my friends"\nWrite the chat message.',
+  );
+});

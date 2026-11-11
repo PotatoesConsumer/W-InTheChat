@@ -31,7 +31,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
   p50/p95 latency.
 - `npm run ai:personas`: the persona prompt trial: every persona on fixed events with the
   real model, replies flagged for known weaknesses, counts and p50/p95. Guide:
-  `docs/personas.md`.
+  `docs/personas.md`. `npm run ai:voice`: every persona on things the streamer says out
+  loud (jokes, questions), each reply through the reply check.
 - `npm run service`: the chat service on `http://127.0.0.1:8787` with the real model
   (`--condition scripted` for the baseline). `npm run e2e`: end-to-end latency over HTTP + SSE.
   Guide: `docs/service.md`.
@@ -166,6 +167,12 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     console shows one during a game, for a demo; stats and chat don't change.
     `sound.js`: Web Audio sound effects per event, no audio files; M or the top-bar
     button mutes.
+  - `voice.js` + `speech.js`: the optional voice input. The mic button (consent prompt:
+    Chrome's speech recognition may send the audio to Google; the game never records
+    it) and an EN/TH language pick. What it hears shows as subtitles over the video;
+    while live, it goes to chat as a spoken chat event (`spoken: true`, at most one
+    every 4 s, filler dropped; `voice.js`, tested) and the personas react, playing
+    along with jokes. Hidden for the study and the bot.
   - `expression.js` + `camera.js`: the optional camera (W11), off until the player opts
     in with the top-bar button and a consent prompt. MediaPipe Face Landmarker (loaded
     from a CDN, pinned, only when turned on; CPU, not the GPU) gives blendshape scores in
