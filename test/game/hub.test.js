@@ -107,9 +107,10 @@ test("the hub needs a playable game; the real list has one", () => {
 });
 
 test("clicks hit hub cards and pause buttons", () => {
-  const hub = createHub({ games: GAMES, makeGame: () => ({ quit() {}, restart() {} }) });
+  const games = [...GAMES, soon];
+  const hub = createHub({ games, makeGame: () => ({ quit() {}, restart() {} }) });
   const centre = (r) => [r.x + r.width / 2, r.y + r.height / 2];
-  assert.equal(hubHit(hub, ...centre(hubLayout(GAMES.length)[1])), 1);
+  assert.equal(hubHit(hub, ...centre(hubLayout(games.length)[1])), 1);
   assert.equal(hubHit(hub, 5, 5), -1);
   hub.confirm({ canPlay: true });
   assert.equal(hubHit(hub, 5, 5), -1, "nothing to click while playing");

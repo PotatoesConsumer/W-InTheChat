@@ -1,7 +1,9 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/donation-alerts` (Twitch-style donation alerts,
-Shapphanyu's area: please look through `src/game/effects.js`). Before that: #33 (chat
+Last updated 2026-11-11, for `feature/twitch-look` (the stream page restyled like
+Twitch: top bar, video with a channel info bar, Twitch-style chat with badges, a cleaner
+hub and pause menu; Shapphanyu's area, please look through it). Before that: #34
+(Twitch-style donation alerts), #33 (chat
 calls: "W in the chat" gets viewers spamming W, the same in both conditions; modern
 slang for the Fan and the Hater), #32 (the last gaps against the proposal:
 rejected replies and peak GPU memory in the session logs, failure cases and 95%

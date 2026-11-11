@@ -1,8 +1,9 @@
 /**
  * chatOverlay.js
  *
- * The chat panel: message list with persona avatar tags, auto-scroll, and the box
- * the player types into. State lives in chatLog.js; this file only renders it.
+ * The chat panel, laid out like Twitch chat: a header, lines of "[badge] name: text"
+ * with the name in its persona's colour, auto-scroll, and the box the player types
+ * into. State lives in chatLog.js; this file only renders it.
  *
  * - All text is set with textContent, never innerHTML: chat text comes from a model.
  * - Auto-scroll follows new messages while the list is scrolled to the bottom. If
@@ -21,6 +22,17 @@ export const PERSONA_LABELS = Object.freeze({
   hater: "Hater",
   backseat: "Backseat Gamer",
   lurker: "Lurker",
+});
+
+/**
+ * Chat badges, like Twitch's: the Fan is a subscriber, the Backseat Gamer a VIP, the
+ * player the broadcaster. The Hater and the Lurker have none, like most of chat.
+ * Each is a CSS-drawn square with the persona's name as its tooltip.
+ */
+const BADGES = Object.freeze({
+  fan: { kind: "sub", title: "Subscriber (Fan)" },
+  backseat: { kind: "vip", title: "VIP (Backseat Gamer)" },
+  player: { kind: "broadcaster", title: "Broadcaster" },
 });
 
 /** How close to the bottom (px) still counts as "at the bottom". */
@@ -62,6 +74,9 @@ export function createChatOverlay(
 
   root.classList.add("chat");
 
+  const header = el("div", "chat-header");
+  header.textContent = "Stream chat";
+
   const list = el("ol", "chat-list");
   list.setAttribute("role", "log");
   list.setAttribute("aria-live", "polite");
@@ -83,7 +98,7 @@ export function createChatOverlay(
   send.textContent = "Chat";
   form.append(input, send);
 
-  root.append(list, jump, form);
+  root.append(header, list, jump, form);
 
   /** @type {Map<string, {line: HTMLElement, text: HTMLElement, typing?: number}>} */
   const nodes = new Map();
@@ -100,27 +115,24 @@ export function createChatOverlay(
     const isPlayer = message.kind === "player";
     const isDonation = message.kind === "donation";
     const line = el("li", "chat-line");
-    const avatar = el("span", "chat-avatar");
     const name = el("span", "chat-viewer");
     const text = el("span", "chat-text");
-    const label = isPlayer || isDonation ? message.viewer : PERSONA_LABELS[message.persona];
-    avatar.textContent = isDonation ? "$" : label[0];
-    avatar.title = label;
-    avatar.setAttribute("aria-label", label);
     name.textContent = message.viewer;
-    line.append(avatar);
-    if (isPlayer) {
-      const badge = el("span", "chat-badge");
-      badge.textContent = "ADMIN";
-      line.append(badge);
+    if (!isPlayer && !isDonation) name.title = PERSONA_LABELS[message.persona];
+    const badge = BADGES[isPlayer ? "player" : message.persona];
+    if (badge && !isDonation) {
+      const icon = el("span", `chat-badge badge-${badge.kind}`);
+      icon.title = badge.title;
+      icon.setAttribute("aria-label", badge.title);
+      line.append(icon);
     }
     if (isDonation) {
-      const badge = el("span", "chat-badge donation-amount");
-      badge.textContent = `donated $${message.amount}`;
-      line.append(name, badge, text);
+      const amount = el("span", "donation-amount");
+      amount.textContent = `donated $${message.amount}`;
+      line.append(name, amount, text);
       return { line, text };
     }
-    line.append(name, text);
+    line.append(name, el("span", "chat-colon"), text);
     return { line, text };
   }
 

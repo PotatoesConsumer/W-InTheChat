@@ -53,8 +53,8 @@ export function createStatsHud(root, initial) {
     return { box, value };
   }
 
-  const followers = counter("Followers");
-  const donations = counter("Donations");
+  const followers = counter("followers");
+  const donations = counter("donations");
 
   const hype = el("div", "stat hype");
   const bar = el("div", "hype-bar");
@@ -65,7 +65,7 @@ export function createStatsHud(root, initial) {
   bar.setAttribute("aria-valuemin", "0");
   bar.setAttribute("aria-valuemax", "100");
   bar.append(fill);
-  hype.append(el("span", "stat-label", "Hype"), bar, label);
+  hype.append(el("span", "stat-label", "hype"), bar, label);
 
   root.append(followers.box, donations.box, hype);
 

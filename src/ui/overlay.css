@@ -1,19 +1,31 @@
-/* Broadcast layout: game on the left, chat on the right. */
+/*
+ * The stream page, laid out like a real streaming site (Twitch): a slim top bar, the
+ * video with the stream's info bar under it, and chat on the right. Flat greys, one
+ * accent colour (the platform purple) for actions, and chat names in their own colours.
+ */
 
 :root {
-  --bg: #0e0d13;
-  --panel: #18161f;
-  --border: #2a2735;
-  --text: #e8e6ee;
-  --muted: #8a8599;
-  --accent: #ff7a59;
+  --bg: #0e0e10;
+  --panel: #18181b;
+  --raised: #1f1f23;
+  --border: #2f2f35;
+  --text: #efeff1;
+  --muted: #adadb8;
+  --faint: #6f6f78;
+  --accent: #9147ff;
+  --accent-hover: #772ce8;
+  --live: #eb0400;
+  --good: #00c86f;
 
-  --fan: #ff6fae;
-  --hater: #ef4444;
-  --backseat: #f5b942;
-  --lurker: #7c8aa5;
-  --player: #4ecdc4;
-  --donation: #ffd34e;
+  /* Chat name colours: Twitch's default palette, one per persona. */
+  --fan: #ff69b4;
+  --hater: #ff4500;
+  --backseat: #1e90ff;
+  --lurker: #5f9ea0;
+  --player: #bf94ff;
+  --donation: #f0b429;
+
+  --font: Inter, "Segoe UI Variable Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
@@ -36,56 +48,78 @@ body {
   flex-direction: column;
   background: var(--bg);
   color: var(--text);
-  font:
-    14px/1.4 system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
+  font: 13px/1.5 var(--font);
 }
+
+button {
+  font: inherit;
+}
+
+/* Top bar */
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  height: 50px;
+  padding: 0 16px;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   white-space: nowrap;
+  z-index: 1;
 }
 
-.live {
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #e5323b;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
   font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.05em;
 }
 
-.title {
-  font-weight: 600;
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 17px;
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   margin-left: auto;
   font-size: 12px;
 }
 
 .latency {
-  color: var(--muted);
+  margin-right: 6px;
+  color: var(--faint);
   font-variant-numeric: tabular-nums;
 }
 
-.toggle {
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: none;
+.toggle,
+.service-status {
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--raised);
   color: var(--muted);
-  font: inherit;
+  font-weight: 600;
+}
+
+.toggle {
   cursor: pointer;
+}
+
+.toggle:hover {
+  background: #26262c;
+  color: var(--text);
 }
 
 #sound[aria-pressed="false"] {
@@ -93,114 +127,246 @@ body {
 }
 
 #camera[aria-pressed="true"] {
-  border-color: #3ddc84;
-  color: var(--text);
-}
-
-.service-status {
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  color: var(--muted);
+  background: rgba(0, 200, 111, 0.15);
+  color: var(--good);
 }
 
 .service-status::before {
-  content: "●";
-  margin-right: 5px;
-  color: var(--muted);
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+  vertical-align: 0;
 }
 
 .service-status[data-status="connected"]::before {
-  color: #3ddc84;
+  background: var(--good);
 }
 
 .service-status[data-status="reconnecting"]::before,
 .service-status[data-status="closed"]::before {
-  color: #e5323b;
+  background: var(--live);
 }
 
-/* Stream stats (built by src/ui/statsHud.js) */
+/* Layout: video and its info bar, chat on the right */
+
+.broadcast {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.video {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #000;
+}
+
+/* The stream's info bar under the video */
+
+.stream-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px 14px;
+}
+
+.channel-avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--live);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--bg);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.channel-avatar::after {
+  content: "LIVE";
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--live);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  letter-spacing: 0.02em;
+}
+
+.stream-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.channel-name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.stream-title {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.category {
+  margin-right: 4px;
+  color: #bf94ff;
+  font-weight: 600;
+}
+
+.tag {
+  padding: 0 8px;
+  border-radius: 9px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* Stream stats (built by src/ui/statsHud.js), in the info bar */
 
 .stats-hud {
   display: flex;
   align-items: center;
-  gap: 52px; /* room for the "+3" / "+$100" pop-ups */
-  margin-left: 18px;
+  gap: 40px; /* room for the "+3" / "+$100" pop-ups */
+  margin-right: 8px;
 }
 
 .stat {
   position: relative;
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.stat-value {
+  order: -1;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
   color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.stat-value {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-size: 12px;
 }
 
 .stat.hype {
-  align-items: center;
+  min-width: 150px;
 }
 
 .hype-bar {
-  width: 120px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--border);
+  order: -1;
+  width: 150px;
+  height: 6px;
+  margin: 7px 0 6px;
+  border-radius: 3px;
+  background: var(--raised);
   overflow: hidden;
 }
 
 .hype-fill {
   height: 100%;
   width: 0;
-  border-radius: inherit;
-  background: #7c8aa5;
+  background: var(--lurker);
   transition:
     width 0.4s ease-out,
     background-color 0.4s;
 }
 
 .hype-fill[data-level="warm"] {
-  background: #f5b942;
+  background: var(--donation);
 }
 .hype-fill[data-level="hyped"] {
-  background: var(--accent);
+  background: #ff7f50;
 }
 .hype-fill[data-level="on-fire"] {
-  background: #e5323b;
+  background: var(--live);
+}
+
+/* "Hype · warm" on one line under the bar */
+.stat.hype .stat-label,
+.hype-label {
+  display: inline;
+}
+
+.stat.hype {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+}
+
+.stat.hype .hype-bar {
+  grid-column: 1 / -1;
 }
 
 .hype-label {
-  min-width: 52px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: lowercase;
 }
 
 .stat-pop {
   position: absolute;
-  left: calc(100% + 4px);
+  left: calc(100% + 6px);
   top: 0;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 700;
   pointer-events: none;
   animation: pop-up 1.2s ease-out forwards;
 }
 
 .stat-pop.up {
-  color: #3ddc84;
+  color: var(--good);
 }
 .stat-pop.money {
-  color: #f5b942;
+  color: var(--donation);
 }
 
 @keyframes pop-up {
@@ -214,31 +380,7 @@ body {
   }
 }
 
-.broadcast {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-}
-
-.stage {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  min-width: 0;
-}
-
-#game {
-  width: 100%;
-  max-height: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: contain;
-  border-radius: 6px;
-  background: #14121c;
-}
-
-/* Chat panel (built by src/ui/chatOverlay.js) */
+/* Chat (built by src/ui/chatOverlay.js), like Twitch chat */
 
 .chat {
   position: relative;
@@ -249,44 +391,86 @@ body {
   border-left: 1px solid var(--border);
 }
 
+.chat-header {
+  flex: none;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 50px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .chat-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   margin: 0;
-  padding: 8px 0;
+  padding: 10px 0;
   list-style: none;
 }
 
 .chat-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 4px 12px;
+  padding: 5px 20px;
+  line-height: 20px;
   overflow-wrap: anywhere;
 }
 
-.chat-avatar {
-  flex: none;
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--persona, var(--muted));
-  color: #111;
+.chat-line:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.chat-badge {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  border-radius: 3px;
+  color: #fff;
   font-size: 11px;
   font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  vertical-align: -3px;
+}
+
+/* Badges as glyphs, no image files: a heart, a gem and a play mark. */
+.badge-sub {
+  background: #8205b4;
+}
+.badge-sub::before {
+  content: "♥";
+}
+
+.badge-vip {
+  background: #e005b9;
+}
+.badge-vip::before {
+  content: "◆";
+}
+
+.badge-broadcaster {
+  background: var(--live);
+}
+.badge-broadcaster::before {
+  content: "▶";
+  font-size: 9px;
 }
 
 .chat-viewer {
-  flex: none;
   font-weight: 700;
   color: var(--persona, var(--muted));
 }
 
+.chat-colon::before {
+  content: ": ";
+}
+
 .chat-text {
-  min-width: 0;
+  color: var(--text);
 }
 
 .chat-line.streaming .chat-text::after {
@@ -320,106 +504,100 @@ body {
 }
 .player {
   --persona: var(--player);
-  background: rgba(78, 205, 196, 0.08);
 }
 
-.chat-badge {
-  flex: none;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: var(--player);
-  color: #111;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  line-height: 16px;
-}
-
-/* Donations (src/game/donations.js): a gold alert line, like a real stream's. */
+/* Donations (src/game/donations.js): a highlighted line, like a cheer in Twitch chat. */
 .donation {
   --persona: var(--donation);
-  flex-wrap: wrap;
-  row-gap: 2px;
-  margin: 4px 8px;
-  border-left: 3px solid var(--donation);
-  border-radius: 6px;
-  background: linear-gradient(90deg, rgba(255, 211, 78, 0.22), rgba(255, 211, 78, 0.06));
+  margin: 6px 10px;
+  padding: 8px 10px;
+  border-left: 4px solid var(--donation);
+  border-radius: 4px;
+  background: rgba(240, 180, 41, 0.1);
   animation: donation-in 0.6s ease-out;
 }
 
-.donation .chat-text {
-  flex-basis: 100%;
-  padding-left: 30px;
-  font-style: italic;
+.donation-amount {
+  margin-left: 4px;
+  color: var(--donation);
+  font-weight: 700;
 }
 
-.donation-amount {
-  background: var(--donation);
+.donation .chat-text {
+  display: block;
+  margin-top: 2px;
 }
 
 @keyframes donation-in {
   from {
-    transform: scale(0.96);
-    background-color: rgba(255, 211, 78, 0.6);
+    background-color: rgba(240, 180, 41, 0.35);
   }
 }
 
 .chat-jump {
   position: absolute;
   left: 50%;
-  bottom: 60px;
+  bottom: 70px;
   transform: translateX(-50%);
-  padding: 4px 12px;
+  padding: 5px 12px;
   border: 0;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #111;
-  font: inherit;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--text);
   font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   cursor: pointer;
 }
 
 .chat-form {
   display: flex;
   gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
+  padding: 10px;
 }
 
 .chat-input {
   flex: 1;
   min-width: 0;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  padding: 8px 10px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: var(--raised);
   color: var(--text);
   font: inherit;
 }
 
+.chat-input:hover {
+  border-color: var(--border);
+}
+
 .chat-input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  outline: 0;
+  border-color: var(--accent);
+  background: #000;
 }
 
 .chat-send {
-  padding: 6px 14px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--accent);
-  color: #111;
-  font: inherit;
+  color: #fff;
   font-weight: 600;
   cursor: pointer;
 }
 
-/* Narrow windows: drop the latency readout and tighten the stats first. */
+.chat-send:hover {
+  background: var(--accent-hover);
+}
+
+/* Narrow windows: drop the latency readout and the tags first. */
 @media (max-width: 1100px) {
-  .latency {
+  .latency,
+  .tag {
     display: none;
   }
-  .hype-bar {
-    width: 80px;
+  .stats-hud {
+    gap: 28px;
   }
 }
 
@@ -436,17 +614,15 @@ body {
   width: 280px;
   padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--panel);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .study-title {
-  font-size: 11px;
-  font-weight: 700;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .study-current {
@@ -461,27 +637,25 @@ body {
 .study-button {
   flex: 1;
   padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  border: 0;
+  border-radius: 4px;
+  background: var(--raised);
   color: var(--text);
-  font: inherit;
   cursor: pointer;
 }
 
 .study-button.active {
-  border-color: var(--accent);
   background: var(--accent);
-  color: #111;
+  color: #fff;
   font-weight: 600;
 }
 
 .study-note {
-  font-size: 12px;
   color: var(--muted);
+  font-size: 12px;
 }
 
 .study-error {
-  font-size: 12px;
   color: #ff8a8a;
+  font-size: 12px;
 }

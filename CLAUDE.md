@@ -125,7 +125,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     input path, for the benchmark only; `witc.benchmark()` reports the run.
   - `hub.js`: the game hub and pause menu as plain state (tested), and **the game
     module interface** every mini-game implements. `hubView.js` draws them;
-    `games.js` lists the games. More games are planned: add one there.
+    `games.js` lists the games (Wave Survival for now). More games are planned: add one
+    there; the hub draws one tile per game.
   - `shooter/`: Wave Survival (W08), a top-down wave shooter. `index.js` is the hub
     module (keys, mouse, drawing); `game.js` the state and rules with no DOM (tested;
     seeded random), which says which catalog event fires when; `waves.js` makes each
@@ -156,9 +157,13 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     `witc.camera()` shows live scores for tuning `EXPRESSION_RULES`.
   - `replyLatency.js`: p50/p95 from the game's send to the reply, shown in the top bar
     and in the console as `witc.latency()`
-- `src/ui/`: chat overlay and HUD. `chatLog.js` is the DOM-free state (streamed updates by
-  id), `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll,
-  whole replies typed in), `statsHud.js` the follower/donation counters and hype meter,
+- `src/ui/`: chat overlay and HUD, styled like a real streaming site (Twitch): flat
+  greys, one purple accent, `overlay.css`. `chatLog.js` is the DOM-free state (streamed
+  updates by id), `chatOverlay.js` renders it like Twitch chat (textContent only,
+  "badge name: text", the name in its persona's colour, a sub badge for the Fan, VIP for
+  the Backseat Gamer, broadcaster for the player; sticky scroll, whole replies typed in),
+  `statsHud.js` the follower/donation counters and hype meter in the info bar under the
+  video,
   `studyPanel.js` the researcher's condition switch (F2, hidden by default; reloads with
   `?condition=ai|scripted`, keeping `?session=`, the study's participant id).
 - `src/analysis/`: the study's analysis, pure functions (tested). `variety.js` (repeat
