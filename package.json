@@ -14,6 +14,7 @@
     "e2e": "node scripts/e2e.js",
     "harness": "node scripts/harness.js",
     "regression": "node scripts/regression.js",
+    "study:order": "node scripts/study-order.js",
     "test": "node --test",
     "lint": "eslint .",
     "format": "prettier --write .",

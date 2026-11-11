@@ -83,10 +83,11 @@ export function connectToService({
 
     /**
      * Switches the service to "ai" or "scripted" (the baseline switch). The service
-     * restarts its pipeline, so stats and latency start fresh. Never rejects.
+     * restarts its pipeline, so stats and latency start fresh. `session` labels the
+     * study session (a participant id) for the service's session log. Never rejects.
      */
-    setCondition(condition) {
-      return postJson("/condition", { condition });
+    setCondition(condition, session) {
+      return postJson("/condition", session ? { condition, session } : { condition });
     },
     close() {
       source.close();

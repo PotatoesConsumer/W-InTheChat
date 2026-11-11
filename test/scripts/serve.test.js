@@ -10,11 +10,12 @@ test("serves files inside the repo, with / as index.html", () => {
   assert.equal(resolveRequestPath(ROOT, "/src/game/main.js?v=1"), join(ROOT, "src/game/main.js"));
 });
 
-test("never serves dotfiles, node_modules or paths outside the repo", () => {
+test("never serves dotfiles, node_modules, study logs or paths outside the repo", () => {
   for (const url of [
     "/.env",
     "/.git/config",
     "/node_modules/eslint/package.json",
+    "/study-logs/P01-ai-2026-11-11.jsonl",
     "/src%2F..%2F..%2Fsecret.txt",
     "/%E0%A4%A",
   ]) {

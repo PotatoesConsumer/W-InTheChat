@@ -45,6 +45,9 @@ any of that, update the file in the same PR.
   `npm run dev` running, it prints a `?bot=` URL to open in Chrome, then samples the GPU
   with the browser drawing and reads the service's latency. `--idle-test`: model calls
   after 0-12 s idle. Results: `docs/benchmark-w09.md`.
+- `npm run study:order`: the study's counterbalanced schedule (participant ids, condition
+  order, game URLs). The study itself: `docs/study/protocol.md`, with the service run as
+  `npm run service -- --log study-logs` (a JSON-lines log per participant and condition).
 - `npm run regression [-- --model]`: full regression pass (static checks, every scenario ×
   fake-model mode × condition through the registered pipeline, comparisons, optionally the
   real model). Writes `docs/regression/<date>.md`, exits 1 on a regression. Run it before
@@ -88,7 +91,10 @@ any of that, update the file in the same PR.
     Player messages count as repeats only when the text is the same.
   - `pacer.js`: the chat rate limit; delays lines, never drops them
   - `server.js`: POST /events, GET /stream (SSE), /health, /stats, GET/POST /condition
-    (the baseline switch: restarts the pipeline in ai or scripted). Localhost only.
+    (the baseline switch: restarts the pipeline in ai or scripted, and takes the study's
+    session label). Localhost only.
+  - `sessionLog.js`: the study's session log (`--log <dir>`): events in, chat lines out,
+    reply latency, a file per session and condition. Never committed (`study-logs/`).
   - `client.js`: browser side for the game (`connectToService`)
   - `replyCheck.js`: rejects malformed replies and anything the safety filter blocks
   - `safetyFilter.js`: the output safety filter (slurs, threats, self-harm, doxxing,
@@ -139,7 +145,10 @@ any of that, update the file in the same PR.
   id), `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll,
   whole replies typed in), `statsHud.js` the follower/donation counters and hype meter,
   `studyPanel.js` the researcher's condition switch (F2, hidden by default; reloads with
-  `?condition=ai|scripted`).
+  `?condition=ai|scripted`, keeping `?session=`, the study's participant id).
+- `src/study/order.js`: the study's counterbalanced condition order and game URLs
+  (`npm run study:order`). Study materials: `docs/study/` (protocol, consent,
+  questionnaire, responses template).
   The player's own lines are UI-only entries (`kind: "player"`, name "Player", ADMIN badge),
   not chat_messages. No login or name setting yet.
 - `scripts/serve.js`: `npm run dev` static server on localhost:5173 (no dotfiles/node_modules)

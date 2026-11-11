@@ -1,8 +1,9 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/w09-w12-polish` (Shapphanyu's W09–W12 overlay
-polish, study panel fix, sound and effects, optional camera, draft demo clip). Before
-that: #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
+Last updated 2026-11-11, for `feature/study-kit` (the study materials: protocol,
+consent, questionnaire, counterbalanced order, session log; `docs/study/`). Before that:
+#26 (Shapphanyu's W09–W12 overlay polish, study panel fix, sound and effects, optional
+camera, draft demo clip), #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
 selector, coalescing, rate limit), #18 (W08 regression pass and Month-2 demo guide), #19
 (safety filter, the Hater live, player-chat coalescing fix), #20 (scripted baseline
 switch), #21/#22 (wave shooter, game hub, coin store), #23 (W08 laptop pilot, limits),
@@ -70,17 +71,20 @@ switch running on the same events.
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
-Sittipon's W09 benchmark (#24) and Shapphanyu's W09 polish are done, and Shapphanyu has
-started W10–W12; Prin's study work and Sittipon's W10–W12 haven't started.
+Sittipon's W09 benchmark (#24) and Shapphanyu's W09 polish (#26) are done. Shapphanyu has
+started W10–W12, and the study materials are ready (`docs/study/`), so the pilot session
+can run. **From here, most tasks need people**: the pilot, 15–20 participants, blind
+raters, a real face for the camera thresholds, the video and the rehearsal.
 
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
-| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (`feature/w09-w12-polish`): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
-| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | 🟡 Sound and reaction effects done (`feature/w09-w12-polish`); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
-| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | 🟡 Optional camera done (`feature/w09-w12-polish`): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
+| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (#26): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | 🟡 Study materials done (`feature/study-kit`): protocol, consent, questionnaire, `npm run study:order`, session log (`--log`); **the pilot session with 2 people still to run** |
+| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | 🟡 Sound and reaction effects done (#26); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | 🟡 Optional camera done (#26): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
 
-So far: 25 done, 4 started (Prin's W04 demo clip, Shapphanyu's W10–W12), 7 not started.
+So far: 25 done, 5 started (Prin's W04 demo clip and W09 pilot, Shapphanyu's W10–W12),
+6 not started.
 SEG 02 is complete; SEG 03 has started. `npm test` has no TODO
 tests left.
 
@@ -202,8 +206,16 @@ now; `docs/demo-m1.md` has the run steps, a shot list and the first bug bash (fi
 and known issues). Add anything else you find there.
 
 **W08 is done (#18).** Run `npm run regression` (add `-- --model` with Ollama running)
-before every demo and after big merges; reports go in `docs/regression/`. Next up: W09
-study materials.
+before every demo and after big merges; reports go in `docs/regression/`.
+
+**W09 study materials are ready** (`feature/study-kit`, written by Sittipon with your
+lane's tasks; read them before the pilot): `docs/study/protocol.md` is the session
+script, with `consent.md`, `questionnaire.md` and `responses-template.csv` next to it.
+`npm run study:order` prints the counterbalanced schedule. `npm run service -- --log
+study-logs` logs every half to its own file, labelled by the game's `?session=`. Still
+yours: **freeze the evaluation event set** (its `data` could use the shooter's wave /
+hp fields first), **run the pilot with 2 people**, then the participant sessions (W10).
+Fill in the advisor's name on the consent form.
 
 ## Sittipon (backend / AI): what's next
 

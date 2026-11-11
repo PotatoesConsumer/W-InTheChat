@@ -3,8 +3,8 @@
  *
  * Dev static server for the game: `npm run dev`, then open http://localhost:5173.
  * Browsers won't load ES modules from file://, so the page needs a server. Uses
- * only Node's built-in http module. Localhost only; dotfiles (.env, .git) and
- * node_modules are never served.
+ * only Node's built-in http module. Localhost only; dotfiles (.env, .git),
+ * node_modules and study-logs (participants' sessions) are never served.
  */
 
 import { createServer } from "node:http";
@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT) || 5173;
+const PRIVATE = new Set(["node_modules", "study-logs"]);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -38,7 +39,7 @@ export function resolveRequestPath(root, url) {
   if (pathname.endsWith("/")) pathname += "index.html";
 
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.some((s) => s.startsWith(".") || s === "node_modules")) return null;
+  if (segments.some((s) => s.startsWith(".") || PRIVATE.has(s))) return null;
 
   const file = normalize(join(root, ...segments));
   return file.startsWith(root + sep) ? file : null;

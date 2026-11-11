@@ -41,7 +41,7 @@ import { createGameEvent, createChatEvent } from "../events/schema.js";
 import { connectToService, DEFAULT_SERVICE_URL } from "../service/client.js";
 import { createChatOverlay } from "../ui/chatOverlay.js";
 import { createStatsHud } from "../ui/statsHud.js";
-import { createStudyPanel, conditionFromUrl } from "../ui/studyPanel.js";
+import { createStudyPanel, conditionFromUrl, sessionFromUrl } from "../ui/studyPanel.js";
 import { createBot, createBotInput, BOT_CHAT } from "./shooter/bot.js";
 import { HUD_HEIGHT } from "./shooter/view.js";
 import { seededRandom } from "./random.js";
@@ -144,7 +144,10 @@ bus.subscribe("*", async (event) => {
 });
 
 // Baseline switch (W07): the researcher picks the condition in the study panel (F2).
+// `?session=P07` labels the participant's session in the service's log (the study
+// protocol, docs/study/protocol.md); the panel's reload keeps it.
 const wantedCondition = conditionFromUrl(location.search);
+const session = sessionFromUrl(location.search);
 let condition = null;
 const study = createStudyPanel(document.getElementById("study"), {
   onPick(next) {
@@ -161,7 +164,7 @@ const study = createStudyPanel(document.getElementById("study"), {
  */
 async function syncCondition() {
   const result = wantedCondition
-    ? await service.setCondition(wantedCondition)
+    ? await service.setCondition(wantedCondition, session)
     : await service.getCondition();
   condition = result.condition ?? null;
   study.setCondition(condition);
