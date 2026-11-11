@@ -1,12 +1,13 @@
 # Team status and handoff
 
-Last updated 2026-11-01, after #24 (Sittipon's W09 full pipeline benchmark in Chrome,
-`docs/benchmark-w09.md`) merged. Before that: #13 (team status), #14 (Month-1 demo), #15
-(persona prompts), #17 (persona selector, coalescing, rate limit), #18 (W08 regression
-pass and Month-2 demo guide), #19 (safety filter, the Hater live, player-chat coalescing
-fix), #20 (scripted baseline switch), #21/#22 (wave shooter, game hub, coin store) and
-#23 (W08 laptop pilot, limits) merged.
-Merged branches are deleted, `tawan` included; only `master` remains.
+Last updated 2026-11-11, for `feature/w09-w12-polish` (Shapphanyu's W09–W12 overlay
+polish, study panel fix, sound and effects, optional camera, draft demo clip). Before
+that: #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
+selector, coalescing, rate limit), #18 (W08 regression pass and Month-2 demo guide), #19
+(safety filter, the Hater live, player-chat coalescing fix), #20 (scripted baseline
+switch), #21/#22 (wave shooter, game hub, coin store), #23 (W08 laptop pilot, limits),
+#24 (W09 full pipeline benchmark, `docs/benchmark-w09.md`) and #25 (status) merged.
+Merged branches are deleted, `tawan` included.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -69,7 +70,8 @@ switch running on the same events.
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
-Sittipon's W09 benchmark is done (#24); the rest hasn't started.
+Sittipon's W09 benchmark (#24) and Shapphanyu's W09 polish are done, and Shapphanyu has
+started W10–W12; Prin's study work and Sittipon's W10–W12 haven't started.
 
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
@@ -78,8 +80,8 @@ Sittipon's W09 benchmark is done (#24); the rest hasn't started.
 | W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | 🟡 Optional camera done (`feature/w09-w12-polish`): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
 
-So far: 24 done, 1 started (Prin's W04 demo clip), 11 not started. SEG 02 is complete;
-SEG 03 has started. `npm test` has no TODO
+So far: 25 done, 4 started (Prin's W04 demo clip, Shapphanyu's W10–W12), 7 not started.
+SEG 02 is complete; SEG 03 has started. `npm test` has no TODO
 tests left.
 
 ## Decisions already made
