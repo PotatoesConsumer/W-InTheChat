@@ -108,3 +108,21 @@ part of the results. After the pilot, note:
 - reply latency from the service's end-of-half stats, compared with W09's 507 / 721 ms.
 
 Fix what it finds, then run the participant sessions.
+
+## After the sessions
+
+1. **Rating set** (any day, with Ollama running): `npm run eval:runs`, then
+   `npm run study:rating-sheet`. Give 2–3 raters from outside the team the sheet and
+   [`rating.md`](rating.md); they must not have seen the key. Put the filled sheets in
+   `study-logs/rating/filled/`, one CSV per rater.
+2. **Analysis:** `npm run study:analyze -- --out study-logs/results.md`. It reads the
+   session logs (pilot `T…` and `CHECK` files left out), `study-logs/responses.csv`,
+   the key and the filled sheets, and writes the Markdown tables the evaluation report
+   uses:
+   - per condition: latency p50/p95, failures, filtered lines, and variety (repeat
+     rate and distinct-2 over each session's first 5 minutes);
+   - the blind ratings: relevance, persona accuracy and the confusion matrix;
+   - the questionnaire: paired differences, the exact Wilcoxon signed-rank test,
+     preferences and an order check.
+
+   Parts with no input yet say so.

@@ -1,7 +1,9 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/study-kit` (the study materials: protocol,
-consent, questionnaire, counterbalanced order, session log; `docs/study/`). Before that:
+Last updated 2026-11-11, for `feature/study-analysis` (variety metrics, the blind rating
+sheet and the study's analysis, `npm run study:analyze`), stacked on `feature/study-kit`
+(the study materials: protocol, consent, questionnaire, counterbalanced order, session
+log; `docs/study/`). Before that:
 #26 (Shapphanyu's W09–W12 overlay polish, study panel fix, sound and effects, optional
 camera, draft demo clip), #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
 selector, coalescing, rate limit), #18 (W08 regression pass and Month-2 demo guide), #19
@@ -80,11 +82,11 @@ raters, a real face for the camera thresholds, the video and the rehearsal.
 |------|-------------------------|------------------------------|------------------------|
 | W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (#26): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | 🟡 Study materials done (`feature/study-kit`): protocol, consent, questionnaire, `npm run study:order`, session log (`--log`); **the pilot session with 2 people still to run** |
 | W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | 🟡 Sound and reaction effects done (#26); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
-| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | 🟡 Optional camera done (#26): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
+| W11 | 🟡 Variety metrics (repeat rate, distinct-2), latency and failure analysis built (`feature/study-analysis`, `npm run study:analyze`); **the numbers come after the participant sessions** | 🟡 Optional camera done (#26): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | 🟡 Blind rating sheet, rater guide and analysis built (`npm run eval:runs`, `study:rating-sheet`, `study:analyze`); **needs 2–3 raters from outside the team** |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
 
-So far: 25 done, 5 started (Prin's W04 demo clip and W09 pilot, Shapphanyu's W10–W12),
-6 not started.
+So far: 25 done, 7 started (Prin's W04 demo clip, W09 pilot and W11 rating, Shapphanyu's
+W10–W12, Sittipon's W11 analysis), 4 not started.
 SEG 02 is complete; SEG 03 has started. `npm test` has no TODO
 tests left.
 
