@@ -78,7 +78,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.sound-toggle {
+.toggle {
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -88,8 +88,13 @@ body {
   cursor: pointer;
 }
 
-.sound-toggle[aria-pressed="false"] {
+#sound[aria-pressed="false"] {
   text-decoration: line-through;
+}
+
+#camera[aria-pressed="true"] {
+  border-color: #3ddc84;
+  color: var(--text);
 }
 
 .service-status {

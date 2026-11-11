@@ -75,7 +75,7 @@ Sittipon's W09 benchmark is done (#24); the rest hasn't started.
 |------|-------------------------|------------------------------|------------------------|
 | W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (`feature/w09-w12-polish`): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
 | W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | 🟡 Sound and reaction effects done (`feature/w09-w12-polish`); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
-| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional, not started: MediaPipe needs the camera and a model from a CDN; team decision first | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
+| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | 🟡 Optional camera done (`feature/w09-w12-polish`): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
 | W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
 
 So far: 24 done, 1 started (Prin's W04 demo clip), 11 not started. SEG 02 is complete;
@@ -112,8 +112,18 @@ Don't change these without talking to the team first. The reasons are in the lin
      lines are dimmer than the rest of chat (per-persona styling).
    - W12: a 75 s draft clip and the shot list for the real video (`docs/demo-final.md`).
      **Warm the model before recording: the first load took 84 s.**
-   - W11 (MediaPipe) is optional and not started: it needs the webcam, and the model
-     loads from a CDN, against "no runtime dependencies". Decide as a team.
+   - **W11, the optional camera:** a "camera off" button in the top bar asks for
+     consent, then MediaPipe Face Landmarker reads the webcam in the tab (CPU, so the
+     model keeps the GPU) and turns blendshapes into one word: smiling, surprised or
+     frowning (`src/game/expression.js`, `camera.js`). The facecam copies it, and at
+     most every 8 s it goes to chat as a new **minor** catalog event, `expression`.
+     Minor on purpose: chat answers with fixed lines, so the model (and the Hater)
+     never comments on the streamer's real face. Frames are never drawn, saved or
+     sent; it's off on every page load. **Team calls:** MediaPipe loads from a CDN
+     (pinned 0.10.14, about 6 MB, only when turned on), an exception to "no runtime
+     dependencies"; and it's marked `optional`, so the evaluation set leaves it out:
+     keep it off in the study. Thresholds are a first guess: tune `EXPRESSION_RULES`
+     with `witc.camera()` on a real face.
 
 1. **Your W01–W04 is done** (#12, plus #14, which Sittipon wrote with the team's OK; it's
    your area, so read through it). Start new work from `master` on a `feature/...`
@@ -209,7 +219,7 @@ study materials.
 | What | Waiting on |
 |------|------------|
 | A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
-| Whether to do the optional W11 (MediaPipe, webcam) at all | the whole team |
+| OK for W11's CDN exception, and keeping the camera off in the study | the whole team |
 | Fixes from the pilot session with people (W10) | Prin's W09 pilot, then Shapphanyu |
 | Whether half the kills going without a chat line is fine for the study (`docs/pilot-w08.md`, finding 1) | the whole team |
 | Tightening `QA_LIMITS` with the pilot's numbers (`docs/pilot-w08.md`, finding 5) | Prin |

@@ -30,6 +30,8 @@ import { donationFor } from "./donations.js";
 import { createStreamer } from "./streamer.js";
 import { createEffects } from "./effects.js";
 import { createSound } from "./sound.js";
+import { createExpressionTracker } from "./expression.js";
+import { startCamera } from "./camera.js";
 import { createReplyLatency } from "./replyLatency.js";
 import { createHub } from "./hub.js";
 import { drawHub, drawPause, hubHit } from "./hubView.js";
@@ -206,6 +208,8 @@ window.witc = {
   rows: () => latency.rows(),
   stats: () => streamStats,
   game: () => hub.current?.instance.state ?? null,
+  /** The camera's live expression and blendshape scores, for tuning EXPRESSION_RULES. */
+  camera: () => ({ on: Boolean(camera), expression: tracker.current, scores: cameraScores }),
   /** The benchmark bot's run so far (null without `?bot=`). */
   benchmark: () =>
     bot && {
@@ -399,6 +403,60 @@ function resizeCanvas() {
 
 new ResizeObserver(resizeCanvas).observe(canvas);
 resizeCanvas();
+
+// Optional camera (W11): off until the player opts in. Only an expression word leaves
+// the tab: it moves the facecam and, at most every 8 s, goes to chat as an event.
+const cameraButton = document.getElementById("camera");
+const tracker = createExpressionTracker();
+let camera = null; // {stop} while on
+let cameraStarting = false;
+let cameraScores = null;
+const CONSENT =
+  "Turn on the camera?\n\n" +
+  "Your face is read in this browser tab only, to tell whether you're smiling, surprised " +
+  "or frowning. The video is never saved or sent anywhere: only that one word goes to " +
+  "the chat.\n\nTurn it off any time with the same button.";
+
+function showCamera(text) {
+  cameraButton.textContent = text;
+  cameraButton.setAttribute("aria-pressed", String(Boolean(camera)));
+}
+
+function onScores(scores) {
+  cameraScores = scores;
+  const change = tracker.push(scores, performance.now());
+  if (!change) return;
+  showCamera(`camera on · ${change.expression}`);
+  const event = createGameEvent("expression", { expression: change.expression });
+  if (change.emit) bus.publish(event);
+  else streamer.react(event); // the face still follows, without a chat line
+}
+
+cameraButton.addEventListener("click", async () => {
+  cameraButton.blur(); // so Space goes back to the game
+  if (cameraStarting) return;
+  if (camera) {
+    camera.stop();
+    camera = null;
+    cameraScores = null;
+    showCamera("camera off");
+    return;
+  }
+  if (!window.confirm(CONSENT)) return;
+  cameraStarting = true;
+  showCamera("camera starting…");
+  try {
+    camera = await startCamera(onScores);
+    showCamera("camera on · neutral");
+  } catch (err) {
+    showCamera("camera off");
+    console.warn("Camera failed:", err);
+    window.alert(`The camera couldn't start: ${err.message}`);
+  } finally {
+    cameraStarting = false;
+  }
+});
+showCamera("camera off");
 
 // Sound: M or the top-bar button mutes (remembered in this browser).
 const soundButton = document.getElementById("sound");

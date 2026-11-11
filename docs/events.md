@@ -83,6 +83,7 @@ else `new_best` the first time a run passes the best wave of earlier runs, else 
 | `damage_taken` | minor | took a hit |
 | `item_pickup` | minor | bought an upgrade in the shop |
 | `coin_purchase` | minor | spent chat's donations on coins |
+| `expression` | minor | reacted on camera (optional camera, W11: `{expression}`) |
 | `win` | major | cleared a wave |
 | `loss` | major | died and lost the run |
 | `streak` | major | went on a kill streak without getting hit |
@@ -236,5 +237,8 @@ and will be revisited after the laptop pilot, alongside the generation limits.
    kind)? Either way, the service decides the amount, never the model, and stats stay owned by
    the game and service.
 3. **Transport.** Built as POST + SSE (above). Speak up in review if the game needs something else.
-4. **Camera signal.** If the optional extension happens, it would add a third event kind (a
-   coarse expression signal as text). It is deliberately not in v1.
+4. **Camera signal.** Done as an opt-in extension (W11): a catalog event, `expression`,
+   with one word (`smiling`, `surprised`, `frowning`), not a third event kind, so nothing
+   downstream changed. It's minor on purpose: chat answers it with fixed lines, so the
+   model (and the Hater) never comments on the streamer's real face. Marked `optional`,
+   so the evaluation set leaves it out. Raw frames never leave the browser tab.

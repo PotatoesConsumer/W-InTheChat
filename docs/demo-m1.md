@@ -40,6 +40,7 @@ the top bar.
 | Enter, type, Enter | Player chat |
 | F2 | Study panel (AI chat / scripted chat) |
 | M or the top-bar button | Sound on / off (remembered in this browser) |
+| "camera off" button | Optional camera (W11): asks first, then reads smiling / surprised / frowning in the browser; the facecam copies it and chat reacts. Never on by default, and not for the study |
 
 **Donations** come like on a real stream: a cleared wave, a close call, a streak or a new
 best sometimes brings one (more likely when hype is high, never below 30 hype). Most are

@@ -27,6 +27,8 @@ export const IMPORTANCE = Object.freeze({ MINOR: "minor", MAJOR: "major" });
  * harness scenarios still apply; the phrases describe the shooter: a "win" is a cleared
  * wave, a "close_call" a wave cleared on low HP, "new_best" the furthest wave yet.
  *
+ * `optional: true` marks events from opt-in extensions, which the evaluation set leaves out.
+ *
  * `phrase` completes "<streamer> just ___" and is what prompts and templates
  * use to describe the event (see buildFanPrompt in src/ai/personas/fan.js).
  */
@@ -41,6 +43,9 @@ export const GAME_EVENTS = Object.freeze({
   streak: { importance: IMPORTANCE.MAJOR, phrase: "went on a kill streak without getting hit" },
   close_call: { importance: IMPORTANCE.MAJOR, phrase: "barely survived a wave on low health" },
   new_best: { importance: IMPORTANCE.MAJOR, phrase: "reached their furthest wave yet" },
+  // The optional camera (W11): {expression: "smiling" | "surprised" | "frowning"}. Minor,
+  // so it gets fixed lines and never a model reply about the streamer's face.
+  expression: { importance: IMPORTANCE.MINOR, phrase: "reacted on camera", optional: true },
 });
 
 /**

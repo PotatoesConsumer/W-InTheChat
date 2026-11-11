@@ -6,6 +6,8 @@
  * Node); draw() is the only part that touches the canvas.
  */
 
+import { EXPRESSION_MOODS } from "./expression.js";
+
 /** Mood per game event. Events not listed leave the current mood alone. */
 export const EVENT_MOODS = Object.freeze({
   kill: "happy",
@@ -36,7 +38,13 @@ export function createStreamer() {
   return {
     /** @param {Readonly<object>} event - A valid bus event. */
     react(event) {
-      const next = event.kind === "chat" ? "talking" : EVENT_MOODS[event.name];
+      const next =
+        event.kind === "chat"
+          ? "talking"
+          : event.name === "expression"
+            ? Object.hasOwn(EXPRESSION_MOODS, event.data?.expression ?? "") &&
+              EXPRESSION_MOODS[event.data.expression]
+            : EVENT_MOODS[event.name];
       if (!next) return;
       mood = next;
       left = MOOD_MS[next];
