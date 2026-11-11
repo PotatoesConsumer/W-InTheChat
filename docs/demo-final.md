@@ -21,6 +21,10 @@ It isn't in the repo, since video files don't belong in git: ask Shapphanyu for
 3. Don't open the study panel (F2) on camera. Sound on (top bar; M toggles it).
 4. Screen recording: Win+Alt+G (Xbox Game Bar) or OBS, with the browser window only.
 
+Donations are rare (a big moment brings one by chance). For a shot of the alert, type
+`witc.testAlert(50)` in the console during a wave: the $20+ alert with confetti. It
+doesn't change the stats or chat.
+
 ## Shot list (about 2 minutes)
 
 | Time | Show | Say |

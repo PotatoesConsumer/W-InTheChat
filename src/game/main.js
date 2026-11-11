@@ -104,7 +104,8 @@ const bot = params.has("bot")
 let streamStats = stats.initial();
 const hud = createStatsHud(document.getElementById("stats"), streamStats);
 const streamer = createStreamer();
-const effects = createEffects();
+// The chime plays when a donation's alert appears, not when it's queued behind another.
+const effects = createEffects({ onAlert: () => sound.play("donation") });
 const sound = createSound();
 bus.subscribe("*", (event) => {
   streamStats = stats.reduce(streamStats, event);
@@ -117,7 +118,6 @@ bus.subscribe("*", (event) => {
   if (gift) {
     overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
     effects.donation(gift);
-    sound.play("donation");
   }
 });
 
@@ -211,6 +211,9 @@ window.witc = {
   rows: () => latency.rows(),
   stats: () => streamStats,
   game: () => hub.current?.instance.state ?? null,
+  /** Shows a donation alert now (during a game), to see or demo it. Stats and chat don't change. */
+  testAlert: (amount = 5, message = "this is a test alert, keep it up!") =>
+    effects.donation({ viewer: "test_alert", amount, message }),
   /** The camera's live expression and blendshape scores, for tuning EXPRESSION_RULES. */
   camera: () => ({ on: Boolean(camera), expression: tracker.current, scores: cameraScores }),
   /** The benchmark bot's run so far (null without `?bot=`). */
@@ -336,7 +339,7 @@ function render(alpha) {
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     effects.draw(ctx, {
       world: WORLD,
-      alertAt: { x: FACECAM_BLOCK.x, y: FACECAM_BLOCK.y, width: FACECAM.width },
+      top: HUD_HEIGHT + 14,
     });
     if (paused) drawPause(ctx, hub, { world: WORLD });
   }

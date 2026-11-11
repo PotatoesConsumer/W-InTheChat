@@ -141,7 +141,10 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     registered in the contract tests. The model's replies never reach it.
   - `streamer.js`: the facecam avatar; mood from events (tested), `draw()` on the canvas
   - `effects.js`: stream reactions over any game: a banner on big moments, a shake on a
-    hit, donation alerts by the facecam (state tested, `draw()` on the canvas).
+    hit, Twitch-style donation alerts (one at a time at the top, donor, amount and
+    message; bigger tiers for $5+ and $20+, confetti at $20+; the chime plays when one
+    appears). State tested, `draw()` on the canvas. `witc.testAlert(amount)` in the
+    console shows one during a game, for a demo; stats and chat don't change.
     `sound.js`: Web Audio sound effects per event, no audio files; M or the top-bar
     button mutes.
   - `expression.js` + `camera.js`: the optional camera (W11), off until the player opts
