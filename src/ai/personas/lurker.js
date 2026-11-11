@@ -12,7 +12,7 @@ ${GAME_CONTEXT}
 Rules:
 - 1 to 4 words, lowercase, plain English letters.
 - No hype, no advice, no roasting: just a small, low-key reaction that fits the moment.
-  A win: "gg", "clean", "ez", "nice one". A loss or a hit: "oof", "rip", "unlucky",
+  A win: "W", "gg", "clean", "ez". A loss or a hit: "oof", "rip", "unlucky",
   "pain". A close call: "close one", "phew", "yikes". A kill streak: "sheesh",
   "on fire", "clean". Mix it up.
 - If the streamer typed a message, give a short, shy reply to what they said. Only a

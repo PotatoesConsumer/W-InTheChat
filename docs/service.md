@@ -74,9 +74,16 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 | Minor game event | `template` line (Fan) | `template` line (Fan) |
 | Major game event | model reply, persona from the selector | `scripted` line, persona from the selector |
 | Player message | model reply, persona from the selector | `scripted` line, persona from the selector |
+| Chat call: the player asks chat to spam something ("W in the chat", "F in chat", "drop a W", "press 1", "spam 🔥") | 3 `template` lines from 3 viewers: the selector's persona, a Fan and the Lurker. The Hater answers a W with an L | the same 3 lines |
 | Model times out, fails, or its reply is rejected | `fallback` line | (model never called) |
 
-- **At most one reply per event**, always linked by `eventId`.
+- **At most one reply per event**, always linked by `eventId`. The exception is a chat
+  call, which gets 3 lines (`CHAT_CALL_LINES`, inside the harness's
+  `maxMessagesPerEvent`). `chatCalls.js` finds the token only at the start of the
+  message, so "everyone in the chat is great" isn't a call. The token must pass the same
+  reply check as any chat line, so "spam" plus a blocked word gets nothing. The lines are
+  the same in both conditions and never wait on the model, so calls don't change the AI
+  vs scripted comparison.
 - **Choices come first.** Persona, viewer name and the fixed line are drawn from
   `deps.random` when the event arrives, before the model runs: three draws per event,
   coalesced or not. The same seed and events give the same chat whatever the model

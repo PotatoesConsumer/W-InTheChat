@@ -518,3 +518,24 @@ test("a quick follow-up player message is answered; the same line spammed is coa
   );
   assert.equal(handle.stats().coalesced, 2);
 });
+
+test("a chat call gets a few viewers spamming it, the same in both conditions, no model", async () => {
+  const run = async (condition) => {
+    const { bus, messages, handle, calls } = setup(["should never be used"], { condition });
+    bus.publish(createChatEvent("W in the chat", { id: "call-1", ts: Date.now() }));
+    await handle.idle();
+    return { lines: finals(messages), calls: calls.length };
+  };
+  const ai = await run("ai");
+  const scripted = await run("scripted");
+  assert.equal(ai.calls, 0, "the model isn't asked");
+  assert.equal(ai.lines.length, 3);
+  for (const m of ai.lines) {
+    assert.equal(m.source, "template");
+    assert.equal(m.eventId, "call-1");
+    assert.match(m.text, /^(W|L)/);
+  }
+  assert.equal(new Set(ai.lines.map((m) => m.viewer)).size, 3, "three different viewers");
+  const strip = (lines) => lines.map(({ persona, viewer, text }) => ({ persona, viewer, text }));
+  assert.deepEqual(strip(scripted.lines), strip(ai.lines), "same lines in both conditions");
+});

@@ -120,6 +120,25 @@ Still weak:
 - The Hater sometimes invents a detail for a joke ("stuck in lava", "slime coming from
   the corner"). Harmless, but it isn't in the event.
 
+## Modern chat slang (2026-11-11)
+
+The Fan talks like today's stream chat (W, GG, clutch, goated, cracked, sheesh, "LETS
+GO"), the Hater calls a death an L, and the Lurker can answer a win with "W". "W in the
+chat" and the other chat calls aren't left to the model: chat spams them with fixed lines
+(`src/service/chatCalls.js`, `docs/service.md`).
+
+What the 3B model did with slang lists, from the trial:
+
+- **Fan:** worked. "LETS GO", "sheesh", "let's go for a W", "So clutch" in context.
+- **Hater:** given L, mid, cooked, washed and "skill issue", it misused them ("you'd
+  wash this boss in your sleep", "Took you 10 kills to get an L?", an L on a win). Cut to
+  just "A death can be an L", and only for a loss or a mistake. It's fine since.
+- **Backseat:** given throwing, washed, "lock in", it used none of them. Removed.
+
+Full trial after the change (176 replies): every check at 0 or near it, as before. One
+Hater reply failed the reply check, and a fallback would replace it. The Lurker's
+distinct replies went from 14% to 20%.
+
 ## Trials with qwen2.5:3b (2026-10-27)
 
 Rerun with `npm run ai:personas` (options: `--persona hater,backseat`, `--repeats 2`,

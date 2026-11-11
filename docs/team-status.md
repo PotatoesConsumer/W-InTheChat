@@ -1,9 +1,10 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/proposal-gaps` (the last gaps against the
-proposal: rejected replies and peak GPU memory in the session logs, failure cases and
-95% intervals in `npm run study:analyze`, the deviations written into the report draft).
-Before that: #31 (regression report), #30 (W12: `docs/setup.md`, the report draft and
+Last updated 2026-11-11, for `feature/chat-calls` (chat calls: "W in the chat" gets
+viewers spamming W, the same in both conditions; modern slang for the Fan and the
+Hater, `docs/personas.md`). Before that: #32 (the last gaps against the proposal:
+rejected replies and peak GPU memory in the session logs, failure cases and 95%
+intervals, the deviations in the report draft), #31 (regression report), #30 (W12: `docs/setup.md`, the report draft and
 defense checklist), #29 (W10 prompt pass, idle-GPU decision), #28 (variety metrics,
 rating sheet, `npm run study:analyze`), #27 (the study kit, `docs/study/`),
 #26 (Shapphanyu's W09–W12 overlay polish, study panel fix, sound and effects, optional
@@ -107,6 +108,7 @@ Don't change these without talking to the team first. The reasons are in the lin
 | Chat history is not sent to the model (`historySize: 0`) | The model copied the history's format and invented follow-ups | `docs/service.md` |
 | Idle GPU: accept ~500 ms p50 / ~720 ms p95 in the game (W10) | Well inside the 3 s timeout; keeping the GPU warm would queue with real replies, and a required driver setting is one more thing to get wrong on a study laptop. The NVIDIA "prefer maximum performance" setting stays an optional step in the setup docs | `docs/benchmark-w09.md` |
 | Template lines for minor events stay the Fan's (#18 finding 3) | They're the same in both conditions, so they don't change the comparison, and the rating sheet leaves them out | `docs/evaluation.md` |
+| Chat calls ("W in the chat") get 3 fixed lines in both conditions, not a model reply | Real chat spams the token, which one persona reply can't do; fixed lines keep the comparison fair and never wait on the model | `docs/service.md` |
 | Voice input (optional in the proposal) is not added | Chrome's Web Speech may send audio to a remote service, and the study doesn't need it | `docs/report/evaluation-report.md`, "Deviations" |
 | Prompts are frozen once the participant sessions start | Results must name one prompt version (the git commit); a change mid-study splits the data | `docs/study/protocol.md` |
 
