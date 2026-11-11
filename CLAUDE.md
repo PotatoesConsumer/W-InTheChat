@@ -96,6 +96,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     picks (sent whole, once checked; the game types it in), failures get a fallback. Model
     replies run one at a time from a FIFO queue, with deadlines from event arrival. No
     timing-based routing: the same seed and events must give the same chat.
+  - `chatCalls.js`: chat calls ("W in the chat", "press F", "spam 🔥"): 3 viewers spam
+    the token with fixed lines, the same in both conditions, never the model
   - `selector.js`: weighted persona choice per event (`PERSONA_WEIGHTS`)
   - `coalesce.js`: runs of repeated events, measured with the events' own timestamps.
     Player messages count as repeats only when the text is the same.

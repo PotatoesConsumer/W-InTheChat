@@ -7,6 +7,8 @@
  *   repeat of a recent event      -> coalesced: no message (coalesce.js; player messages
  *                                    only when the same text repeats)
  *   minor game event              -> template line (both conditions)
+ *   chat call ("W in the chat")   -> a few viewers spam it, fixed lines (both conditions;
+ *                                    chatCalls.js)
  *   major game event / chat       -> reply from the model, persona from the selector (ai)
  *                                 -> scripted line, model never called     (scripted)
  *   timeout / error / bad output  -> fallback line
@@ -38,6 +40,8 @@ import { createLatencyLog } from "./latency.js";
 import { selectPersona } from "./selector.js";
 import { createCoalescer, coalesceKey } from "./coalesce.js";
 import { createPacer } from "./pacer.js";
+import { chatCall, chatCallLines, CHAT_CALL_LINES } from "./chatCalls.js";
+import { seededRandom } from "../game/random.js";
 
 /**
  * Set from the W08 laptop pilot (docs/pilot-w08.md: the wave shooter played by a bot at
@@ -202,6 +206,31 @@ export default function startPipeline(bus, emit, deps = {}) {
   }
 
   /**
+   * A chat call: CHAT_CALL_LINES viewers spam the token. The selector's persona goes
+   * first, so both conditions show the same labels; the rest are a Fan and the Lurker.
+   * Viewers and wording come from `roll`, drawn at arrival like every other choice.
+   */
+  function replyWithChatCall(ctx, { persona, viewer, token, roll }) {
+    const personas = [persona, "fan", "lurker"].slice(0, CHAT_CALL_LINES);
+    const random = seededRandom((Math.floor(roll * 2 ** 32) ^ 0x9e3779b9) >>> 0);
+    const used = new Set([viewer]);
+    chatCallLines(token, personas, roll).forEach((line, i) => {
+      let who = viewer;
+      if (i > 0) {
+        const free = VIEWERS[line.persona].filter((v) => !used.has(v));
+        who = pick(free.length ? free : VIEWERS[line.persona], random);
+        used.add(who);
+      }
+      replyWithLine(ctx, {
+        persona: line.persona,
+        viewer: who,
+        source: "template",
+        text: line.text,
+      });
+    });
+  }
+
+  /**
    * Queues a model reply. The prompt is built now, from the chat as it is when the event
    * arrives, and the deadline starts now too.
    */
@@ -361,8 +390,11 @@ export default function startPipeline(bus, emit, deps = {}) {
     const viewer = pick(VIEWERS[persona], random);
     const roll = random();
 
+    const token = ctx.kind === "chat" ? chatCall(ctx.facts.playerMessage) : null;
     if (!coalescer.admit(coalesceKey(ctx), ctx.ts)) {
       coalesced++;
+    } else if (token) {
+      replyWithChatCall(ctx, { persona, viewer, token, roll });
     } else if (ctx.importance === IMPORTANCE.MINOR) {
       replyWithLine(ctx, { persona, viewer, source: "template", text: lineFor(ctx, () => roll) });
     } else if (condition === "scripted") {
