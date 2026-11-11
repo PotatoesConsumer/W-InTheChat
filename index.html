@@ -8,9 +8,7 @@
   </head>
   <body>
     <header class="topbar">
-      <span class="live">LIVE</span>
-      <span class="title">W-InTheChat</span>
-      <div id="stats" aria-label="Stream stats"></div>
+      <span class="brand"><span class="brand-mark" aria-hidden="true">W</span>W-InTheChat</span>
       <span class="topbar-right">
         <span id="latency" class="latency"></span>
         <button
@@ -27,7 +25,22 @@
     </header>
     <main class="broadcast">
       <section class="stage">
-        <canvas id="game" aria-label="Game"></canvas>
+        <div class="video">
+          <canvas id="game" aria-label="Game"></canvas>
+        </div>
+        <div class="stream-info">
+          <span class="channel-avatar" aria-hidden="true">W</span>
+          <div class="stream-meta">
+            <div class="channel-name">W-InTheChat</div>
+            <div class="stream-title">surviving waves until chat says stop</div>
+            <div class="stream-tags">
+              <span class="category">Wave Survival</span>
+              <span class="tag">English</span>
+              <span class="tag">Chill</span>
+            </div>
+          </div>
+          <div id="stats" aria-label="Stream stats"></div>
+        </div>
       </section>
       <aside id="chat" aria-label="Stream chat"></aside>
     </main>

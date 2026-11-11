@@ -131,7 +131,7 @@ function drawBanner(ctx, { text, color, ms }, world) {
   ctx.restore();
 }
 
-const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+const FONT = "Inter, 'Segoe UI Variable Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 /** Confetti for the top tier: drawn only, never part of the game's state. */
 function makeConfetti() {
