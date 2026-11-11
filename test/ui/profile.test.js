@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   AVATAR_COLORS,
+  CHAT_SUMMARY,
   CHANNEL_NAME,
   DEFAULT_PROFILE,
   PROFILE_LIMITS,
@@ -10,7 +11,9 @@ import {
   checkProfile,
   createProfileStore,
   formatDuration,
+  formatUptime,
   summarize,
+  tallyChat,
   tallyStream,
 } from "../../src/ui/profile.js";
 import { createChatEvent, createGameEvent } from "../../src/events/schema.js";
@@ -70,13 +73,66 @@ test("the store saves a valid profile and ignores a broken one", () => {
   assert.deepEqual(store.profile(), DEFAULT_PROFILE, "an edited profile is checked again");
 });
 
-test("live until the player ends the stream", () => {
+test("offline until the stream page goes live", () => {
   const store = createProfileStore(memoryStorage());
-  assert.equal(store.isLive(), true);
-  store.setLive(false);
   assert.equal(store.isLive(), false);
   store.setLive(true);
   assert.equal(store.isLive(), true);
+  store.setLive(false);
+  assert.equal(store.isLive(), false);
+});
+
+test("a stream's chat is summed up: lines per persona and the first reply to each of yours", () => {
+  const store = createProfileStore(memoryStorage());
+  let record = store.startStream(1_000);
+  const line = (eventId, persona, text, done = true) => ({
+    eventId,
+    persona,
+    viewer: `${persona}_viewer`,
+    text,
+    done,
+  });
+  const you = { p1: "hi chat", p2: "how do I look" };
+  const feed = [
+    line("e1", "fan", "half a li", false), // still streaming: not counted
+    line("e1", "fan", "let's go"),
+    line("p1", "hater", "you missed again"),
+    line("p1", "fan", "hi streamer!!"), // second reply to p1: counted, not kept
+    line("p2", "backseat", "fix your aim first"),
+    line("e2", "lurker", "W"),
+  ];
+  for (const message of feed) record = tallyChat(record, message, you[message.eventId]);
+
+  assert.equal(record.chat.lines, 5);
+  assert.deepEqual(record.chat.byPersona, { fan: 2, hater: 1, backseat: 1, lurker: 1 });
+  assert.deepEqual(
+    record.chat.replies.map((r) => [r.you, r.persona, r.text]),
+    [
+      ["hi chat", "hater", "you missed again"],
+      ["how do I look", "backseat", "fix your aim first"],
+    ],
+  );
+
+  // Capped, and long lines cut.
+  for (let i = 0; i < CHAT_SUMMARY.maxReplies + 3; i++) {
+    record = tallyChat(record, line(`q${i}`, "fan", "x".repeat(500)), "y".repeat(500));
+  }
+  assert.equal(record.chat.replies.length, CHAT_SUMMARY.maxReplies);
+  assert.equal(record.chat.replies.at(-1).text.length, CHAT_SUMMARY.maxLineLength);
+  assert.equal(record.chat.replies.at(-1).you.length, CHAT_SUMMARY.maxLineLength);
+
+  // The game's own tally keeps the chat summary.
+  const after = tallyStream(record, createGameEvent("kill"), { followers: 1, donated: 0 });
+  assert.equal(after.chat, record.chat);
+  // A stream saved before chat summaries existed starts one.
+  assert.equal(tallyChat({ id: "old" }, line("e", "fan", "hey"), undefined).chat.lines, 1);
+});
+
+test("the live pill's clock", () => {
+  assert.equal(formatUptime(42_000), "0:42");
+  assert.equal(formatUptime(12 * 60_000 + 5_000), "12:05");
+  assert.equal(formatUptime(3_729_000), "1:02:09");
+  assert.equal(formatUptime(-1), "0:00");
 });
 
 test("a stream is tallied from the bus and saved to the history when it ends", () => {
@@ -105,6 +161,7 @@ test("a stream is tallied from the bus and saved to the history when it ends", (
       followers: 9,
       donations: 2.75,
       messages: 1,
+      chat: { lines: 0, byPersona: { fan: 0, hater: 0, backseat: 0, lurker: 0 }, replies: [] },
     },
   );
 
@@ -174,8 +231,23 @@ test("storage that throws (blocked, full) doesn't break the page", () => {
   };
   const store = createProfileStore(broken);
   assert.deepEqual(store.profile(), DEFAULT_PROFILE);
-  assert.equal(store.isLive(), true);
+  assert.equal(store.isLive(), false);
   assert.equal(store.saveProfile({ name: "Pu" }).ok, true);
   assert.ok(store.startStream(1));
   assert.deepEqual(store.streams(), []);
+});
+
+test("a stream gone live by mistake (seconds long, nothing said) isn't saved", () => {
+  const store = createProfileStore(memoryStorage());
+  store.startStream(0);
+  assert.equal(store.endStream(PROFILE_LIMITS.minStreamMs - 1), null);
+  assert.equal(store.current(), null);
+  assert.deepEqual(store.streams(), []);
+
+  const short = store.startStream(0);
+  store.saveStream(tallyChat(short, { done: true, persona: "fan", text: "hi" }), 1_000);
+  assert.ok(store.endStream(2_000), "short, but chat said something");
+  store.startStream(0);
+  assert.ok(store.endStream(PROFILE_LIMITS.minStreamMs), "long enough");
+  assert.equal(store.streams().length, 2);
 });

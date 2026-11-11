@@ -8,10 +8,13 @@
  * - profile: a display name (chat calls the player by it, and the prompts use it), an
  *   avatar colour and a short bio. Empty name: the channel is "W-InTheChat" and the
  *   prompts say "the streamer".
- * - live: the stream page's Go live / End stream switch. Offline, nothing reaches chat.
- * - streams: one record per stream (Go live to End stream), newest first. The stream in
- *   progress is saved as it goes, so closing the tab doesn't lose it: the next page load
- *   ends it at its last update.
+ * - live: true while the stream page is live (Go live until End stream or leaving the
+ *   page), so the other pages can show LIVE or OFFLINE.
+ * - streams: one record per stream (Go live to End stream), newest first, with a summary
+ *   of its chat: lines per persona and the first reply to each of the player's messages
+ *   (up to CHAT_SUMMARY.maxReplies). Plain counts and lines, no model call. The stream in
+ *   progress is saved as it goes, so a crash doesn't lose it: the next page load ends it
+ *   at its last update.
  *
  * The study's links (`?session=`) and the benchmark bot (`?bot=`) don't use any of this:
  * they're always live, with no name and no history.
@@ -29,7 +32,9 @@ export const AVATAR_COLORS = Object.freeze([
   "#f0b429",
   "#ff69b4",
 ]);
-export const PROFILE_LIMITS = Object.freeze({ maxBio: 160, maxStreams: 50 });
+export const PROFILE_LIMITS = Object.freeze({ maxBio: 160, maxStreams: 50, minStreamMs: 10_000 });
+export const CHAT_SUMMARY = Object.freeze({ maxReplies: 5, maxLineLength: 200 });
+const PERSONAS = ["fan", "hater", "backseat", "lurker"];
 export const DEFAULT_PROFILE = Object.freeze({ name: "", color: AVATAR_COLORS[0], bio: "" });
 
 const KEYS = Object.freeze({
@@ -91,6 +96,40 @@ export function tallyStream(record, event, { followers, donated, game }) {
   };
 }
 
+/** An empty chat summary for a new stream. */
+export function emptyChat() {
+  return { lines: 0, byPersona: Object.fromEntries(PERSONAS.map((p) => [p, 0])), replies: [] };
+}
+
+/**
+ * A stream record after one finished chat line from the service.
+ * @param {object} record - The stream in progress.
+ * @param {{done: boolean, persona: string, viewer: string, text: string, eventId: string|null}} message
+ * @param {string} [you] - The player's message this line answers, if it answers one.
+ */
+export function tallyChat(record, message, you) {
+  if (!message.done) return record;
+  const chat = record.chat ?? emptyChat();
+  const byPersona = { ...chat.byPersona };
+  if (message.persona in byPersona) byPersona[message.persona]++;
+  let replies = chat.replies;
+  const first = you !== undefined && !replies.some((r) => r.eventId === message.eventId);
+  if (first && replies.length < CHAT_SUMMARY.maxReplies) {
+    const cut = (text) => String(text).slice(0, CHAT_SUMMARY.maxLineLength);
+    replies = [
+      ...replies,
+      {
+        eventId: message.eventId,
+        you: cut(you),
+        viewer: message.viewer,
+        persona: message.persona,
+        text: cut(message.text),
+      },
+    ];
+  }
+  return { ...record, chat: { lines: chat.lines + 1, byPersona, replies } };
+}
+
 /** Totals over the history. */
 export function summarize(streams) {
   return streams.reduce(
@@ -103,6 +142,16 @@ export function summarize(streams) {
     }),
     { count: 0, totalMs: 0, bestWave: 0, followers: 0, donations: 0 },
   );
+}
+
+/** The live pill's clock: "0:42", "12:05", "1:02:09". */
+export function formatUptime(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const two = (n) => String(n).padStart(2, "0");
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  return hours ? `${hours}:${two(minutes)}:${two(seconds)}` : `${minutes}:${two(seconds)}`;
 }
 
 /** "45 s", "12 min", "1 h 05 min". */
@@ -140,9 +189,12 @@ export function createProfileStore(storage = browserStorage()) {
   function end(record, endedAt) {
     const done = { ...record, endedAt };
     delete done.updatedAt;
+    write(KEYS.current, undefined);
+    // Gone live by mistake (seconds long, nobody said anything): not worth a row.
+    const empty = !done.messages && !done.chat?.lines;
+    if (empty && endedAt - done.startedAt < PROFILE_LIMITS.minStreamMs) return null;
     const streams = [done, ...read(KEYS.streams, [])].slice(0, PROFILE_LIMITS.maxStreams);
     write(KEYS.streams, streams);
-    write(KEYS.current, undefined);
     return done;
   }
 
@@ -158,9 +210,9 @@ export function createProfileStore(storage = browserStorage()) {
       return result;
     },
 
-    /** Live unless the player ended the stream. */
+    /** Whether the stream page is live right now. */
     isLive() {
-      return read(KEYS.live, true) !== false;
+      return read(KEYS.live, false) === true;
     },
     setLive(live) {
       write(KEYS.live, Boolean(live));
@@ -189,6 +241,7 @@ export function createProfileStore(storage = browserStorage()) {
         followers: 0,
         donations: 0,
         messages: 0,
+        chat: emptyChat(),
       };
       write(KEYS.current, record);
       return record;
@@ -199,7 +252,10 @@ export function createProfileStore(storage = browserStorage()) {
       write(KEYS.current, saved);
       return saved;
     },
-    /** Ends the stream in progress and adds it to the history; null if there's none. */
+    /**
+     * Ends the stream in progress and adds it to the history. Null if there is none, or
+     * if it was shorter than minStreamMs with nothing said (not saved).
+     */
     endStream(now) {
       const record = read(KEYS.current, null);
       return record ? end(record, now) : null;

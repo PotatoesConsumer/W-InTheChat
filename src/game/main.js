@@ -17,9 +17,12 @@
  * own keymap and sends catalog events; Escape or P pauses it (pause menu: resume,
  * restart, quit to the hub), and so does leaving the window.
  *
- * Live switch and profile: Go live / End stream in the top bar. Offline, the video shows
- * an offline screen, the game stops, the chat box is off and nothing goes to the service.
- * Each stream (Go live to End stream) is saved to the profile page's history, and the
+ * Live switch and profile: Go live / End stream in the top bar, next to a LIVE pill with
+ * the uptime. The page opens offline (the home page's Go live opens it live, `#live`),
+ * and leaving the page ends the stream. Offline, the video shows an offline screen, the
+ * game stops, the chat box is off and nothing goes to the service.
+ * Each stream (Go live to End stream) is saved to the profile page's history, with a
+ * summary of its chat (lines per persona, the first reply to each of your messages), and the
  * player's display name (profile page) is sent to the service for the prompts. The
  * study's links (`?session=`) and the bot (`?bot=`) are always live, with no name and no
  * history, and the nav is hidden so a participant can't leave the stream.
@@ -55,6 +58,8 @@ import {
   avatarLetter,
   channelName,
   formatDuration,
+  formatUptime,
+  tallyChat,
   tallyStream,
 } from "../ui/profile.js";
 import { showChannel } from "../ui/channel.js";
@@ -97,8 +102,10 @@ const overlay = createChatOverlay(document.getElementById("chat"), { onSend: sen
 /** A message from the player (typed, or the benchmark bot's). */
 function sendChat(text) {
   const result = bus.publish(createChatEvent(text));
-  if (result.ok) overlay.pushPlayer(result.event, profile.name);
-  else console.warn("Chat message rejected:", result.errors);
+  if (result.ok) {
+    overlay.pushPlayer(result.event, profile.name);
+    playerLines.set(result.event.id, result.event.text); // for the stream's chat summary
+  } else console.warn("Chat message rejected:", result.errors);
 }
 
 const params = new URLSearchParams(location.search);
@@ -124,9 +131,12 @@ const profile = locked ? DEFAULT_PROFILE : store.profile();
 if (!locked) store.recover(); // a stream left open by a closed tab ends where it stopped
 const goLiveNow = location.hash === "#live"; // the home page's Go live button
 if (goLiveNow) history.replaceState(null, "", location.pathname + location.search);
-let live = locked || goLiveNow || store.isLive();
+let live = locked || goLiveNow; // otherwise it opens offline: going live is your call
+let liveSince = 0;
 let streamRecord = null;
 let lastStream = null;
+/** The player's messages this stream, by event id, so replies to them can be summed up. */
+const playerLines = new Map();
 
 // Stats: a pure reducer over the bus, so chat replies can never change them.
 let streamStats = stats.initial();
@@ -163,6 +173,10 @@ const service = connectToService({
   onMessage(message) {
     if (!live) return; // replies still on their way when the stream ended
     overlay.push(message);
+    if (streamRecord && message.done) {
+      const you = playerLines.get(message.eventId);
+      streamRecord = store.saveStream(tallyChat(streamRecord, message, you), Date.now());
+    }
     const row = latency.message(message);
     if (row) showLatency();
   },
@@ -566,11 +580,20 @@ window.addEventListener("keydown", (event) => {
 
 // Go live / End stream. Each stream starts with fresh stats and is saved as it goes.
 const liveButton = document.getElementById("live-toggle");
+const livePill = document.getElementById("live-pill");
+
+function showUptime() {
+  livePill.textContent = live ? `LIVE ${formatUptime(Date.now() - liveSince)}` : "OFFLINE";
+}
+setInterval(() => live && showUptime(), 1000);
 
 function showLive() {
   showChannel(document, profile, { live });
   overlay.setEnabled(live);
   liveButton.hidden = locked;
+  livePill.hidden = locked;
+  livePill.classList.toggle("on", live);
+  showUptime();
   liveButton.textContent = live ? "End stream" : "Go live";
   liveButton.classList.toggle("secondary", live);
   const last = locked ? null : store.streams()[0];
@@ -582,6 +605,8 @@ function showLive() {
 
 function goLive() {
   live = true;
+  liveSince = Date.now();
+  playerLines.clear();
   streamStats = stats.initial();
   hud.set(streamStats);
   if (!locked) {
@@ -606,9 +631,15 @@ liveButton.addEventListener("click", () => {
   if (live) endStream();
   else goLive();
 });
-if (live && !locked) {
-  store.setLive(true);
-  streamRecord = store.startStream(Date.now());
+if (live) liveSince = Date.now();
+if (!locked) {
+  store.setLive(live);
+  if (live) streamRecord = store.startStream(Date.now());
+  // Leaving the page (closing it, the nav, a reload) ends the stream: the game lives here.
+  window.addEventListener("pagehide", () => {
+    if (live) store.endStream(Date.now());
+    store.setLive(false);
+  });
 }
 showLive();
 

@@ -30,6 +30,7 @@ test("every page has the nav, with its own link marked", () => {
     assert.equal(html.match(/aria-current="page"/g).length, 1, href);
   }
   assert.match(stream, /id="live-toggle"/);
+  assert.match(stream, /id="live-pill"/);
   assert.match(profile, /src="src\/ui\/profilePage\.js"/);
 });
 
