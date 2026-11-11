@@ -69,6 +69,8 @@ export function buildPrompt(
     // Where they are, so chat doesn't cheer a game that isn't running.
     if (facts.scene === "menu") {
       lines.push(`Right now ${name} is in the game menu and hasn't started a game.`);
+    } else if (facts.scene === "shop") {
+      lines.push(`Right now ${name} is in the shop between waves, not fighting.`);
     } else if (facts.scene === "paused") {
       lines.push(`${name} has paused the game.`);
     }

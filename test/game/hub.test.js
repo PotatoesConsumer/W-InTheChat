@@ -161,11 +161,14 @@ test("Wave Survival module: coin packs spend the stream's donations only once", 
     instance.update(16, { input, mouse });
   };
 
+  assert.equal(instance.chatScene(), undefined, "title screen: just playing");
   step("action");
   assert.equal(instance.state.phase, "wave");
+  assert.equal(instance.chatScene(), undefined);
   instance.state.spawn.spawned = instance.state.spawn.config.count; // clear wave 1
   step();
   assert.equal(instance.state.phase, "shop");
+  assert.equal(instance.chatScene(), "shop", "chat hears the player from the shop");
   instance.takeEvents();
 
   step("store");

@@ -200,6 +200,23 @@ A shared line in `game.js` alone wasn't enough for the 3B model: the Hater still
 game". Jokes that mention a wave still get wave talk, since the streamer brought it up.
 The main trial (no scene, as in the evaluation set) stays comparable to master.
 
+### Chat in the shop, and fewer repeats (2026-11-12)
+
+More from playing it: in the shop between waves the Backseat said "stop, back off,
+shoot the bats first" three times, and two buys in a row both got the template "what
+did you buy?".
+
+- **Shop scene:** chat events from the shop carry `scene: "shop"`; the prompt says
+  nobody is fighting, and the Backseat's rule is to say what to buy, never how to move.
+  `npm run ai:voice -- --scene shop`: every Backseat line is about buying now ("Buy the
+  medkit for that brute wave ahead"), though it leans on rapid fire.
+- **Bats:** the Backseat names bats or brutes only when the event or message does. In
+  the main trial its replies mentioning bats went from 17 of 44 (master) to 14 of 44.
+- **Templates:** a fixed line (template or scripted) never comes twice in a row for the
+  same event: if the seeded draw lands on the last line, the next one is used. Still
+  deterministic. "what did you buy?" is gone (chat can see the shop); it's "nice pickup".
+  The scripted baseline gets the same rule, so the comparison stays fair.
+
 ## Trials with qwen2.5:3b (2026-10-27)
 
 Rerun with `npm run ai:personas` (options: `--persona hater,backseat`, `--repeats 2`,
