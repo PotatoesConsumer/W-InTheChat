@@ -130,7 +130,8 @@ any of that, update the file in the same PR.
     in with the top-bar button and a consent prompt. MediaPipe Face Landmarker (loaded
     from a CDN, pinned, only when turned on; CPU, not the GPU) gives blendshape scores in
     the tab; only one word (smiling / surprised / frowning) leaves it, as the minor,
-    `optional` catalog event `expression`. Frames are never drawn, saved or sent.
+    `optional` catalog event `expression`. The facecam shows the live camera (this
+    screen only); frames are never saved or sent.
     `witc.camera()` shows live scores for tuning `EXPRESSION_RULES`.
   - `replyLatency.js`: p50/p95 from the game's send to the reply, shown in the top bar
     and in the console as `witc.latency()`

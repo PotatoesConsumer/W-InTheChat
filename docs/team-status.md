@@ -118,8 +118,9 @@ Don't change these without talking to the team first. The reasons are in the lin
      frowning (`src/game/expression.js`, `camera.js`). The facecam copies it, and at
      most every 8 s it goes to chat as a new **minor** catalog event, `expression`.
      Minor on purpose: chat answers with fixed lines, so the model (and the Hater)
-     never comments on the streamer's real face. Frames are never drawn, saved or
-     sent; it's off on every page load. **Team calls:** MediaPipe loads from a CDN
+     never comments on the streamer's real face. The facecam shows the live camera
+     on this screen only; frames are never saved or sent. If the camera drops (Iriun),
+     the button says so; it's off on every page load. **Team calls:** MediaPipe loads from a CDN
      (pinned 0.10.14, about 6 MB, only when turned on), an exception to "no runtime
      dependencies"; and it's marked `optional`, so the evaluation set leaves it out:
      keep it off in the study. Thresholds are a first guess: tune `EXPRESSION_RULES`

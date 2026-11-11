@@ -31,7 +31,7 @@ import { createStreamer } from "./streamer.js";
 import { createEffects } from "./effects.js";
 import { createSound } from "./sound.js";
 import { createExpressionTracker } from "./expression.js";
-import { startCamera } from "./camera.js";
+import { startCamera, drawCamera } from "./camera.js";
 import { createReplyLatency } from "./replyLatency.js";
 import { createHub } from "./hub.js";
 import { drawHub, drawPause, hubHit } from "./hubView.js";
@@ -339,13 +339,15 @@ function render(alpha) {
   }
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-  streamer.draw(ctx, {
+  const facecam = {
     x: WORLD.width - FACECAM.width - FACECAM.margin,
     y: WORLD.height - FACECAM.height - FACECAM.margin,
     width: FACECAM.width,
     height: FACECAM.height,
-    hype: streamStats.hype,
-  });
+  };
+  // With the optional camera on, the facecam shows the player instead of the avatar.
+  if (camera) drawCamera(ctx, camera.video, facecam, tracker.current);
+  else streamer.draw(ctx, { ...facecam, hype: streamStats.hype });
 }
 
 /** Pointer position in world coordinates. */
@@ -413,9 +415,10 @@ let cameraStarting = false;
 let cameraScores = null;
 const CONSENT =
   "Turn on the camera?\n\n" +
-  "Your face is read in this browser tab only, to tell whether you're smiling, surprised " +
-  "or frowning. The video is never saved or sent anywhere: only that one word goes to " +
-  "the chat.\n\nTurn it off any time with the same button.";
+  "You'll show in the facecam corner on this screen, and your face is read in this " +
+  "browser tab to tell whether you're smiling, surprised or frowning. The video is never " +
+  "saved or sent anywhere: only that one word goes to the chat.\n\n" +
+  "Turn it off any time with the same button.";
 
 function showCamera(text) {
   cameraButton.textContent = text;
@@ -446,7 +449,12 @@ cameraButton.addEventListener("click", async () => {
   cameraStarting = true;
   showCamera("camera starting…");
   try {
-    camera = await startCamera(onScores);
+    camera = await startCamera(onScores, () => {
+      camera = null;
+      cameraScores = null;
+      showCamera("camera lost · click to retry");
+      console.warn("The camera disconnected (unplugged, or Iriun dropped).");
+    });
     showCamera("camera on · neutral");
   } catch (err) {
     showCamera("camera off");
