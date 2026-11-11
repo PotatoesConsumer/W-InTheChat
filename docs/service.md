@@ -218,7 +218,9 @@ took about 60 s.
 `npm run service -- --log study-logs` writes one JSON-lines file per session label and
 condition (`src/service/sessionLog.js`), named `<session>-<condition>-<time>.jsonl`.
 The game sends the label from `?session=` in its URL. Each line is one record: `start`
-(session, condition), `event` (every valid event in, including what the player typed),
-`message` (every finished chat line out), `reply` (latency, source, failure) and `end`
-(the pipeline's stats). The folder is git-ignored and `npm run dev` won't serve it.
+(session, condition, code version, model), `event` (every valid event in, including what
+the player typed), `message` (every finished chat line out), `reply` (latency, source,
+persona, failure, and `rejected`: the model's text when the reply check or the safety
+filter turned it down, which is never shown) and `end` (the pipeline's stats and the
+peak GPU memory during that half, from nvidia-smi once a second). The folder is git-ignored and `npm run dev` won't serve it.
 How the study uses it: `docs/study/protocol.md`.

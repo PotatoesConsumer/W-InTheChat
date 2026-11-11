@@ -74,3 +74,48 @@ export function wilcoxonSignedRank(diffs) {
   const p = Math.min(1, (2 * Math.min(lower, upper)) / all);
   return { n, wPlus: wPlus2 / 2, wMinus: (total2 - wPlus2) / 2, p };
 }
+
+/**
+ * 95% Wilson score interval for a proportion k/n (e.g. persona accuracy), which stays
+ * inside 0..1 and behaves at small n.
+ * @returns {{low: number, high: number} | null}
+ */
+export function wilsonInterval(k, n, z = 1.96) {
+  if (n === 0) return null;
+  const p = k / n;
+  const denom = 1 + (z * z) / n;
+  const centre = (p + (z * z) / (2 * n)) / denom;
+  const half = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / denom;
+  return { low: Math.max(0, centre - half), high: Math.min(1, centre + half) };
+}
+
+/**
+ * 95% percentile bootstrap interval for a statistic of one or two samples, with a
+ * seeded random so the report is the same every run. For paired data, pass the
+ * differences as one sample; for two independent samples, `stat` gets both resamples.
+ * @param {number[][]} samples
+ * @param {(...resampled: number[][]) => number} stat
+ * @returns {{low: number, high: number} | null}
+ */
+export function bootstrapInterval(samples, stat, { iterations = 2000, seed = 1 } = {}) {
+  if (samples.some((s) => s.length === 0)) return null;
+  let state = seed >>> 0 || 1;
+  const random = () => {
+    // mulberry32: small, seeded, good enough for resampling
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const values = [];
+  for (let i = 0; i < iterations; i++) {
+    const resampled = samples.map((s) => s.map(() => s[Math.floor(random() * s.length)]));
+    values.push(stat(...resampled));
+  }
+  values.sort((a, b) => a - b);
+  return {
+    low: values[Math.floor(0.025 * iterations)],
+    high: values[Math.ceil(0.975 * iterations) - 1],
+  };
+}

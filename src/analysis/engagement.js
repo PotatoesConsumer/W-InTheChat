@@ -7,7 +7,7 @@
  * Wilcoxon signed-rank test, the preference counts, and an order check (half 1 vs 2).
  */
 
-import { mean, median, wilcoxonSignedRank } from "./stats.js";
+import { mean, median, wilcoxonSignedRank, bootstrapInterval } from "./stats.js";
 import { readRelevance } from "./rating.js";
 
 export const ITEMS = Object.freeze({
@@ -48,6 +48,8 @@ export function analyzeResponses(rows, { a = "scripted", b = "ai" } = {}) {
       [a]: { mean: mean(pairs.map((p) => p[0])), median: median(pairs.map((p) => p[0])) },
       [b]: { mean: mean(pairs.map((p) => p[1])), median: median(pairs.map((p) => p[1])) },
       meanDiff: mean(diffs),
+      // 95% bootstrap interval for the mean paired difference, resampling participants.
+      interval: bootstrapInterval([diffs], (d) => mean(d)),
       higher: {
         [b]: diffs.filter((d) => d > 0).length,
         same: diffs.filter((d) => d === 0).length,

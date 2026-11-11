@@ -7,8 +7,11 @@
  *   {type: "start",   ts, session, condition, ...about}   about: {version, model}
  *   {type: "event",   ts, event}      every valid event in: game events and player chat
  *   {type: "message", ts, message}    every finished chat line out (done: true)
- *   {type: "reply",   ts, eventId, source, firstTextMs, completionMs, text, failure}
- *   {type: "end",     ts, stats}      the pipeline's counts and p50/p95
+ *   {type: "reply",   ts, eventId, source, persona, firstTextMs, completionMs, text,
+ *                     failure, rejected?}   rejected: the model's text the check turned
+ *                     down ({text, category}), never shown, kept for review
+ *   {type: "end",     ts, stats, gpu?}     the pipeline's counts and p50/p95; gpu: the
+ *                     peak GPU memory during this half ({peakMiB, totalMiB})
  *
  * It holds what participants typed, so it stays on the study laptop: the consent form
  * covers it, `study-logs/` is git-ignored, and only aggregates go in the report.
@@ -27,8 +30,10 @@ export const SESSION_LABEL = /^[A-Za-z0-9_-]{1,32}$/;
  * @param {() => number} [opts.now]
  * @param {object} [opts.about] - Goes on every start record: the code version (git
  *   commit, which pins the prompts) and the model, which the report has to name.
+ * @param {{reset: () => void, peak: () => object|null}} [opts.gpu] - Peak GPU memory;
+ *   reset when a file opens, read when it ends (scripts/lib/gpu.js).
  */
-export function createSessionLog({ dir, now = Date.now, about = {} }) {
+export function createSessionLog({ dir, now = Date.now, about = {}, gpu = null }) {
   let file = null;
 
   function write(record) {
@@ -45,13 +50,15 @@ export function createSessionLog({ dir, now = Date.now, about = {} }) {
       mkdirSync(dir, { recursive: true });
       const stamp = new Date(now()).toISOString().replace(/[:.]/g, "-");
       file = join(dir, `${session ?? "session"}-${condition}-${stamp}.jsonl`);
+      gpu?.reset();
       write({ type: "start", session: session ?? null, condition, ...about });
       return file;
     },
     write,
-    /** Ends the current file with the pipeline's stats. */
+    /** Ends the current file with the pipeline's stats and the GPU's peak memory. */
     close(stats = {}) {
-      write({ type: "end", stats });
+      const peak = gpu?.peak() ?? null;
+      write({ type: "end", stats, ...(peak && { gpu: peak }) });
       file = null;
     },
     file: () => file,

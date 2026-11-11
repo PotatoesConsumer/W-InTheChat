@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSessionLog, trimSession, summarizeSessions } from "../../src/analysis/sessions.js";
+import {
+  parseSessionLog,
+  trimSession,
+  summarizeSessions,
+  failureCases,
+} from "../../src/analysis/sessions.js";
 import {
   ratingItems,
   ratingSheet,
@@ -89,6 +94,9 @@ test("sessions summarized per condition: latency, failures, filtered, variety", 
   assert.equal(s.ai.variety.allLines.repeatRate, 1 / 4);
   assert.equal(s.ai.variety.replies.repeatRate, 1 / 3, "template lines left out");
   assert.equal(s.scripted.latency.model.completion.n, 0);
+  assert.equal(s.ai.gpuPeakMiB, null, "no gpu in these logs");
+  assert.equal(s.ai.failureCases.length, 1);
+  assert.match(formatSessions(s), /### Failure cases/);
 
   const md = formatSessions(s);
   assert.match(md, /\| ai \| scripted \|/);
@@ -191,7 +199,12 @@ test("ratings: relevance per condition, persona accuracy, confusion matrix, agre
   assert.equal(r.agreement.relevanceWithin1, 0.5, "R003 within 1, R001 not");
 
   const md = formatRatings(r);
-  assert.match(md, /Persona accuracy \(chance 25%\) \| 100\.0% \(3\/3\) \| 50\.0% \(1\/2\)/);
+  assert.match(md, /Persona accuracy \[95% CI\] \(chance 25%\) \| 100\.0% \[/);
+  assert.match(md, /\(3\/3\) \| 50\.0% \[/);
+  const acc = r.perCondition.ai.persona.interval;
+  assert.ok(acc.low > 0.3 && acc.low < 0.5 && acc.high === 1, "Wilson for 3/3");
+  assert.ok(r.relevanceDiff.diff > 0, "ai rated higher in this sample");
+  assert.match(md, /Relevance, ai − scripted: /);
   assert.match(formatRatings(null), /No rating sheets yet/);
 });
 
@@ -227,4 +240,88 @@ test("questionnaire: paired by participant, preference mapped through the order"
   const md = formatEngagement(e);
   assert.match(md, /Preferred: ai 2, scripted 0, no preference 0/);
   assert.match(formatEngagement(null), /No responses yet/);
+});
+
+test("failure cases: trigger, persona, reason and the rejected text, never shown", () => {
+  const log = parseSessionLog(
+    [
+      { ts: 1, type: "start", session: "P03", condition: "ai" },
+      { ts: 2, type: "event", event: { id: "c1", kind: "chat", text: "am I bad?" } },
+      {
+        ts: 3,
+        type: "reply",
+        eventId: "c1",
+        source: "fallback",
+        persona: "hater",
+        firstTextMs: 300,
+        completionMs: 300,
+        text: "keep going",
+        failure: "unsafe",
+        rejected: { text: "(blocked line)", category: "personal_attack" },
+      },
+      { ts: 4, type: "event", event: { id: "g1", kind: "game", name: "win", data: {} } },
+      {
+        ts: 5,
+        type: "reply",
+        eventId: "g1",
+        source: "fallback",
+        persona: "fan",
+        firstTextMs: 3000,
+        completionMs: 3000,
+        text: "GG!!",
+        failure: "timeout",
+      },
+      { ts: 6, type: "end", stats: {}, gpu: { peakMiB: 2165, totalMiB: 6141 } },
+    ]
+      .map((r) => JSON.stringify(r))
+      .join("\n"),
+  );
+  assert.deepEqual(failureCases(log), [
+    {
+      session: "P03",
+      trigger: 'player: "am I bad?"',
+      persona: "hater",
+      failure: "unsafe",
+      category: "personal_attack",
+      rejected: "(blocked line)",
+      shown: "keep going",
+    },
+    {
+      session: "P03",
+      trigger: "win",
+      persona: "fan",
+      failure: "timeout",
+      category: null,
+      rejected: null,
+      shown: "GG!!",
+    },
+  ]);
+  const s = summarizeSessions([log]);
+  assert.equal(s.ai.gpuPeakMiB, 2165);
+  const md = formatSessions(s);
+  assert.match(md, /2165 of 6141/);
+  assert.match(
+    md,
+    /unsafe \(personal_attack\) · rejected: "\(blocked line\)" · shown: "keep going"/,
+  );
+});
+
+test("questionnaire differences come with a 95% interval", () => {
+  const rows = [];
+  for (let i = 1; i <= 6; i++) {
+    const id = `P0${i}`;
+    rows.push({ participant: id, half: "1", condition: "ai", immersion: "5", keep_playing: "4" });
+    rows.push({
+      participant: id,
+      half: "2",
+      condition: "scripted",
+      immersion: String(2 + (i % 2)),
+      keep_playing: "4",
+    });
+  }
+  const e = analyzeResponses(rows);
+  const { interval } = e.items.immersion;
+  assert.ok(interval.low >= 2 && interval.high <= 3, JSON.stringify(interval));
+  assert.equal(e.items.keep_playing.interval.low, 0);
+  assert.match(formatEngagement(e), /\[95% CI\]/);
 });

@@ -17,7 +17,7 @@
 
 import { GAME_EVENTS } from "../events/schema.js";
 import { seededRandom } from "../game/random.js";
-import { mean, median, distribution } from "./stats.js";
+import { mean, median, distribution, wilsonInterval, bootstrapInterval } from "./stats.js";
 
 export const PERSONAS = Object.freeze(["fan", "hater", "backseat", "lurker"]);
 export const SHEET_COLUMNS = Object.freeze(["item", "trigger", "message", "relevance", "persona"]);
@@ -132,6 +132,17 @@ export function analyzeRatings(key, sheets) {
     }
   }
 
+  // Each item's mean relevance across its raters: the unit the intervals resample, since
+  // ratings of one item by several raters aren't independent.
+  const itemMeans = (condition) => {
+    const byItem = new Map();
+    for (const r of ratings) {
+      if (r.condition !== condition || r.relevance === null) continue;
+      byItem.set(r.item, [...(byItem.get(r.item) ?? []), r.relevance]);
+    }
+    return [...byItem.values()].map((v) => mean(v));
+  };
+
   const perCondition = {};
   for (const condition of conditions) {
     const mine = ratings.filter((r) => r.condition === condition);
@@ -151,6 +162,8 @@ export function analyzeRatings(key, sheets) {
       relevance: {
         n: scores.length,
         mean: mean(scores),
+        // 95% bootstrap interval for the mean, resampling items.
+        interval: bootstrapInterval([itemMeans(condition)], (m) => mean(m)),
         median: median(scores),
         distribution: distribution(scores),
         bySource,
@@ -161,6 +174,12 @@ export function analyzeRatings(key, sheets) {
         accuracy: guessed.length
           ? guessed.filter((r) => r.guess === r.persona).length / guessed.length
           : null,
+        // 95% Wilson interval. It treats every answer as independent, so with several
+        // raters on the same items it's somewhat too narrow.
+        interval: wilsonInterval(
+          guessed.filter((r) => r.guess === r.persona).length,
+          guessed.length,
+        ),
         confusion, // rows: the true persona; columns: the raters' answer
       },
     };
@@ -188,9 +207,22 @@ export function analyzeRatings(key, sheets) {
     }
   }
 
+  // ai - scripted mean relevance, with a 95% bootstrap interval over items.
+  const relevanceDiff =
+    perCondition.ai && perCondition.scripted
+      ? {
+          diff: mean(itemMeans("ai")) - mean(itemMeans("scripted")),
+          interval: bootstrapInterval(
+            [itemMeans("ai"), itemMeans("scripted")],
+            (a, s) => mean(a) - mean(s),
+          ),
+        }
+      : null;
+
   return {
     raters: sheets.map((s) => s.rater),
     perCondition,
+    relevanceDiff,
     agreement: {
       personaSame: personaPairs ? personaAgree / personaPairs : null,
       relevanceWithin1: relevancePairs ? relevanceWithin1 / relevancePairs : null,

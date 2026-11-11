@@ -79,6 +79,37 @@ const countBy = (items, key) =>
     return acc;
   }, {});
 
+/** Reply check rejections, the safety filter's ("unsafe") among them. */
+const FILTERED = ["unsafe", "empty", "too_long", "ai_disclosure", "structured"];
+
+const maxOrNull = (values) => {
+  const v = values.filter((x) => typeof x === "number");
+  return v.length ? Math.max(...v) : null;
+};
+
+/**
+ * Every reply that failed in one session, with what triggered it, for the report's
+ * failure cases and the proposal's "review logged failures". `rejected` is the model's
+ * text the check turned down: it was never shown.
+ */
+export function failureCases(log) {
+  const events = new Map(log.events.map((r) => [r.event.id, r.event]));
+  return log.replies
+    .filter((r) => r.failure)
+    .map((r) => {
+      const event = events.get(r.eventId);
+      return {
+        session: log.session,
+        trigger: event?.kind === "chat" ? `player: "${event.text}"` : (event?.name ?? r.eventId),
+        persona: r.persona ?? null,
+        failure: r.failure,
+        category: r.rejected?.category ?? null,
+        rejected: r.rejected?.text ?? null,
+        shown: r.text,
+      };
+    });
+}
+
 /**
  * @param {ReturnType<typeof parseSessionLog>[]} logs
  * @param {{durationMs?: number}} [opts]
@@ -87,6 +118,9 @@ const countBy = (items, key) =>
 export function summarizeSessions(logs, { durationMs = SESSION_MS } = {}) {
   const byCondition = {};
   for (const log of logs) (byCondition[log.condition] ??= []).push(trimSession(log, durationMs));
+  // Safety and GPU memory cover the whole session, not just the first 5 minutes.
+  const fullByCondition = {};
+  for (const log of logs) (fullByCondition[log.condition] ??= []).push(log);
 
   const out = {};
   for (const [condition, sessions] of Object.entries(byCondition)) {
@@ -144,9 +178,10 @@ export function summarizeSessions(logs, { durationMs = SESSION_MS } = {}) {
       },
       failures: countBy(replies, (r) => r.failure),
       // Reply check rejections, the safety filter's ("unsafe") among them.
-      filtered: replies.filter((r) =>
-        ["unsafe", "empty", "too_long", "ai_disclosure", "structured"].includes(r.failure),
-      ).length,
+      filtered: replies.filter((r) => FILTERED.includes(r.failure)).length,
+      gpuPeakMiB: maxOrNull(fullByCondition[condition].map((l) => l.end?.gpu?.peakMiB)),
+      gpuTotalMiB: fullByCondition[condition].find((l) => l.end?.gpu)?.end.gpu.totalMiB ?? null,
+      failureCases: fullByCondition[condition].flatMap(failureCases),
       perSession,
     };
   }

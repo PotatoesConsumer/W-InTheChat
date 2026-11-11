@@ -22,7 +22,13 @@ first** (W09) with 2 people, fix what it finds, then run the 15–20 participant
       the pilot, and note its sha256.
 - [ ] Note the prompt version: `git rev-parse --short HEAD` on the study laptop. Don't
       change the code between participants. If you must, start a new version and say
-      so in the report.
+      so in the report. Every session log records it too (`version` in its first line).
+- [ ] **Review sample outputs and failure cases** (the proposal asks for this before the
+      sessions). Run `npm run eval:runs` and `npm run study:rating-sheet` and read the
+      sheet's messages. After the pilot, run `npm run study:analyze -- --include-pilot`
+      and read its "Failure cases": each fallback, timeout and filtered reply, with
+      what the model wrote and the filter rejected. Fix or note anything wrong before
+      the first participant.
 - [ ] Print the schedule: `npm run study:order -- --participants 20` (`--csv` for a
       spreadsheet). For the pilot: `npm run study:order -- --participants 2 --prefix T`.
       Participants get the next free ID in arrival order.
@@ -91,7 +97,10 @@ from the first wave of half 1, not per run.
 - every chat line shown, with persona and source (`ai`, `template`, `scripted`,
   `fallback`);
 - the latency of every reply and why any reply failed;
-- the pipeline's counts and p50/p95 at the end.
+- what the model wrote when the reply check or the safety filter rejected it (never
+  shown to the participant; kept so the team can review failures);
+- the pipeline's counts and p50/p95 at the end, and the peak GPU memory during the half;
+- the code version (which pins the prompts) and the model.
 
 These logs, `responses.csv` and the schedule stay on the study laptop. Copy them to one
 team member's drive for the analysis and nowhere else. Only aggregates go in the report.

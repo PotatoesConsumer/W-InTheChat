@@ -10,6 +10,15 @@ The proposal asks this report to document the questionnaire, the prompt versions
 event set, the hardware configuration, anonymized aggregate results and failure cases,
 and to say whether the AI condition used local generation or the API fallback.
 
+## Deviations from the proposal
+
+| Proposal | What we did | Why |
+|---|---|---|
+| Chat appears progressively while the model generates; approved segments are released as they come | Each reply is sent whole once it passes the reply check and the safety filter, then the game types it in. First text and completion are the same moment | A line can't be taken back once shown: a reply cut off mid-way, or one whose later part fails the filter, would leave a half line on screen. The team decided this (`docs/team-status.md`); the type-in keeps chat appearing progressively on screen, and replies still arrive in ~500 ms |
+| Hosted language-model API as a contingency if local is too slow | Not built | Local generation stayed well inside the 3 s budget (507 / 721 ms p50 / p95 in the full game), so the condition for the fallback never arose. All results are local |
+| Voice input optional (Chrome Web Speech) | Not added | Optional in the proposal, Chrome may send the audio to a remote service, and the study doesn't need it |
+| Optional camera after the core evaluation | Built (opt-in, MediaPipe in the browser, only an expression word leaves the page as a template-only event), **off in the study** | It's an extension, not part of the comparison |
+
 ## 1. What was compared
 
 - **AI chat:** four personas (Fan, Hater, Backseat Gamer, Lurker) written by `qwen2.5:3b`
@@ -108,12 +117,18 @@ Comments: **[a few representative ones per condition, anonymized]**
 
 ## 8. Failure cases
 
-**[From the session logs: every fallback, timeout and filtered line, with its trigger.
-Also anything that broke during sessions (the protocol's incident notes).]**
+**[results: the "Failure cases" list from `npm run study:analyze`: every fallback,
+timeout and filtered reply, with its trigger, persona, reason and what the model wrote
+when it was rejected. Quote rejected text with care. Also anything that broke during
+sessions (the protocol's incident notes).]**
 
 ## 9. Limitations
 
 - One laptop, one model, English only.
+- Uncertainty: every comparison is reported with a 95% interval (bootstrap over
+  participants or rated items; Wilson for persona accuracy). The persona accuracy
+  interval treats each rater's answer as independent, so with several raters it's
+  somewhat too narrow.
 - A small exploratory study: **[n]** participants, volunteers from **[where]**.
 - Sessions were 5 minutes per condition. Long-session effects (repetition fatigue) aren't
   measured.
