@@ -74,7 +74,9 @@ any of that, update the file in the same PR.
 - `src/ai/contextBuilder.js`: `buildPrompt(ctx, {persona, streamerName, history})`, the
   context payload -> `{system, prompt}` for one persona reply. Uses only `ctx.facts`.
 - `src/ai/personas/`: one file per persona (system prompt), registered in `index.js` with
-  the shared parser from `parse.js`. Voice and safety rules: `docs/personas.md`. All four
+  the shared parser from `parse.js` (the Backseat's also cuts at 15 words). `game.js`
+  is the wave shooter in words, shared by every prompt; keep it in step with the game's
+  enemies and shop (a test checks). Voice and safety rules: `docs/personas.md`. All four
   are in the service's `aiPersonas`; every reply passes the safety filter first.
 - `src/ai/demo.js`: latency smoke test
 - `src/ai/personaTrial.js`: the persona trial's inputs and weakness checks (CLI in

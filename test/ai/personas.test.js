@@ -5,7 +5,7 @@ import { toContext } from "../../src/events/context.js";
 import { PERSONAS } from "../../src/events/chatMessage.js";
 import { buildPrompt } from "../../src/ai/contextBuilder.js";
 import { PERSONA_PROMPTS, AI_PERSONAS } from "../../src/ai/personas/index.js";
-import { parseChatLine } from "../../src/ai/personas/parse.js";
+import { parseChatLine, limitSentences } from "../../src/ai/personas/parse.js";
 import { parseFanResponse } from "../../src/ai/personas/fan.js";
 import { HATER_SYSTEM_PROMPT } from "../../src/ai/personas/hater.js";
 
@@ -22,9 +22,27 @@ test("each persona has its own system prompt and the shared parser", () => {
     const { system, parse } = PERSONA_PROMPTS[persona];
     assert.ok(system.includes("You ARE the viewer"), `${persona}: viewer rule`);
     assert.ok(system.includes("Plain text only"), `${persona}: plain text rule`);
-    assert.equal(parse, parseChatLine);
+    if (persona !== "backseat") assert.equal(parse, parseChatLine);
   }
   assert.equal(parseFanResponse, parseChatLine);
+});
+
+test("the Backseat Gamer's parser keeps whole sentences up to 15 words", () => {
+  const { parse } = PERSONA_PROMPTS.backseat;
+  assert.equal(
+    parse(
+      'Backseat: "Back off, you\'re too close to the brutes. Move sideways and shoot all the bats first."',
+    ),
+    "Back off, you're too close to the brutes.",
+  );
+  assert.equal(
+    parse("Stop, back off. Move to the center next wave."),
+    "Stop, back off. Move to the center next wave.",
+  );
+  const long =
+    "you should have kited every single brute around the arena in wide slow circles today";
+  assert.equal(parse(long), long, "one long sentence is kept: never an empty line");
+  assert.equal(limitSentences("Wait! Why? Go now.", 2), "Wait! Why?");
 });
 
 test("the persona only changes the system prompt, not the event prompt", () => {
