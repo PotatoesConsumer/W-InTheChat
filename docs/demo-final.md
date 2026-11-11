@@ -16,6 +16,7 @@ It isn't in the repo, since video files don't belong in git: ask Shapphanyu for
 ## Before recording
 
 1. `npm run service` (AI chat) and `npm run dev`, then open <http://localhost:5173>.
+   The home page is a good first shot; **Watch and play** opens the stream.
 2. Warm the model first: the first load took **84 s** on the laptop. Play one wave and
    wait for an AI reply before you start recording.
 3. Don't open the study panel (F2) on camera. Sound on (top bar; M toggles it).

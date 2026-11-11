@@ -1,7 +1,7 @@
 /**
  * main.js
  *
- * Browser entry point (loaded by index.html). Wires the canvas, game loop, input,
+ * Browser entry point (loaded by stream.html). Wires the canvas, game loop, input,
  * event bus, stats, chat overlay, the chat service and the game hub together.
  *
  * Every event goes on the local bus first: the stats, the HUD and the streamer's face

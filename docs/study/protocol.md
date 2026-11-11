@@ -63,7 +63,7 @@ Look up the participant's row in the schedule. Say nothing about which half is A
    > the right. Please talk to your chat now and then, the way a streamer would. You'll
    > play twice for 5 minutes each, and I'll ask a few questions after each one."
 3. **Half 1 (5 min).** Open the schedule's *First URL*, for example
-   `http://localhost:5173/?condition=ai&session=P01`. Pick Wave Survival in the hub.
+   `http://localhost:5173/stream.html?condition=ai&session=P01`. Pick Wave Survival in the hub.
    Start a 5-minute timer when the first wave starts. When it ends, press Esc to pause.
 4. **Questions 1–5** for half 1 (2 min).
 5. **Half 2 (5 min).** Open the *Second URL* (same session, other condition). This

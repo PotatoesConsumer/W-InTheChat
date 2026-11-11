@@ -116,7 +116,11 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
   - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
     every `GAME_EVENTS` name, and scripted lines per persona for every major one (tests
     check). Scripted replies use the same persona selector as ai ones.
-- `src/game/`: browser game (`index.html` loads `main.js`)
+- `index.html`: the home page, like a streaming site's front page (`src/ui/home.js`,
+  `home.css`): the featured stream with a live preview, who's in the chat, how it works.
+  A URL with a query (`?condition=`, `?session=`, `?bot=`, `?service=`) is forwarded to
+  `stream.html`, so old links still open the game.
+- `src/game/`: browser game (`stream.html` loads `main.js`)
   - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
     facecam react) and to the chat service through `connectToService`; replies come back
     over SSE into the overlay. `?service=<url>` changes the service URL. Runs the hub,

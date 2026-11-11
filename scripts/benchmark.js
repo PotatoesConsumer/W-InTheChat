@@ -72,7 +72,7 @@ async function gameRun(values) {
   await postJson(`${service}/condition`, { condition: "scripted" });
   await postJson(`${service}/condition`, { condition: "ai" });
 
-  const url = `${values.game}/?condition=ai&bot=${values.skill}&seed=${values.seed}&minutes=${minutes}`;
+  const url = `${values.game}/stream.html?condition=ai&bot=${values.skill}&seed=${values.seed}&minutes=${minutes}`;
   console.log(`Stats reset. Open this in Chrome and keep the tab in front:\n\n  ${url}\n`);
   console.log("Waiting for the first reply...");
   const deadline = Date.now() + 5 * 60_000;
