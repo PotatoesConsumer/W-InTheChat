@@ -47,8 +47,8 @@ Node's `http` module only; no dependencies.
 | `GET /stream` | SSE. Each `chat_message` update is one `event: chat_message` frame with the message as JSON `data`. A `: ping` comment every 15 s keeps it open. |
 | `GET /health` | `{ok: true, clients}` |
 | `GET /stats` | The pipeline's reply counts, failure reasons and p50/p95 latency |
-| `GET /condition` | `{ok: true, condition, conditions}` |
-| `POST /condition` | `{condition: "ai" \| "scripted"}`. Restarts the pipeline in that condition, so stats and latency start fresh; replies still in flight are dropped. `200 {ok: true, condition}`; `400` for an unknown condition; `503` if the model couldn't be loaded and `409` if the pipeline can't start (both keep the old condition running). |
+| `GET /condition` | `{ok: true, condition, session?, conditions}` |
+| `POST /condition` | `{condition: "ai" \| "scripted", session?}`. Restarts the pipeline in that condition, so stats and latency start fresh; replies still in flight are dropped. A new `session` label (a participant id like `P07`: 1–32 letters, digits, `-` or `_`) restarts it too, even in the same condition; leaving it out keeps the current one. `200 {ok: true, condition, session?}`; `400` for an unknown condition or a bad label; `503` if the model couldn't be loaded and `409` if the pipeline can't start (both keep the old condition running). |
 
 **Localhost only.** The server binds `127.0.0.1`, refuses requests whose `Host` isn't
 localhost (DNS rebinding), and only answers cross-origin requests from `localhost` /
@@ -212,3 +212,13 @@ No fallbacks. For comparison, with `streamPartials` on, the first partial text s
 
 These are short runs, not the pilot benchmark (W08/W09). Earlier, the cold model load
 took about 60 s.
+
+## Session log (the study)
+
+`npm run service -- --log study-logs` writes one JSON-lines file per session label and
+condition (`src/service/sessionLog.js`), named `<session>-<condition>-<time>.jsonl`.
+The game sends the label from `?session=` in its URL. Each line is one record: `start`
+(session, condition), `event` (every valid event in, including what the player typed),
+`message` (every finished chat line out), `reply` (latency, source, failure) and `end`
+(the pipeline's stats). The folder is git-ignored and `npm run dev` won't serve it.
+How the study uses it: `docs/study/protocol.md`.
