@@ -45,6 +45,12 @@ any of that, update the file in the same PR.
   `npm run dev` running, it prints a `?bot=` URL to open in Chrome, then samples the GPU
   with the browser drawing and reads the service's latency. `--idle-test`: model calls
   after 0-12 s idle. Results: `docs/benchmark-w09.md`.
+- `npm run eval:runs`: plays the evaluation event set into the pipeline in both conditions
+  with the real model, saving run records for the blind rating (`--fake` without Ollama).
+  `npm run study:rating-sheet` makes the shuffled, blind rating sheet and its key.
+  `npm run study:analyze` reads session logs, questionnaire responses and filled rating
+  sheets and prints the report's tables. Guide: `docs/study/protocol.md`, "After the
+  sessions".
 - `npm run study:order`: the study's counterbalanced schedule (participant ids, condition
   order, game URLs). The study itself: `docs/study/protocol.md`, with the service run as
   `npm run service -- --log study-logs` (a JSON-lines log per participant and condition).
@@ -146,6 +152,11 @@ any of that, update the file in the same PR.
   whole replies typed in), `statsHud.js` the follower/donation counters and hype meter,
   `studyPanel.js` the researcher's condition switch (F2, hidden by default; reloads with
   `?condition=ai|scripted`, keeping `?session=`, the study's participant id).
+- `src/analysis/`: the study's analysis, pure functions (tested). `variety.js` (repeat
+  rate, distinct-2), `sessions.js` (session logs -> per-condition latency, failures,
+  variety over equal lengths), `rating.js` (blind rating sheet and key, relevance,
+  persona accuracy, confusion matrix), `engagement.js` (paired questionnaire, exact
+  Wilcoxon from `stats.js`), `report.js` (Markdown), `csv.js`.
 - `src/study/order.js`: the study's counterbalanced condition order and game URLs
   (`npm run study:order`). Study materials: `docs/study/` (protocol, consent,
   questionnaire, responses template).

@@ -52,6 +52,18 @@ input a reply was answering:
 
 ## Running it
 
+For the study, with Ollama running:
+
+```bash
+npm run eval:runs
+```
+
+It plays the set into the registered pipeline at real time, in both conditions, for
+seeds 1 and 2 (`--seeds`), and saves each run record to `study-logs/eval-runs/`. The ai
+runs use the real model. `--fake --speed max` tries it without Ollama.
+
+To play it into a pipeline with the harness's fake model instead:
+
 ```bash
 npm run harness -- eval/event-set-v1.json --condition ai       --pipeline <pipeline> --json > runs/ai.json
 npm run harness -- eval/event-set-v1.json --condition scripted --pipeline <pipeline> --json > runs/scripted.json
@@ -66,6 +78,23 @@ without distinction").
 Linking for raters: every reply carries `eventId`, which is the step id
 (`event-set-v1-017`). That gives the triggering event or message, and its note, for each
 sampled reply.
+
+## Blind rating
+
+`npm run study:rating-sheet` turns the runs into `study-logs/rating/rating-sheet.csv`
+and `rating-key.csv` (`src/analysis/rating.js`). It keeps the lines that answer a major
+event or a player message, from both conditions, since minor events get the same
+templates in both. The lines are shuffled with a seed, and the sheet shows only the
+trigger and the message: no condition, persona, viewer name or source. Raters fill in
+`relevance` (1–5) and `persona` using [`docs/study/rating.md`](study/rating.md), and
+each returns one CSV named after their rater code. Put those in
+`study-logs/rating/filled/`.
+
+`npm run study:analyze` joins them with the key. It reports relevance per condition
+(mean, median, the 1–5 distribution), persona accuracy against chance (25%), the
+confusion matrix, and how often raters agree. The same command summarizes the session
+logs (latency, failures, filtered lines, variety) and the questionnaire. See
+`docs/study/protocol.md`, "After the sessions".
 
 ## Versioning
 
