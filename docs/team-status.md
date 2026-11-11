@@ -1,7 +1,9 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/prompt-pass` (W10: the persona prompts know the
-wave shooter, `docs/personas.md`; the idle-GPU decision), stacked on
+Last updated 2026-11-11, for `feature/report-kit` (W12: `docs/setup.md`, the evaluation
+report draft and defense checklist in `docs/report/`), stacked on `feature/prompt-pass`
+(W10: the persona prompts know the wave shooter, `docs/personas.md`; the idle-GPU
+decision), on
 `feature/study-analysis` (variety metrics, the blind rating sheet and the study's
 analysis, `npm run study:analyze`) and `feature/study-kit`
 (the study materials: protocol, consent, questionnaire, counterbalanced order, session
@@ -85,10 +87,12 @@ raters, a real face for the camera thresholds, the video and the rehearsal.
 | W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (#26): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | 🟡 Study materials done (`feature/study-kit`): protocol, consent, questionnaire, `npm run study:order`, session log (`--log`); **the pilot session with 2 people still to run** |
 | W10 | ✅ Prompt pass for the wave shooter from the bot pilot and #18's samples (`feature/prompt-pass`, `docs/personas.md`): copied examples, loss-as-win, he/she and long Backseat lines all 0 of 44; local stays (no hosted API). Idle GPU: accept ~500 ms | 🟡 Sound and reaction effects done (#26); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
 | W11 | 🟡 Variety metrics (repeat rate, distinct-2), latency and failure analysis built (`feature/study-analysis`, `npm run study:analyze`); **the numbers come after the participant sessions** | 🟡 Optional camera done (#26): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | 🟡 Blind rating sheet, rater guide and analysis built (`npm run eval:runs`, `study:rating-sheet`, `study:analyze`); **needs 2–3 raters from outside the team** |
-| W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
+| W12 | ✅ Setup docs: Ollama install, model pull, prompt versions, troubleshooting (`docs/setup.md`, `feature/report-kit`) | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | 🟡 Report drafted with the measured parts filled (`docs/report/evaluation-report.md`) and a defense checklist (`docs/report/defense.md`); **results after the sessions, rehearsal with the team** |
 
-So far: 26 done, 7 started (Prin's W04 demo clip, W09 pilot and W11 rating, Shapphanyu's
-W10–W12, Sittipon's W11 analysis), 3 not started.
+So far: 27 done, 8 started (Prin's W04 demo clip, W09 pilot, W11 rating and W12 report,
+Shapphanyu's W10–W12, Sittipon's W11 analysis), 1 not started (Prin's W10 participant
+sessions). **Everything left needs people**: the pilot and the sessions, the raters, a
+real face for the camera, the video, the results in the report, and the rehearsal.
 SEG 02 is complete; SEG 03 has started. `npm test` has no TODO
 tests left.
 
@@ -236,7 +240,7 @@ Fill in the advisor's name on the consent form.
 | W09 | Done (#24): `npm run benchmark` with the bot in Chrome (`?bot=`): AI reply 507 / 721 ms p50 / p95, templates 6 ms, GPU 2.2 of 6 GB. Idle test: after ~2 s idle the GPU clocks down and replies run 2.4× slower per token, which is why the game is slower than `npm run e2e` (`docs/benchmark-w09.md`) |
 | W10 | Done (`feature/prompt-pass`): every prompt describes the shooter (`GAME_CONTEXT`), the Fan answers questions, the Backseat names real actions and is cut at 15 words; the trial's before/after is in `docs/personas.md`. Idle GPU: accepted ~500 ms (decision below). If Prin's pilot with people turns up new problems, do one more pass before the sessions, then freeze the prompts |
 | W11 | Built (`feature/study-analysis`): `npm run study:analyze`. Run it after the sessions |
-| W12 | Setup docs (`docs/setup.md`) and the report template (`feature/report-kit`) |
+| W12 | Done (`feature/report-kit`): `docs/setup.md`, with the prompt versions table. Session logs now record the code version and model, and `study:analyze` prints the version per condition |
 
 ## Waiting on someone
 

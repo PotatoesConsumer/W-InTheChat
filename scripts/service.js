@@ -16,6 +16,7 @@
  */
 
 import { parseArgs } from "node:util";
+import { execFileSync } from "node:child_process";
 import { OllamaClient } from "../src/ai/ollamaClient.js";
 import { createService, SERVICE_DEFAULTS } from "../src/service/server.js";
 import { createSessionLog } from "../src/service/sessionLog.js";
@@ -39,7 +40,20 @@ if (!["ai", "scripted"].includes(values.condition)) {
 const client = new OllamaClient();
 if (values.condition === "ai") await warmUp(client);
 
-const sessionLog = values.log ? createSessionLog({ dir: values.log }) : null;
+/** The code version, which pins the prompts: the study report has to name it. */
+function codeVersion() {
+  try {
+    const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" });
+    const dirty = execFileSync("git", ["status", "--porcelain", "--", "src"], { encoding: "utf8" });
+    return `${commit.trim()}${dirty.trim() ? "+changes" : ""}`;
+  } catch {
+    return "unknown";
+  }
+}
+
+const sessionLog = values.log
+  ? createSessionLog({ dir: values.log, about: { version: codeVersion(), model: client.model } })
+  : null;
 const service = createService({
   port: Number(values.port),
   sessionLog,

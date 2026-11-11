@@ -15,6 +15,8 @@ any of that, update the file in the same PR.
 
 ## Setup
 
+Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
+
 - Ollama must be running (`http://localhost:11434`) with the model pulled:
   `ollama pull qwen2.5:3b`
 - Node >= 20, then `npm install`. Dev dependencies only (ESLint, Prettier); the runtime
@@ -179,6 +181,9 @@ any of that, update the file in the same PR.
   `safety-cases-v1.json` (no slurs in the repo: the filter tests its own blocklist), and
   `manifest.json` (draft/frozen, sha256). Never edit a frozen set; make a new version.
   Guides: `docs/evaluation.md`, `docs/pipeline-contract.md`.
+- `docs/report/`: the evaluation report draft (`evaluation-report.md`, measured parts
+  filled, **[results]** placeholders for `npm run study:analyze`'s tables) and the
+  defense checklist (`defense.md`).
 - `test/`: unit tests, mirroring `src/`. `test/contracts/` runs the checks against what's
   registered in `implementations.js`: the service pipeline (nothing `pending` now), the
   stats model and the safety filter. A new gap can be listed in `pending` until it's done.
