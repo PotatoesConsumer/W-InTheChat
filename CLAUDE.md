@@ -172,7 +172,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     it) and an EN/TH language pick. What it hears shows as subtitles over the video;
     while live, it goes to chat as a spoken chat event (`spoken: true`, at most one
     every 4 s, filler dropped; `voice.js`, tested) and the personas react, playing
-    along with jokes. Hidden for the study and the bot.
+    along with jokes. Every chat event (typed or spoken) carries the `scene` (menu,
+    playing, paused), so chat doesn't react to plays while the player is in the hub. Hidden for the study and the bot.
   - `expression.js` + `camera.js`: the optional camera (W11), off until the player opts
     in with the top-bar button and a consent prompt. MediaPipe Face Landmarker (loaded
     from a CDN, pinned, only when turned on; CPU, not the GPU) gives blendshape scores in

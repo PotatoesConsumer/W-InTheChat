@@ -5,12 +5,17 @@
  * (voice input), with the real model. Checks by eye that chat plays along with jokes in
  * each persona's voice, and that every line passes the reply check (safety filter
  * included). Needs Ollama with qwen2.5:3b.
+ *
+ *   npm run ai:voice                  in a run (scene "playing")
+ *   npm run ai:voice -- --scene menu  in the game menu: nothing should react to plays
  */
+
+import { parseArgs } from "node:util";
 
 import { OllamaClient } from "../src/ai/ollamaClient.js";
 import { buildPrompt } from "../src/ai/contextBuilder.js";
 import { PERSONA_PROMPTS, AI_PERSONAS } from "../src/ai/personas/index.js";
-import { createChatEvent } from "../src/events/schema.js";
+import { createChatEvent, SCENES } from "../src/events/schema.js";
 import { toContext } from "../src/events/context.js";
 import { checkReply } from "../src/service/replyCheck.js";
 
@@ -23,7 +28,14 @@ const SPOKEN_LINES = Object.freeze([
   "okay that was a skill issue, but whose skill",
   "what should I buy next",
   "hi chat how is everyone doing",
+  "okay chat which game should I play",
 ]);
+
+const { values } = parseArgs({ options: { scene: { type: "string", default: "playing" } } });
+if (!SCENES.includes(values.scene)) {
+  console.error(`--scene must be one of ${SCENES.join(", ")}`);
+  process.exit(1);
+}
 
 const client = new OllamaClient();
 const health = await client.health();
@@ -36,7 +48,7 @@ await client.generate("hi", { maxTokens: 1 }); // warm the model
 let rejected = 0;
 for (const line of SPOKEN_LINES) {
   console.log(`\nStreamer said: "${line}"`);
-  const ctx = toContext(createChatEvent(line, { spoken: true }));
+  const ctx = toContext(createChatEvent(line, { spoken: true, scene: values.scene }));
   for (const persona of AI_PERSONAS) {
     const { system, prompt } = buildPrompt(ctx, { persona });
     const start = Date.now();

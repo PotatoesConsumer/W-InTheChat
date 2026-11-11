@@ -67,6 +67,12 @@ createChatEvent("  gg chat  ")
   "typed in chat". Spoken messages don't show as chat lines (the streamer's speech isn't
   chat); the game shows them as subtitles. The study never sends them (voice is off for
   `?session=` links).
+- `scene` (optional) says where the player was: `"menu"` (the game hub), `"playing"` or
+  `"paused"` (`SCENES`). The game sets it on every message; it's left out when unknown,
+  as in the evaluation sets. In the menu the prompt says so ("Right now Pu is in the game
+  menu and hasn't started a game."), and when paused it says the game is paused, so chat
+  doesn't cheer or roast plays that never happened. It's only where the player is, never
+  game state the model could change.
 
 ## Game event catalog
 

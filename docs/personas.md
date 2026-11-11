@@ -181,6 +181,25 @@ day:
 
 The spoken-line run: 28 replies, 0 rejected, about 60–400 ms each.
 
+### Chat in the menu (2026-11-12)
+
+Playing it for real, chat reacted to plays while the streamer was still in the game hub
+("W, that was clutch!", "back off from brutes"): the model only got the message and the
+game's description, so it assumed a run. Chat events now carry a `scene` (menu, playing,
+paused, `docs/events.md`), the prompt says when the streamer is in the menu, and each
+persona has a menu rule:
+
+- **Fan:** nothing has happened yet, so hype them up to start a run.
+- **Hater:** tease them for stalling instead of playing.
+- **Backseat:** tell them to start the game, nothing else.
+
+A shared line in `game.js` alone wasn't enough for the 3B model: the Hater still said
+"after that last mistake" to a hello. With the persona rules
+(`npm run ai:voice -- --scene menu`), a hello gets "Looks like you're still stalling" and
+"Start the game", and "which game should I play" gets "you finally decided to pick a
+game". Jokes that mention a wave still get wave talk, since the streamer brought it up.
+The main trial (no scene, as in the evaluation set) stays comparable to master.
+
 ## Trials with qwen2.5:3b (2026-10-27)
 
 Rerun with `npm run ai:personas` (options: `--persona hater,backseat`, `--repeats 2`,

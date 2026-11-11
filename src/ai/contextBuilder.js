@@ -66,6 +66,12 @@ export function buildPrompt(
 
   if (typeof facts.playerMessage === "string") {
     const how = facts.spoken === true ? "said on stream" : "typed in chat";
+    // Where they are, so chat doesn't cheer a game that isn't running.
+    if (facts.scene === "menu") {
+      lines.push(`Right now ${name} is in the game menu and hasn't started a game.`);
+    } else if (facts.scene === "paused") {
+      lines.push(`${name} has paused the game.`);
+    }
     lines.push(`${name} ${how}: "${oneLine(facts.playerMessage)}"`);
   } else if (typeof facts.event === "string") {
     lines.push(`Event: ${name} just ${facts.event}.`);

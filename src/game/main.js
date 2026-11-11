@@ -107,9 +107,14 @@ const ctx = canvas.getContext("2d");
 const bus = createEventBus({ onError: (err, event) => console.error(err, event) });
 const overlay = createChatOverlay(document.getElementById("chat"), { onSend: sendChat });
 
+/** Where the player is, for chat events: the hub is the game menu. */
+function currentScene() {
+  return { hub: "menu", playing: "playing", paused: "paused" }[hub.screen];
+}
+
 /** A message from the player (typed, or the benchmark bot's). */
 function sendChat(text) {
-  const result = bus.publish(createChatEvent(text));
+  const result = bus.publish(createChatEvent(text, { scene: currentScene() }));
   if (result.ok) {
     overlay.pushPlayer(result.event, profile.name);
     playerLines.set(result.event.id, result.event.text); // for the stream's chat summary
@@ -640,7 +645,7 @@ function flushVoice() {
   const text = live ? voice.take(now) : null;
   if (text) {
     try {
-      const result = bus.publish(createChatEvent(text, { spoken: true }));
+      const result = bus.publish(createChatEvent(text, { spoken: true, scene: currentScene() }));
       if (result.ok) playerLines.set(result.event.id, result.event.text);
     } catch (err) {
       console.warn("Spoken message rejected:", err);

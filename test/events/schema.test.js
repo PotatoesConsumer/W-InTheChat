@@ -9,6 +9,7 @@ import {
   createGameEvent,
   createChatEvent,
   validateEvent,
+  SCENES,
   importanceOf,
 } from "../../src/events/schema.js";
 
@@ -167,4 +168,13 @@ test("a spoken chat event says so; typed ones have no spoken field", () => {
   assert.equal(bad.errors[0].path, "spoken");
   assert.equal(validateEvent({ ...typed, spoken: false }).ok, false, "true or absent");
   assert.equal(validateEvent({ ...createGameEvent("win"), spoken: true }).ok, false);
+});
+
+test("a chat event can say where the player was: menu, playing or paused", () => {
+  assert.deepEqual(SCENES, ["menu", "playing", "paused"]);
+  assert.equal(createChatEvent("hi", { scene: "menu" }).scene, "menu");
+  assert.equal("scene" in createChatEvent("hi"), false, "left out when unknown");
+  const bad = validateEvent({ ...createChatEvent("hi"), scene: "lobby" });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.errors[0].path, "scene");
 });

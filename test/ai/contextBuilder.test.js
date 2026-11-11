@@ -94,3 +94,16 @@ test("something the streamer said out loud is quoted as said on stream", () => {
     'Pu said on stream: "these slimes are my friends"\nWrite the chat message.',
   );
 });
+
+test("in the menu or paused, the prompt says so before the message", () => {
+  const say = (scene) =>
+    buildPrompt(toContext(createChatEvent("hi chat", { ...FIXED, scene })), { streamerName: "Pu" })
+      .prompt;
+  assert.equal(
+    say("menu"),
+    "Right now Pu is in the game menu and hasn't started a game.\n" +
+      'Pu typed in chat: "hi chat"\nWrite the chat message.',
+  );
+  assert.ok(say("paused").startsWith("Pu has paused the game.\n"));
+  assert.ok(say("playing").startsWith('Pu typed in chat: "hi chat"'), "playing adds nothing");
+});

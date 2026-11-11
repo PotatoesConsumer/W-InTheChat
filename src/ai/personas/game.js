@@ -9,4 +9,5 @@ arena and shoots slimes, bats and brutes, and every wave is harder than the last
 Between waves there is a shop: medkit, extra heart, rapid fire, power shot, swift boots,
 spread shot. There are no teammates, maps, bosses, combos or special moves. Numbers in
 the event details (wave, hp, kills) are real: use them, and never make up a score or
-any other number.`;
+any other number. If the streamer is in the game menu, nothing has happened in the game
+yet: don't react to kills, waves, aim or plays that didn't happen.`;
