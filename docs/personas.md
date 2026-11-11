@@ -139,6 +139,84 @@ Full trial after the change (176 replies): every check at 0 or near it, as befor
 Hater reply failed the reply check, and a fallback would replace it. The Lurker's
 distinct replies went from 14% to 20%.
 
+## Voice input: playing along with jokes (2026-11-12)
+
+With the optional voice input, the streamer's speech reaches the prompt as `Pu said on
+stream: "…"` (typed messages stay `typed in chat`). Every prompt now says it may get
+either, and each persona plays along with a joke in its own voice:
+
+- **Fan:** laughs with the streamer (LMAO, KEKW) and adds to the joke. Only a joke gets a
+  laugh: a question or a hello gets a real answer. Keep it clean.
+- **Hater:** roasts the joke, not the streamer: it wasn't funny, or their gameplay is the
+  real joke.
+- **Backseat:** tells them to stop joking and focus, then gives advice anyway.
+- **Lurker:** "lol", "lmao", "kekw" or "real" are in its reaction list for a joke.
+
+`npm run ai:voice` runs every persona on seven spoken lines (five jokes, a question and
+a hello), each reply through the reply check. What the runs showed:
+
+- **Fan and Hater riff on the joke:** "LMAO! The brute must really like the way you play
+  champ!", "so this is how you pass waves then? Just test the respawn mechanic". The Fan
+  said "LMAO" to a question too until "only laugh at a joke" was added.
+- **One Fan reply was sexual and passed the filter** (to "chat I think the brute has a
+  crush on me"). That word and its plural are now in the filter's sexual list, with a
+  test.
+- **The Backseat** mostly gives advice, as its rules say.
+- **The Lurker stays weak at jokes:** it often says "sheesh", its kill-streak word.
+  - Telling it "sheesh is only for a kill streak" made it say "sheesh" to everything.
+  - The wordings that got it to say "lol" more also made it copy the streamer's greeting
+    word for word in the main trial (3 of 44 replies, against 0–1 before).
+  - The kept wording has the joke words only in its reaction list, and the main trial
+    matches master: 0 copies, distinct 0.14–0.16.
+
+Main trial (`npm run ai:personas`, 44 replies per persona) against master's prompts, same
+day:
+
+| Persona | Flags, this version | Flags, master |
+|---|---|---|
+| Fan | inventedNumber 2, lossAsWin 1 | inventedNumber 4 |
+| Hater | inventedNumber 1 | failed 1, copiesPrompt 1, inventedNumber 1, nameCalling 1 |
+| Backseat | praiseFirst 1, assistant 1, over15Words 1 | none |
+| Lurker | 0 over4Words, distinct 0.14–0.16 | 0–1 over4Words, distinct 0.16–0.18 |
+
+The spoken-line run: 28 replies, 0 rejected, about 60–400 ms each.
+
+### Chat in the menu (2026-11-12)
+
+Playing it for real, chat reacted to plays while the streamer was still in the game hub
+("W, that was clutch!", "back off from brutes"): the model only got the message and the
+game's description, so it assumed a run. Chat events now carry a `scene` (menu, playing,
+paused, `docs/events.md`), the prompt says when the streamer is in the menu, and each
+persona has a menu rule:
+
+- **Fan:** nothing has happened yet, so hype them up to start a run.
+- **Hater:** tease them for stalling instead of playing.
+- **Backseat:** tell them to start the game, nothing else.
+
+A shared line in `game.js` alone wasn't enough for the 3B model: the Hater still said
+"after that last mistake" to a hello. With the persona rules
+(`npm run ai:voice -- --scene menu`), a hello gets "Looks like you're still stalling" and
+"Start the game", and "which game should I play" gets "you finally decided to pick a
+game". Jokes that mention a wave still get wave talk, since the streamer brought it up.
+The main trial (no scene, as in the evaluation set) stays comparable to master.
+
+### Chat in the shop, and fewer repeats (2026-11-12)
+
+More from playing it: in the shop between waves the Backseat said "stop, back off,
+shoot the bats first" three times, and two buys in a row both got the template "what
+did you buy?".
+
+- **Shop scene:** chat events from the shop carry `scene: "shop"`; the prompt says
+  nobody is fighting, and the Backseat's rule is to say what to buy, never how to move.
+  `npm run ai:voice -- --scene shop`: every Backseat line is about buying now ("Buy the
+  medkit for that brute wave ahead"), though it leans on rapid fire.
+- **Bats:** the Backseat names bats or brutes only when the event or message does. In
+  the main trial its replies mentioning bats went from 17 of 44 (master) to 14 of 44.
+- **Templates:** a fixed line (template or scripted) never comes twice in a row for the
+  same event: if the seeded draw lands on the last line, the next one is used. Still
+  deterministic. "what did you buy?" is gone (chat can see the shop); it's "nice pickup".
+  The scripted baseline gets the same rule, so the comparison stays fair.
+
 ## Trials with qwen2.5:3b (2026-10-27)
 
 Rerun with `npm run ai:personas` (options: `--persona hater,backseat`, `--repeats 2`,

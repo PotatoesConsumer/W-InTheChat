@@ -8,12 +8,4 @@
 
 import { waveSurvival } from "./shooter/index.js";
 
-export const GAMES = Object.freeze([
-  waveSurvival,
-  Object.freeze({
-    id: "coming-soon",
-    title: "More games",
-    blurb: "Coming soon",
-    comingSoon: true,
-  }),
-]);
+export const GAMES = Object.freeze([waveSurvival]);

@@ -375,9 +375,18 @@ export default function startPipeline(bus, emit, deps = {}) {
     active.set(id, { controller, task });
   }
 
+  /** The last fixed line per event (and per persona for scripted), so none repeats twice in a row. */
+  const lastLines = new Map();
+  const fixedLine = (key, choose) => {
+    const text = choose(lastLines.get(key));
+    lastLines.set(key, text);
+    return text;
+  };
+
   const off = bus.subscribe("*", (event) => {
     if (stopped) return;
     const ctx = toContext(event);
+    const lineKey = ctx.kind === "chat" ? "chat" : ctx.name;
 
     // Choices first, before the model runs: three draws per event on every path, even
     // for an event that's coalesced, so one event's fate never shifts another's choices.
@@ -396,9 +405,12 @@ export default function startPipeline(bus, emit, deps = {}) {
     } else if (token) {
       replyWithChatCall(ctx, { persona, viewer, token, roll });
     } else if (ctx.importance === IMPORTANCE.MINOR) {
-      replyWithLine(ctx, { persona, viewer, source: "template", text: lineFor(ctx, () => roll) });
+      const text = fixedLine(`template:${lineKey}`, (prev) => lineFor(ctx, () => roll, prev));
+      replyWithLine(ctx, { persona, viewer, source: "template", text });
     } else if (condition === "scripted") {
-      const text = scriptedLineFor(ctx, persona, () => roll);
+      const text = fixedLine(`scripted:${persona}:${lineKey}`, (prev) =>
+        scriptedLineFor(ctx, persona, () => roll, prev),
+      );
       replyWithLine(ctx, { persona, viewer, source: "scripted", text });
     } else {
       replyWithModel(ctx, { persona, viewer, fallbackText: pick(FALLBACK_LINES, () => roll) });

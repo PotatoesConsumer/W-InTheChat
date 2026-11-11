@@ -1,7 +1,7 @@
 /**
  * main.js
  *
- * Browser entry point (loaded by index.html). Wires the canvas, game loop, input,
+ * Browser entry point (loaded by stream.html). Wires the canvas, game loop, input,
  * event bus, stats, chat overlay, the chat service and the game hub together.
  *
  * Every event goes on the local bus first: the stats, the HUD and the streamer's face
@@ -16,6 +16,22 @@
  * The stream opens on the game hub (hub.js, games list in games.js). Each game reads its
  * own keymap and sends catalog events; Escape or P pauses it (pause menu: resume,
  * restart, quit to the hub), and so does leaving the window.
+ *
+ * Live switch and profile: Go live / End stream in the top bar, next to a LIVE pill with
+ * the uptime. The page opens offline (the home page's Go live opens it live, `#live`),
+ * and leaving the page ends the stream. Offline, the video shows an offline screen, the
+ * game stops, the chat box is off and nothing goes to the service.
+ * Each stream (Go live to End stream) is saved to the profile page's history, with a
+ * summary of its chat (lines per persona, the first reply to each of your messages), and the
+ * player's display name (profile page) is sent to the service for the prompts. The
+ * study's links (`?session=`) and the bot (`?bot=`) are always live, with no name and no
+ * history, and the nav is hidden so a participant can't leave the stream.
+ *
+ * Optional voice input: the mic button turns on Chrome's speech recognition after a
+ * consent prompt (Chrome may send the audio to Google to turn it into text; the game
+ * never records it). What it hears shows as subtitles over the video, and while live,
+ * goes to chat as a spoken chat event (at most one every 4 s, voice.js) that the
+ * personas react to. Off by default, and hidden for the study and the bot.
  *
  * Benchmark bot (W09): `?bot=<skill 0-1>` plays Wave Survival by itself (the bot from
  * shooter/bot.js, through the game's normal input path) and types a player message every
@@ -32,9 +48,11 @@ import { createEffects } from "./effects.js";
 import { createSound } from "./sound.js";
 import { createExpressionTracker } from "./expression.js";
 import { startCamera, drawCamera } from "./camera.js";
+import { createVoiceBuffer, createSubtitles } from "./voice.js";
+import { startSpeech, speechSupported, SPEECH_LANGUAGES } from "./speech.js";
 import { createReplyLatency } from "./replyLatency.js";
 import { createHub } from "./hub.js";
-import { drawHub, drawPause, hubHit } from "./hubView.js";
+import { drawHub, drawPause, drawOffline, hubHit, offlineHit } from "./hubView.js";
 import { GAMES } from "./games.js";
 import { createEventBus } from "../events/bus.js";
 import { createGameEvent, createChatEvent } from "../events/schema.js";
@@ -42,6 +60,17 @@ import { connectToService, DEFAULT_SERVICE_URL } from "../service/client.js";
 import { createChatOverlay } from "../ui/chatOverlay.js";
 import { createStatsHud } from "../ui/statsHud.js";
 import { createStudyPanel, conditionFromUrl, sessionFromUrl } from "../ui/studyPanel.js";
+import {
+  createProfileStore,
+  DEFAULT_PROFILE,
+  avatarLetter,
+  channelName,
+  formatDuration,
+  formatUptime,
+  tallyChat,
+  tallyStream,
+} from "../ui/profile.js";
+import { showChannel } from "../ui/channel.js";
 import { createBot, createBotInput, BOT_CHAT } from "./shooter/bot.js";
 import { HUD_HEIGHT } from "./shooter/view.js";
 import { seededRandom } from "./random.js";
@@ -78,11 +107,19 @@ const ctx = canvas.getContext("2d");
 const bus = createEventBus({ onError: (err, event) => console.error(err, event) });
 const overlay = createChatOverlay(document.getElementById("chat"), { onSend: sendChat });
 
+/** Where the player is, for chat events: the hub is the game menu. */
+function currentScene() {
+  if (hub.screen === "playing" && hub.current.instance.chatScene?.() === "shop") return "shop";
+  return { hub: "menu", playing: "playing", paused: "paused" }[hub.screen];
+}
+
 /** A message from the player (typed, or the benchmark bot's). */
 function sendChat(text) {
-  const result = bus.publish(createChatEvent(text));
-  if (result.ok) overlay.pushPlayer(result.event);
-  else console.warn("Chat message rejected:", result.errors);
+  const result = bus.publish(createChatEvent(text, { scene: currentScene() }));
+  if (result.ok) {
+    overlay.pushPlayer(result.event, profile.name);
+    playerLines.set(result.event.id, result.event.text); // for the stream's chat summary
+  } else console.warn("Chat message rejected:", result.errors);
 }
 
 const params = new URLSearchParams(location.search);
@@ -99,6 +136,21 @@ const bot = params.has("bot")
       input: null,
     }
   : null;
+
+// The profile and the live switch. Locked (study, bot): always live, nothing saved.
+const locked = bot !== null || params.has("session");
+if (locked) document.body.dataset.locked = "";
+const store = createProfileStore();
+const profile = locked ? DEFAULT_PROFILE : store.profile();
+if (!locked) store.recover(); // a stream left open by a closed tab ends where it stopped
+const goLiveNow = location.hash === "#live"; // the home page's Go live button
+if (goLiveNow) history.replaceState(null, "", location.pathname + location.search);
+let live = locked || goLiveNow; // otherwise it opens offline: going live is your call
+let liveSince = 0;
+let streamRecord = null;
+let lastStream = null;
+/** The player's messages this stream, by event id, so replies to them can be summed up. */
+const playerLines = new Map();
 
 // Stats: a pure reducer over the bus, so chat replies can never change them.
 let streamStats = stats.initial();
@@ -119,6 +171,11 @@ bus.subscribe("*", (event) => {
     overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
     effects.donation(gift);
   }
+  if (streamRecord) {
+    const now = { followers: streamStats.followers, donated: gift?.amount ?? 0 };
+    now.game = hub.current?.game.title;
+    streamRecord = store.saveStream(tallyStream(streamRecord, event, now), Date.now());
+  }
 });
 
 // Chat service: every event goes out, chat_message updates come back.
@@ -128,13 +185,19 @@ const serviceUrl = params.get("service") ?? DEFAULT_SERVICE_URL;
 const service = connectToService({
   url: serviceUrl,
   onMessage(message) {
+    if (!live) return; // replies still on their way when the stream ended
     overlay.push(message);
+    if (streamRecord && message.done) {
+      const you = playerLines.get(message.eventId);
+      streamRecord = store.saveStream(tallyChat(streamRecord, message, you), Date.now());
+    }
     const row = latency.message(message);
     if (row) showLatency();
   },
   onStatus: showStatus,
 });
 bus.subscribe("*", async (event) => {
+  if (!live) return; // offline: nothing reaches chat
   latency.sent(event.id);
   const result = await service.send(event);
   if (!result.ok) {
@@ -163,9 +226,11 @@ const study = createStudyPanel(document.getElementById("study"), {
  * @returns {Promise<boolean>} false if the wanted condition couldn't be set
  */
 async function syncCondition() {
-  const result = wantedCondition
-    ? await service.setCondition(wantedCondition, session)
-    : await service.getCondition();
+  const running = wantedCondition ? null : await service.getCondition();
+  const result =
+    running && !running.ok
+      ? running
+      : await service.setCondition(wantedCondition ?? running.condition, session, profile.name);
   condition = result.condition ?? null;
   study.setCondition(condition);
   if (result.ok) {
@@ -173,7 +238,7 @@ async function syncCondition() {
     return true;
   }
   const why = result.error ?? result.errors?.[0]?.message ?? "unknown error";
-  study.setError(`Couldn't switch to ${wantedCondition}: ${why}`);
+  study.setError(`Couldn't switch to ${wantedCondition ?? "the service's condition"}: ${why}`);
   study.show();
   console.warn("Condition switch failed:", result);
   return false;
@@ -266,6 +331,13 @@ function hubHint() {
 
 function update(dt) {
   clock += dt;
+  flushVoice();
+  if (!live) {
+    effects.update(dt);
+    menuInput.endFrame();
+    for (const input of gameInputs.values()) input.endFrame();
+    return;
+  }
   const pressed = (action) => menuInput.wasPressed(action);
   const step =
     (pressed("right") || pressed("down") ? 1 : 0) - (pressed("left") || pressed("up") ? 1 : 0);
@@ -327,6 +399,17 @@ function render(alpha) {
   const shake = effects.shake();
   ctx.setTransform(scale, 0, 0, scale, shake.x * scale, shake.y * scale);
 
+  if (!live) {
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    drawOffline(ctx, {
+      world: WORLD,
+      name: channelName(profile),
+      letter: avatarLetter(profile),
+      color: profile.color,
+      last: lastStream,
+    });
+    return;
+  }
   if (hub.screen === "hub") {
     drawHub(ctx, hub, { world: WORLD, clock, hint: hubHint() });
   } else {
@@ -376,6 +459,10 @@ canvas.addEventListener("pointerdown", (event) => {
   // Clicking the game takes the keyboard back from the chat box.
   if (document.activeElement?.tagName === "INPUT") document.activeElement.blur();
   mouse.pointer = toWorld(event);
+  if (!live) {
+    if (offlineHit(WORLD, mouse.pointer.x, mouse.pointer.y)) goLive();
+    return;
+  }
   canvas.setPointerCapture(event.pointerId);
   if (hub.screen === "playing") {
     mouse.down = true;
@@ -437,7 +524,7 @@ function onScores(scores) {
   if (!change) return;
   showCamera(`camera on · ${change.expression}`);
   const event = createGameEvent("expression", { expression: change.expression });
-  if (change.emit) bus.publish(event);
+  if (change.emit && live) bus.publish(event);
   else streamer.react(event); // the face still follows, without a chat line
 }
 
@@ -472,6 +559,129 @@ cameraButton.addEventListener("click", async () => {
 });
 showCamera("camera off");
 
+// Optional voice input: subtitles of what the mic hears, and while live, chat hears it.
+const micButton = document.getElementById("mic");
+const micLang = document.getElementById("mic-lang");
+const subtitlesEl = document.getElementById("subtitles");
+const voice = createVoiceBuffer();
+const subtitles = createSubtitles();
+let speech = null; // {stop} while on
+let shownSubtitles = "";
+const MIC_CONSENT =
+  "Turn on the microphone?\n\n" +
+  "Chrome's speech recognition turns what you say into text, and it may send the audio " +
+  "to Google's servers to do that. This game never records or saves your audio: only " +
+  "the text is used. It shows as subtitles on the stream, and while you're live, chat " +
+  "hears it and reacts.\n\n" +
+  "Turn it off any time with the same button.";
+
+function showMic(text) {
+  micButton.textContent = text;
+  micButton.setAttribute("aria-pressed", String(Boolean(speech)));
+}
+
+function readLang() {
+  try {
+    return localStorage.getItem("witc.micLang") ?? SPEECH_LANGUAGES[0].code;
+  } catch {
+    return SPEECH_LANGUAGES[0].code;
+  }
+}
+
+for (const { code, label } of SPEECH_LANGUAGES) micLang.append(new Option(label, code));
+micLang.value = readLang();
+
+function startMic() {
+  try {
+    speech = startSpeech({
+      lang: micLang.value,
+      onInterim: (text) => subtitles.interim(text, performance.now()),
+      onFinal(text) {
+        subtitles.final(text, performance.now());
+        if (live) voice.push(text);
+      },
+      onError(err) {
+        speech = null;
+        showMic("mic off");
+        window.alert(err.message);
+      },
+    });
+    showMic("mic on");
+  } catch (err) {
+    speech = null;
+    showMic("mic off");
+    window.alert(err.message);
+  }
+}
+
+function stopMic() {
+  speech?.stop();
+  speech = null;
+  voice.clear();
+  subtitles.clear();
+  showMic("mic off");
+}
+
+micButton.addEventListener("click", () => {
+  micButton.blur(); // so Space goes back to the game
+  if (speech) return stopMic();
+  if (window.confirm(MIC_CONSENT)) startMic();
+});
+micLang.addEventListener("change", () => {
+  micLang.blur();
+  try {
+    localStorage.setItem("witc.micLang", micLang.value);
+  } catch {
+    // Not remembered; it still applies now.
+  }
+  if (speech) {
+    speech.stop();
+    startMic();
+  }
+});
+
+/** Each step: a spoken message to chat if one is due, and the subtitles. */
+function flushVoice() {
+  const now = performance.now();
+  const text = live ? voice.take(now) : null;
+  if (text) {
+    try {
+      const result = bus.publish(createChatEvent(text, { spoken: true, scene: currentScene() }));
+      if (result.ok) playerLines.set(result.event.id, result.event.text);
+    } catch (err) {
+      console.warn("Spoken message rejected:", err);
+    }
+  }
+  const shown = subtitles.current(now);
+  const key = shown ? `${shown.lines.join("\n")}|${shown.interim}` : "";
+  if (key === shownSubtitles) return;
+  shownSubtitles = key;
+  subtitlesEl.hidden = !shown;
+  if (!shown) return subtitlesEl.replaceChildren();
+  const parts = shown.lines.map((line) => {
+    const el = document.createElement("div");
+    el.className = "heard";
+    el.textContent = line;
+    return el;
+  });
+  if (shown.interim) {
+    const el = document.createElement("div");
+    el.className = "hearing";
+    el.textContent = shown.interim;
+    parts.push(el);
+  }
+  subtitlesEl.replaceChildren(...parts);
+}
+
+micButton.hidden = locked;
+micLang.hidden = locked;
+if (!speechSupported()) {
+  micButton.disabled = true;
+  micButton.title = "Voice needs Chrome or Edge (speech recognition)";
+  micLang.hidden = true;
+}
+showMic(speechSupported() ? "mic off" : "mic: needs Chrome");
+
 // Sound: M or the top-bar button mutes (remembered in this browser).
 const soundButton = document.getElementById("sound");
 function showMute() {
@@ -505,5 +715,71 @@ window.addEventListener("keydown", (event) => {
     document.activeElement.blur();
   }
 });
+
+// Go live / End stream. Each stream starts with fresh stats and is saved as it goes.
+const liveButton = document.getElementById("live-toggle");
+const livePill = document.getElementById("live-pill");
+
+function showUptime() {
+  livePill.textContent = live ? `LIVE ${formatUptime(Date.now() - liveSince)}` : "OFFLINE";
+}
+setInterval(() => live && showUptime(), 1000);
+
+function showLive() {
+  showChannel(document, profile, { live });
+  overlay.setEnabled(live);
+  liveButton.hidden = locked;
+  livePill.hidden = locked;
+  livePill.classList.toggle("on", live);
+  showUptime();
+  liveButton.textContent = live ? "End stream" : "Go live";
+  liveButton.classList.toggle("secondary", live);
+  const last = locked ? null : store.streams()[0];
+  lastStream = last
+    ? `Last stream: ${formatDuration(last.endedAt - last.startedAt)}, ` +
+      `best wave ${last.bestWave}, +${last.followers} followers, $${last.donations} donated.`
+    : null;
+}
+
+function goLive() {
+  live = true;
+  liveSince = Date.now();
+  playerLines.clear();
+  streamStats = stats.initial();
+  hud.set(streamStats);
+  if (!locked) {
+    store.setLive(true);
+    streamRecord = store.startStream(Date.now());
+  }
+  showLive();
+}
+
+function endStream() {
+  voice.clear(); // what was said after the end stays off chat
+  hub.current?.instance.takeEvents(); // a run's last events stay off chat
+  hub.quit();
+  live = false;
+  streamRecord = null;
+  store.setLive(false);
+  store.endStream(Date.now());
+  showLive();
+}
+
+liveButton.addEventListener("click", () => {
+  liveButton.blur(); // so Space goes back to the game
+  if (live) endStream();
+  else goLive();
+});
+if (live) liveSince = Date.now();
+if (!locked) {
+  store.setLive(live);
+  if (live) streamRecord = store.startStream(Date.now());
+  // Leaving the page (closing it, the nav, a reload) ends the stream: the game lives here.
+  window.addEventListener("pagehide", () => {
+    if (live) store.endStream(Date.now());
+    store.setLive(false);
+  });
+}
+showLive();
 
 createGameLoop({ update, render }).start();

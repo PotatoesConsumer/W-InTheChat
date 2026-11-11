@@ -36,7 +36,10 @@ const REPLY_SOURCES = new Set(["ai", "scripted", "fallback"]);
 
 /** What a rater reads as the trigger: the event in words, or what the player typed. */
 export function describeTrigger(event) {
-  if (event.kind === "chat") return `The streamer typed in chat: "${event.text}"`;
+  if (event.kind === "chat") {
+    const where = event.scene === "menu" ? " (in the game menu)" : "";
+    return `The streamer${where} ${event.spoken ? "said on stream" : "typed in chat"}: "${event.text}"`;
+  }
   const phrase = GAME_EVENTS[event.name]?.phrase ?? event.name;
   const details = Object.entries(event.data ?? {})
     .map(([k, v]) => `${k} ${v}`)

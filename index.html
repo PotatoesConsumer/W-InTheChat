@@ -4,34 +4,149 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>W-InTheChat</title>
+    <script>
+      // Old links went straight to the game with a query (?condition=, ?session=, ?bot=,
+      // ?service=). They still do: the stream page lives at stream.html now.
+      if (location.search) location.replace(`stream.html${location.search}${location.hash}`);
+    </script>
     <link rel="stylesheet" href="src/ui/overlay.css" />
+    <link rel="stylesheet" href="src/ui/home.css" />
   </head>
   <body>
     <header class="topbar">
-      <span class="live">LIVE</span>
-      <span class="title">W-InTheChat</span>
-      <div id="stats" aria-label="Stream stats"></div>
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">W</span>W-InTheChat</a>
+      <nav class="topnav" aria-label="Site">
+        <a href="./" aria-current="page">Home</a>
+        <a href="stream.html">Stream</a>
+        <a href="profile.html">Profile</a>
+      </nav>
       <span class="topbar-right">
-        <span id="latency" class="latency"></span>
-        <button
-          id="camera"
-          class="toggle"
-          type="button"
-          title="Optional: read your expression from the webcam (opt-in)"
-        ></button>
-        <button id="sound" class="toggle" type="button" title="Mute or unmute (M)"></button>
         <span id="service-status" class="service-status" data-status="connecting">
-          connecting…
+          checking chat…
         </span>
+        <a id="go-live" class="button" href="stream.html">Go live</a>
+        <a class="topbar-avatar" href="profile.html" data-channel="avatar" title="Your profile"
+          >W</a
+        >
       </span>
     </header>
-    <main class="broadcast">
-      <section class="stage">
-        <canvas id="game" aria-label="Game"></canvas>
-      </section>
-      <aside id="chat" aria-label="Stream chat"></aside>
-    </main>
-    <section id="study"></section>
-    <script type="module" src="src/game/main.js"></script>
+
+    <div class="home">
+      <nav class="side-nav" aria-label="Who's in chat">
+        <h2 class="side-title">In the chat</h2>
+        <ul class="viewer-list">
+          <li class="viewer">
+            <span class="viewer-avatar persona-fan" aria-hidden="true">F</span>
+            <span class="viewer-meta">
+              <span class="viewer-name persona-fan">Fan</span>
+              <span class="viewer-about">Hypes every play</span>
+            </span>
+            <span class="chat-badge viewer-badge badge-sub" title="Subscriber"></span>
+          </li>
+          <li class="viewer">
+            <span class="viewer-avatar persona-hater" aria-hidden="true">H</span>
+            <span class="viewer-meta">
+              <span class="viewer-name persona-hater">Hater</span>
+              <span class="viewer-about">Mocks the plays, never you</span>
+            </span>
+          </li>
+          <li class="viewer">
+            <span class="viewer-avatar persona-backseat" aria-hidden="true">B</span>
+            <span class="viewer-meta">
+              <span class="viewer-name persona-backseat">Backseat Gamer</span>
+              <span class="viewer-about">Tells you what to do</span>
+            </span>
+            <span class="chat-badge viewer-badge badge-vip" title="VIP"></span>
+          </li>
+          <li class="viewer">
+            <span class="viewer-avatar persona-lurker" aria-hidden="true">L</span>
+            <span class="viewer-meta">
+              <span class="viewer-name persona-lurker">Lurker</span>
+              <span class="viewer-about">Watches, says little</span>
+            </span>
+          </li>
+        </ul>
+      </nav>
+
+      <main class="home-main">
+        <section class="featured" aria-label="Featured stream">
+          <a class="preview" href="stream.html" aria-label="Watch W-InTheChat">
+            <canvas id="preview" aria-hidden="true"></canvas>
+            <span class="live-tag" data-live="tag">LIVE</span>
+          </a>
+          <div class="featured-info">
+            <div class="featured-channel">
+              <span
+                class="channel-avatar"
+                data-channel="avatar"
+                data-live="avatar"
+                aria-hidden="true"
+                >W</span
+              >
+              <div>
+                <div class="channel-name" data-channel="name">W-InTheChat</div>
+                <div class="category">Wave Survival</div>
+                <div class="stream-tags">
+                  <span class="tag">English</span>
+                  <span class="tag">Chill</span>
+                </div>
+              </div>
+            </div>
+            <p class="featured-title">surviving waves until chat says stop</p>
+            <p class="featured-text">
+              You're the streamer. Play a few waves and the chat reacts to every kill, death and
+              shop buy, and answers what you type.
+            </p>
+            <a id="watch" class="button button-big" href="stream.html">Watch and play</a>
+          </div>
+        </section>
+
+        <section class="home-section" aria-labelledby="how">
+          <h2 id="how" class="section-title">How the chat works</h2>
+          <div class="facts">
+            <div class="fact">
+              <h3>A model on this laptop plays the viewers</h3>
+              <p>
+                qwen2.5:3b runs on the laptop's GPU through Ollama and writes each viewer's line.
+                Chat doesn't need the internet.
+              </p>
+            </div>
+            <div class="fact">
+              <h3>They react to the game and to you</h3>
+              <p>
+                Big moments and your messages get a reply from one of four viewers. Small ones get
+                quick stock lines, the way a busy chat does.
+              </p>
+            </div>
+            <div class="fact">
+              <h3>Followers, donations and hype</h3>
+              <p>
+                Good plays bring followers and donations. They come from the game's own rules: the
+                model can't change the stats or the game.
+              </p>
+            </div>
+            <div class="fact">
+              <h3>Camera is off unless you turn it on</h3>
+              <p>
+                If you opt in, only one word (smiling, surprised or frowning) leaves the tab. Frames
+                are never saved or sent.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="home-section" aria-labelledby="categories">
+          <h2 id="categories" class="section-title">Categories</h2>
+          <div class="tiles">
+            <a class="tile" href="stream.html">
+              <canvas id="tile-art" class="tile-art" aria-hidden="true"></canvas>
+              <span class="tile-title">Wave Survival</span>
+              <span class="tile-meta">Top-down shooter</span>
+            </a>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="src/ui/home.js"></script>
   </body>
 </html>

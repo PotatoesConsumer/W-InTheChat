@@ -27,6 +27,8 @@
  *   takeEvents()                 catalog events since the last call: [{name, data}]
  *   restart()                    drop the run and start a new one (pause menu)
  *   quit()                       drop the run, back to its title screen (pause menu)
+ *   chatScene?()                 "shop" while between rounds in a shop, else nothing:
+ *                                chat events then say where the player is (SCENES)
  *   state                        for the console (witc.game())
  *
  * `world` is the scene size ({width, height}); `obstacles` are solid rectangles (the
@@ -136,6 +138,15 @@ export function createHub({ games, makeGame }) {
 
     pause,
     resume: () => choosePause("resume"),
+
+    /** Drops the current run and goes back to the hub (ending the stream). */
+    quit() {
+      if (!current) return false;
+      current.instance.quit();
+      current = null;
+      screen = "hub";
+      return true;
+    },
   };
 }
 

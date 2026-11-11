@@ -7,7 +7,17 @@
 
 import { PAUSE_OPTIONS, isPlayable } from "./hub.js";
 
-const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+const FONT = "Inter, 'Segoe UI Variable Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+/** The stream page's colours (src/ui/overlay.css). */
+const UI = Object.freeze({
+  bg: "#0e0e10",
+  panel: "#18181b",
+  raised: "#2f2f35",
+  text: "#efeff1",
+  muted: "#adadb8",
+  faint: "#6f6f78",
+  accent: "#9147ff",
+});
 const CARD = { width: 260, height: 250, gap: 24, x: 60, y: 120 };
 const PAUSE = { x: 260, y: 100, width: 420, height: 360 };
 
@@ -35,6 +45,64 @@ export function pauseLayout() {
   }));
 }
 
+/** The offline screen's Go live button. */
+export function offlineLayout(world) {
+  return { x: world.width / 2 - 70, y: world.height / 2 + 74, width: 140, height: 40 };
+}
+
+/** Whether (x, y) is on the offline screen's Go live button. */
+export function offlineHit(world, x, y) {
+  return inside(offlineLayout(world), x, y);
+}
+
+/**
+ * The stream while it's offline, like a channel page's offline banner: the avatar, the
+ * last stream if there was one, and a Go live button.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{world: {width: number, height: number}, name: string, letter: string,
+ *   color: string, last: string | null}} opts - `last` sums up the last stream.
+ */
+export function drawOffline(ctx, { world, name, letter, color, last }) {
+  ctx.fillStyle = UI.bg;
+  ctx.fillRect(0, 0, world.width, world.height);
+  const cx = world.width / 2;
+  const cy = world.height / 2 - 60;
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 44, 0, Math.PI * 2);
+  ctx.fill();
+  text(ctx, letter, cx, cy + 14, { size: 38, weight: 800, align: "center", color: "#fff" });
+
+  ctx.fillStyle = UI.raised;
+  roundRect(ctx, cx - 38, cy + 34, 76, 20, 4);
+  ctx.fill();
+  text(ctx, "OFFLINE", cx, cy + 49, { size: 12, weight: 700, align: "center", color: UI.muted });
+
+  text(ctx, `${name} is offline.`, cx, cy + 96, {
+    size: 22,
+    weight: 700,
+    align: "center",
+    color: UI.text,
+  });
+  text(ctx, last ?? "Go live and chat will start watching.", cx, cy + 122, {
+    size: 14,
+    align: "center",
+    color: UI.muted,
+  });
+
+  const button = offlineLayout(world);
+  ctx.fillStyle = UI.accent;
+  roundRect(ctx, button.x, button.y, button.width, button.height, 4);
+  ctx.fill();
+  text(ctx, "Go live", cx, button.y + 26, {
+    size: 15,
+    weight: 700,
+    align: "center",
+    color: "#fff",
+  });
+}
+
 /** The index of the card or button at (x, y) on the current screen, or -1. */
 export function hubHit(hub, x, y) {
   if (hub.screen === "hub") return hubLayout(hub.games.length).findIndex((r) => inside(r, x, y));
@@ -48,68 +116,51 @@ export function hubHit(hub, x, y) {
  * @param {{world: {width: number, height: number}, clock: number, hint: string}} opts
  */
 export function drawHub(ctx, hub, { world, clock, hint }) {
-  const bg = ctx.createLinearGradient(0, 0, world.width, world.height);
-  bg.addColorStop(0, "#1b1530");
-  bg.addColorStop(1, "#0f1a2e");
-  ctx.fillStyle = bg;
+  ctx.fillStyle = UI.bg;
   ctx.fillRect(0, 0, world.width, world.height);
-  // Slow drifting dots, so the hub doesn't look frozen on stream.
-  ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
-  for (let i = 0; i < 24; i++) {
-    const x = (i * 137 + clock / 40) % world.width;
-    const y = (i * 89) % world.height;
-    circle(ctx, x, y, 2 + (i % 3));
-  }
 
-  text(ctx, "GAME HUB", CARD.x, 64, { size: 34, weight: 800, color: "#ffd34e" });
-  text(ctx, "Pick a game to stream", CARD.x, 92, { size: 15, color: "#b9b2d0" });
+  text(ctx, "Choose what to stream", CARD.x, 70, { size: 28, weight: 700, color: UI.text });
+  text(ctx, "Your chat reacts to everything you do in the game.", CARD.x, 98, {
+    size: 14,
+    color: UI.muted,
+  });
 
   const cards = hubLayout(hub.games.length);
   hub.games.forEach((game, i) => {
     const r = cards[i];
     const active = i === hub.selected;
     const playable = isPlayable(game);
-    ctx.fillStyle = playable ? "#2a2342" : "#1e1a2c";
-    roundRect(ctx, r.x, r.y, r.width, r.height, 12);
-    ctx.fill();
-    ctx.strokeStyle = active ? "#ffd34e" : "rgba(255,255,255,0.12)";
-    ctx.lineWidth = active ? 4 : 2;
-    ctx.stroke();
-
-    const pic = { x: r.x + 12, y: r.y + 12, width: r.width - 24, height: 150 };
+    // Box art, like a category tile: the selected one lifts and gets the accent edge.
+    const lift = active ? 6 : 0;
+    const pic = { x: r.x, y: r.y - lift, width: r.width, height: 160 };
+    if (active) {
+      ctx.fillStyle = UI.accent;
+      ctx.fillRect(pic.x - lift, pic.y + lift, pic.width, pic.height);
+    }
     if (playable && game.drawThumbnail) {
       game.drawThumbnail(ctx, pic, clock);
     } else {
-      ctx.fillStyle = "#15121f";
+      ctx.fillStyle = UI.panel;
       ctx.fillRect(pic.x, pic.y, pic.width, pic.height);
-      text(ctx, "?", pic.x + pic.width / 2, pic.y + 100, {
-        size: 64,
-        weight: 800,
-        align: "center",
-        color: "#3a3352",
-      });
     }
-    text(ctx, game.title, r.x + 14, r.y + 190, {
-      size: 18,
-      weight: 800,
-      color: playable ? "#ffffff" : "#77708c",
+    text(ctx, game.title, r.x, r.y + 188, {
+      size: 16,
+      weight: 700,
+      color: playable ? UI.text : UI.faint,
     });
-    wrapText(ctx, game.blurb, r.x + 14, r.y + 212, r.width - 28, 17, {
-      size: 12,
-      color: "#b9b2d0",
-    });
+    wrapText(ctx, game.blurb, r.x, r.y + 208, r.width, 17, { size: 13, color: UI.muted });
   });
 
   const game = hub.games[hub.selected];
   if (isPlayable(game)) {
     const controls = game.controls.map(([keys, what]) => `${keys}: ${what}`).join("   ·   ");
-    wrapText(ctx, controls, CARD.x, 410, 620, 18, { size: 13, color: "#b9b2d0" });
+    wrapText(ctx, controls, CARD.x, 410, 620, 18, { size: 13, color: UI.muted });
   }
-  text(ctx, "← → choose   ·   Space or click to play   ·   Esc pauses a game", CARD.x, 470, {
-    size: 14,
-    color: "#8a8599",
+  text(ctx, "Space or click to play   ·   Esc pauses a game", CARD.x, 470, {
+    size: 13,
+    color: UI.faint,
   });
-  text(ctx, hint, CARD.x, 500, { size: 16, weight: 700, color: "#ffffff" });
+  text(ctx, hint, CARD.x, 500, { size: 15, weight: 600, color: UI.text });
 }
 
 /**
@@ -119,40 +170,37 @@ export function drawHub(ctx, hub, { world, clock, hint }) {
  * @param {{world: {width: number, height: number}}} opts
  */
 export function drawPause(ctx, hub, { world }) {
-  ctx.fillStyle = "rgba(8, 6, 14, 0.7)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
   ctx.fillRect(0, 0, world.width, world.height);
-  ctx.fillStyle = "#211b33";
-  roundRect(ctx, PAUSE.x, PAUSE.y, PAUSE.width, PAUSE.height, 14);
+  ctx.fillStyle = UI.panel;
+  roundRect(ctx, PAUSE.x, PAUSE.y, PAUSE.width, PAUSE.height, 6);
   ctx.fill();
-  ctx.strokeStyle = "#ffd34e";
-  ctx.lineWidth = 3;
-  ctx.stroke();
 
-  text(ctx, "PAUSED", PAUSE.x + PAUSE.width / 2, PAUSE.y + 50, {
-    size: 30,
-    weight: 800,
+  text(ctx, "Paused", PAUSE.x + PAUSE.width / 2, PAUSE.y + 52, {
+    size: 26,
+    weight: 700,
     align: "center",
-    color: "#ffd34e",
+    color: UI.text,
   });
   pauseLayout().forEach((r, i) => {
     const active = i === hub.pauseIndex;
-    ctx.fillStyle = active ? "#ffd34e" : "#342b4f";
-    roundRect(ctx, r.x, r.y, r.width, r.height, 8);
+    ctx.fillStyle = active ? UI.accent : UI.raised;
+    roundRect(ctx, r.x, r.y, r.width, r.height, 4);
     ctx.fill();
     text(ctx, PAUSE_OPTIONS[i].label, r.x + r.width / 2, r.y + 28, {
-      size: 17,
-      weight: 700,
+      size: 16,
+      weight: 600,
       align: "center",
-      color: active ? "#1b1530" : "#ffffff",
+      color: UI.text,
     });
   });
   const game = hub.current?.game;
   if (game) {
     text(ctx, game.title, PAUSE.x + PAUSE.width / 2, PAUSE.y + 290, {
       size: 13,
-      weight: 700,
+      weight: 600,
       align: "center",
-      color: "#b9b2d0",
+      color: UI.muted,
     });
   }
   text(
@@ -163,7 +211,7 @@ export function drawPause(ctx, hub, { world }) {
     {
       size: 13,
       align: "center",
-      color: "#8a8599",
+      color: UI.faint,
     },
   );
 }
@@ -189,12 +237,6 @@ function text(ctx, value, x, y, { size = 14, weight = 400, align = "left", color
   ctx.fillStyle = color;
   ctx.fillText(value, x, y);
   ctx.textAlign = "left";
-}
-
-function circle(ctx, x, y, r) {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fill();
 }
 
 function roundRect(ctx, x, y, w, h, r) {

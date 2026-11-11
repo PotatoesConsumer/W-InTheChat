@@ -47,7 +47,7 @@ first** (W09) with 2 people, fix what it finds, then run the 15–20 participant
 3. Open Chrome (desktop Chrome, not a preview pane), full screen, sound on at a
    comfortable level.
 4. **Leave the camera off.** It's an optional extension and off on every page load. The
-   study doesn't use it.
+   study doesn't use it. The mic (voice input) is hidden on the study's links.
 5. Do a 1-minute check run with `?condition=ai&session=CHECK`: AI lines appear in chat
    and the top bar shows reply latency. Then delete the `CHECK-*` files in `study-logs/`.
 
@@ -63,7 +63,7 @@ Look up the participant's row in the schedule. Say nothing about which half is A
    > the right. Please talk to your chat now and then, the way a streamer would. You'll
    > play twice for 5 minutes each, and I'll ask a few questions after each one."
 3. **Half 1 (5 min).** Open the schedule's *First URL*, for example
-   `http://localhost:5173/?condition=ai&session=P01`. Pick Wave Survival in the hub.
+   `http://localhost:5173/stream.html?condition=ai&session=P01`. Pick Wave Survival in the hub.
    Start a 5-minute timer when the first wave starts. When it ends, press Esc to pause.
 4. **Questions 1–5** for half 1 (2 min).
 5. **Half 2 (5 min).** Open the *Second URL* (same session, other condition). This

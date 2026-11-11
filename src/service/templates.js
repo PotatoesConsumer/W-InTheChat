@@ -27,7 +27,7 @@ export const EVENT_LINES = Object.freeze({
   round_start: Object.freeze(["here we go", "lock in", "new wave lets gooo"]),
   kill: Object.freeze(["clean", "EZ", "got him"]),
   damage_taken: Object.freeze(["ouch", "careful!!", "that hurt to watch"]),
-  item_pickup: Object.freeze(["ooh upgrade", "what did you buy?", "good buy"]),
+  item_pickup: Object.freeze(["ooh upgrade", "good buy", "nice pickup"]),
   coin_purchase: Object.freeze(["spending our money already?", "big spender 💰", "coins acquired"]),
   expression: Object.freeze(["the reaction 👀", "facecam is gold today", "we saw that 😂"]),
   win: Object.freeze(["GG!!", "WWWW", "lets gooo"]),
@@ -112,9 +112,13 @@ export const FALLBACK_LINES = Object.freeze([
 /**
  * @param {readonly string[]} list
  * @param {() => number} random - Seeded random in [0, 1).
+ * @param {string} [previous] - The line chat just got for the same thing: if the draw
+ *   lands on it, the next line is used, so chat never says it twice in a row. Still
+ *   deterministic: it depends only on the draws and the earlier choices.
  */
-export function pick(list, random) {
-  return list[Math.min(list.length - 1, Math.floor(random() * list.length))];
+export function pick(list, random, previous) {
+  const i = Math.min(list.length - 1, Math.floor(random() * list.length));
+  return list.length > 1 && list[i] === previous ? list[(i + 1) % list.length] : list[i];
 }
 
 /**
@@ -122,12 +126,12 @@ export function pick(list, random) {
  * @param {{kind: "game" | "chat", name: string | null}} ctx - A context payload.
  * @param {() => number} random
  */
-export function lineFor(ctx, random) {
-  if (ctx.kind === "chat") return pick(CHAT_LINES, random);
+export function lineFor(ctx, random, previous) {
+  if (ctx.kind === "chat") return pick(CHAT_LINES, random, previous);
   if (!Object.hasOwn(EVENT_LINES, ctx.name)) {
     throw new TypeError(`no template lines for game event "${ctx.name}"`);
   }
-  return pick(EVENT_LINES[ctx.name], random);
+  return pick(EVENT_LINES[ctx.name], random, previous);
 }
 
 /**
@@ -136,15 +140,16 @@ export function lineFor(ctx, random) {
  * @param {{kind: "game" | "chat", name: string | null}} ctx - A context payload.
  * @param {string} persona - Key of SCRIPTED_LINES.
  * @param {() => number} random
+ * @param {string} [previous] - This persona's last line for the same thing (see pick).
  */
-export function scriptedLineFor(ctx, persona, random) {
+export function scriptedLineFor(ctx, persona, random, previous) {
   const lines = Object.hasOwn(SCRIPTED_LINES, persona) ? SCRIPTED_LINES[persona] : null;
   if (!lines) throw new TypeError(`no scripted lines for persona "${persona}"`);
   const key = ctx.kind === "chat" ? "chat" : ctx.name;
   if (!Object.hasOwn(lines, key)) {
     throw new TypeError(`no scripted ${persona} lines for "${key}"`);
   }
-  return pick(lines[key], random);
+  return pick(lines[key], random, previous);
 }
 
 /** `persona:event` pairs the scripted baseline has no lines for (should always be empty). */

@@ -1,9 +1,18 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/eval-set-shooter` (the evaluation set rewritten for
-the wave shooter, `QA_LIMITS` from the laptop pilot). Before that:
-`feature/donation-alerts` (Twitch-style donation alerts,
-Shapphanyu's area: please look through `src/game/effects.js`), #33 (chat
+Last updated 2026-11-12, for `feature/eval-set-shooter` (#36, Prin: the evaluation set
+rewritten for the wave shooter, `QA_LIMITS` from the laptop pilot; still a draft, freeze
+it before the study). Before that: #42 (chat in the shop: a `shop` scene and a Backseat
+buying rule; fewer bat lines; no fixed line twice in a row, in both conditions.
+**Prompts and templates changed**: rerun `npm run eval:runs` before the study), #41 (the optional voice input with subtitles, joke rules, the menu
+scene), #40 (the stream
+page opens offline, a LIVE pill, a chat summary per past stream), #39 (the home page, profile and Go live recorded as extras in the report),
+#38 (Go live / End stream with an offline screen; a profile page
+with a display name, avatar colour, bio and the past streams; Home / Stream / Profile
+nav. The display name reaches the prompts through `POST /condition`. Study links
+(`?session=`) stay live with no name, so the study is unchanged), #37 (the home page; the stream moved to
+`stream.html`), #35 (the stream page restyled like Twitch), #34
+(Twitch-style donation alerts), #33 (chat
 calls: "W in the chat" gets viewers spamming W, the same in both conditions; modern
 slang for the Fan and the Hater), #32 (the last gaps against the proposal:
 rejected replies and peak GPU memory in the session logs, failure cases and 95%
@@ -112,7 +121,7 @@ Don't change these without talking to the team first. The reasons are in the lin
 | Idle GPU: accept ~500 ms p50 / ~720 ms p95 in the game (W10) | Well inside the 3 s timeout; keeping the GPU warm would queue with real replies, and a required driver setting is one more thing to get wrong on a study laptop. The NVIDIA "prefer maximum performance" setting stays an optional step in the setup docs | `docs/benchmark-w09.md` |
 | Template lines for minor events stay the Fan's (#18 finding 3) | They're the same in both conditions, so they don't change the comparison, and the rating sheet leaves them out | `docs/evaluation.md` |
 | Chat calls ("W in the chat") get 3 fixed lines in both conditions, not a model reply | Real chat spams the token, which one persona reply can't do; fixed lines keep the comparison fair and never wait on the model | `docs/service.md` |
-| Voice input (optional in the proposal) is not added | Chrome's Web Speech may send audio to a remote service, and the study doesn't need it | `docs/report/evaluation-report.md`, "Deviations" |
+| Voice input (optional in the proposal) is added, off in the study (2026-11-12; it was left out until then) | The player asked for it. Chrome's Web Speech may send the audio to Google, so it's off until the player agrees to a prompt that says so; only text is used, never audio. The study's links hide it, so the comparison is unchanged | `docs/report/evaluation-report.md`, "Deviations" |
 | Prompts are frozen once the participant sessions start | Results must name one prompt version (the git commit); a change mid-study splits the data | `docs/study/protocol.md` |
 
 ## Shapphanyu (frontend / game): what's next
@@ -237,7 +246,8 @@ study-logs` logs every half to its own file, labelled by the game's `?session=`.
 the wave shooter, two runs with the data the game sends (a test checks it against
 bot-played games), and `QA_LIMITS` are set from the laptop pilot: replies within
 3000 ms plus 1000 ms for pacing (`docs/pipeline-contract.md`, "Limits"). Still yours:
-**freeze the set** once the team has looked at it, **run the pilot with 2 people**, then
+**freeze the set** once the team has looked at it, **a dry run of the full protocol**
+(consent, questionnaire, session logs; Shapphanyu's 3-person game pilot is in #43), then
 the participant sessions (W10). Fill in the advisor's name on the consent form (the
 proposal leaves it blank too).
 

@@ -539,3 +539,15 @@ test("a chat call gets a few viewers spamming it, the same in both conditions, n
   const strip = (lines) => lines.map(({ persona, viewer, text }) => ({ persona, viewer, text }));
   assert.deepEqual(strip(scripted.lines), strip(ai.lines), "same lines in both conditions");
 });
+
+test("two buys in a row get two different template lines", async () => {
+  const { bus, messages, handle } = setup([], { random: () => 0 });
+  // Far enough apart that the coalescer doesn't merge them, like two separate buys.
+  const t = Date.now();
+  bus.publish(createGameEvent("item_pickup", { item: "medkit" }, { id: "buy-1", ts: t }));
+  bus.publish(createGameEvent("item_pickup", { item: "boots" }, { id: "buy-2", ts: t + 60_000 }));
+  await handle.idle();
+  const [a, b] = finals(messages).map((m) => m.text);
+  assert.ok(a && b);
+  assert.notEqual(a, b);
+});

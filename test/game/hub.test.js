@@ -1,7 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHub, isPlayable, PAUSE_OPTIONS } from "../../src/game/hub.js";
-import { hubHit, hubLayout, pauseLayout } from "../../src/game/hubView.js";
+import {
+  hubHit,
+  hubLayout,
+  offlineHit,
+  offlineLayout,
+  pauseLayout,
+} from "../../src/game/hubView.js";
 import { GAMES } from "../../src/game/games.js";
 import { waveSurvival } from "../../src/game/shooter/index.js";
 
@@ -87,6 +93,28 @@ test("pause menu: resume, restart and quit; one instance per game is kept", () =
   assert.equal(hub.pause(), false, "already paused");
 });
 
+test("quit drops the run from playing or paused (ending the stream)", () => {
+  const a = fakeGame("a");
+  const hub = createHub({ games: [a.module], makeGame: (g) => g.create() });
+  assert.equal(hub.quit(), false, "nothing to quit on the hub");
+  hub.confirm({ canPlay: true });
+  assert.equal(hub.quit(), true);
+  assert.equal(hub.screen, "hub");
+  assert.equal(hub.current, null);
+  hub.confirm({ canPlay: true });
+  hub.pause();
+  assert.equal(hub.quit(), true);
+  assert.equal(hub.screen, "hub");
+  assert.deepEqual(a.calls, ["quit", "quit"]);
+});
+
+test("the offline screen's Go live button is clickable", () => {
+  const world = { width: 960, height: 540 };
+  const r = offlineLayout(world);
+  assert.equal(offlineHit(world, r.x + r.width / 2, r.y + r.height / 2), true);
+  assert.equal(offlineHit(world, 10, 10), false);
+});
+
 test("Escape lets the game close its own screen before pausing", () => {
   const a = fakeGame("a");
   const hub = createHub({ games: [a.module], makeGame: (g) => g.create() });
@@ -107,9 +135,10 @@ test("the hub needs a playable game; the real list has one", () => {
 });
 
 test("clicks hit hub cards and pause buttons", () => {
-  const hub = createHub({ games: GAMES, makeGame: () => ({ quit() {}, restart() {} }) });
+  const games = [...GAMES, soon];
+  const hub = createHub({ games, makeGame: () => ({ quit() {}, restart() {} }) });
   const centre = (r) => [r.x + r.width / 2, r.y + r.height / 2];
-  assert.equal(hubHit(hub, ...centre(hubLayout(GAMES.length)[1])), 1);
+  assert.equal(hubHit(hub, ...centre(hubLayout(games.length)[1])), 1);
   assert.equal(hubHit(hub, 5, 5), -1);
   hub.confirm({ canPlay: true });
   assert.equal(hubHit(hub, 5, 5), -1, "nothing to click while playing");
@@ -132,11 +161,14 @@ test("Wave Survival module: coin packs spend the stream's donations only once", 
     instance.update(16, { input, mouse });
   };
 
+  assert.equal(instance.chatScene(), undefined, "title screen: just playing");
   step("action");
   assert.equal(instance.state.phase, "wave");
+  assert.equal(instance.chatScene(), undefined);
   instance.state.spawn.spawned = instance.state.spawn.config.count; // clear wave 1
   step();
   assert.equal(instance.state.phase, "shop");
+  assert.equal(instance.chatScene(), "shop", "chat hears the player from the shop");
   instance.takeEvents();
 
   step("store");

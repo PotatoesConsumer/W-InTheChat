@@ -75,7 +75,7 @@ const PATTERNS = Object.freeze([
     new RegExp(
       [
         String.raw`\bsend (?:me )?(?:pics|nudes|noods|feet|a pic)\b`,
-        String.raw`\b(?:nudes|noods|onlyfans|horny|sexy|boobs|tits|dick ?pic)\b`,
+        String.raw`\b(?:nudes|noods|onlyfans|horny|sexy|boobs|tits|dick ?pic|boners?|erections?)\b`,
         String.raw`\bshow (?:me )?(?:your |ur )?(?:body|boobs|tits|ass|feet)\b`,
         String.raw`\b(?:wanna|want to) (?:date|sleep with|smash|kiss) ${YOU}\b`,
       ].join("|"),

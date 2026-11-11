@@ -58,7 +58,8 @@ npm run service
 npm run dev
 ```
 
-Then open <http://localhost:5173> in Chrome. The service warms the model before it
+Then open <http://localhost:5173> in Chrome: the home page, and **Watch and play**
+opens the stream (`/stream.html`). The service warms the model before it
 listens. **The first load after a reboot can take over a minute** (84 s once), so start
 the service before anything you're timing or recording. For the study, run the service
 as `npm run service -- --log study-logs` and follow `docs/study/protocol.md`.
@@ -98,6 +99,7 @@ means the prompts had uncommitted edits: don't use those runs in the report.
 | Four personas | 2026-10-27 | Hater, Backseat Gamer and Lurker, voice and safety rules (#15); the Hater went live behind the safety filter (#19) | `docs/personas.md`, "Trials with qwen2.5:3b" |
 | Wave shooter | 2026-11-11 | Every prompt describes the shooter; the Fan answers questions; the Backseat names real actions and is cut at 15 words (#29) | `docs/personas.md`, "Prompt pass for the wave shooter" |
 | Chat slang | 2026-11-11 | The Fan talks like today's chat (W, GG, clutch, sheesh); the Hater calls a death an L; chat calls ("W in the chat") are fixed lines, not prompts | `docs/personas.md`, "Modern chat slang" |
+| Voice and jokes | 2026-11-12 | Every prompt says the streamer may type or say something; each persona plays along with a joke in its own voice | `docs/personas.md`, "Voice input" (`npm run ai:voice`) |
 
 Freeze the prompts before the participant sessions (`docs/study/protocol.md`). After
 that, a change is a new version, reported apart.

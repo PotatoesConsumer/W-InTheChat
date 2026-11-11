@@ -31,7 +31,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
   p50/p95 latency.
 - `npm run ai:personas`: the persona prompt trial: every persona on fixed events with the
   real model, replies flagged for known weaknesses, counts and p50/p95. Guide:
-  `docs/personas.md`.
+  `docs/personas.md`. `npm run ai:voice`: every persona on things the streamer says out
+  loud (jokes, questions), each reply through the reply check.
 - `npm run service`: the chat service on `http://127.0.0.1:8787` with the real model
   (`--condition scripted` for the baseline). `npm run e2e`: end-to-end latency over HTTP + SSE.
   Guide: `docs/service.md`.
@@ -115,17 +116,37 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     `node scripts/blocklist-hash.js <word> <category>`.
   - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
     every `GAME_EVENTS` name, and scripted lines per persona for every major one (tests
-    check). Scripted replies use the same persona selector as ai ones.
-- `src/game/`: browser game (`index.html` loads `main.js`)
+    check). Scripted replies use the same persona selector as ai ones. A fixed line
+    never repeats twice in a row for the same event (`pick`'s `previous`).
+- `index.html`: the home page, like a streaming site's front page (`src/ui/home.js`,
+  `home.css`): the featured stream with a live preview, who's in the chat, how it works.
+  A URL with a query (`?condition=`, `?session=`, `?bot=`, `?service=`) is forwarded to
+  `stream.html`, so old links still open the game. Every page has the nav (Home, Stream,
+  Profile) and the avatar link to the profile.
+- `profile.html`: the profile page (`src/ui/profilePage.js`): display name, avatar colour
+  and bio, totals and the past streams, each opening to its chat summary (lines per
+  persona and the first reply to each of the player's messages; counts, no model call).
+  `src/ui/profile.js` is the DOM-free store (localStorage, tested): the profile, whether
+  the stream page is live, and one record per stream (Go live to End stream), saved as
+  it goes; a few seconds with nothing said isn't kept. `src/ui/channel.js` puts the channel's name,
+  avatar and live state on any page. The display name goes to the service with
+  `POST /condition` (`streamer`) for the prompts and shows on the player's chat lines.
+- `src/game/`: browser game (`stream.html` loads `main.js`)
   - `main.js`: wires it together. Every event goes on the local bus (stats, HUD and
     facecam react) and to the chat service through `connectToService`; replies come back
     over SSE into the overlay. `?service=<url>` changes the service URL. Runs the hub,
     one keymap per game plus the menu keys, and the mouse. `?bot=<skill>` (with
     `&seed=`, `&minutes=`) lets `shooter/bot.js` play Wave Survival through the same
     input path, for the benchmark only; `witc.benchmark()` reports the run.
+    Go live / End stream in the top bar, with a LIVE pill and the uptime. The page
+    opens offline (the home page's Go live opens it with `#live`) and leaving it ends
+    the stream. Offline, the video shows an offline screen (`drawOffline` in
+    `hubView.js`), the game stops, the chat box is off and nothing goes to the service. The study's links (`?session=`) and the bot are always live,
+    with no name, no history and the nav hidden.
   - `hub.js`: the game hub and pause menu as plain state (tested), and **the game
     module interface** every mini-game implements. `hubView.js` draws them;
-    `games.js` lists the games. More games are planned: add one there.
+    `games.js` lists the games (Wave Survival for now). More games are planned: add one
+    there; the hub draws one tile per game.
   - `shooter/`: Wave Survival (W08), a top-down wave shooter. `index.js` is the hub
     module (keys, mouse, drawing); `game.js` the state and rules with no DOM (tested;
     seeded random), which says which catalog event fires when; `waves.js` makes each
@@ -147,6 +168,14 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     console shows one during a game, for a demo; stats and chat don't change.
     `sound.js`: Web Audio sound effects per event, no audio files; M or the top-bar
     button mutes.
+  - `voice.js` + `speech.js`: the optional voice input. The mic button (consent prompt:
+    Chrome's speech recognition may send the audio to Google; the game never records
+    it) and an EN/TH language pick. What it hears shows as subtitles over the video;
+    while live, it goes to chat as a spoken chat event (`spoken: true`, at most one
+    every 4 s, filler dropped; `voice.js`, tested) and the personas react, playing
+    along with jokes. Every chat event (typed or spoken) carries the `scene` (menu,
+    playing, shop, paused; a game reports its shop with `chatScene()`), so chat fits
+    the moment. Hidden for the study and the bot.
   - `expression.js` + `camera.js`: the optional camera (W11), off until the player opts
     in with the top-bar button and a consent prompt. MediaPipe Face Landmarker (loaded
     from a CDN, pinned, only when turned on; CPU, not the GPU) gives blendshape scores in
@@ -156,9 +185,13 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     `witc.camera()` shows live scores for tuning `EXPRESSION_RULES`.
   - `replyLatency.js`: p50/p95 from the game's send to the reply, shown in the top bar
     and in the console as `witc.latency()`
-- `src/ui/`: chat overlay and HUD. `chatLog.js` is the DOM-free state (streamed updates by
-  id), `chatOverlay.js` renders it (textContent only, persona avatar tags, sticky scroll,
-  whole replies typed in), `statsHud.js` the follower/donation counters and hype meter,
+- `src/ui/`: chat overlay and HUD, styled like a real streaming site (Twitch): flat
+  greys, one purple accent, `overlay.css`. `chatLog.js` is the DOM-free state (streamed
+  updates by id), `chatOverlay.js` renders it like Twitch chat (textContent only,
+  "badge name: text", the name in its persona's colour, a sub badge for the Fan, VIP for
+  the Backseat Gamer, broadcaster for the player; sticky scroll, whole replies typed in),
+  `statsHud.js` the follower/donation counters and hype meter in the info bar under the
+  video,
   `studyPanel.js` the researcher's condition switch (F2, hidden by default; reloads with
   `?condition=ai|scripted`, keeping `?session=`, the study's participant id).
 - `src/analysis/`: the study's analysis, pure functions (tested). `variety.js` (repeat
@@ -169,8 +202,9 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
 - `src/study/order.js`: the study's counterbalanced condition order and game URLs
   (`npm run study:order`). Study materials: `docs/study/` (protocol, consent,
   questionnaire, responses template).
-  The player's own lines are UI-only entries (`kind: "player"`, name "Player", ADMIN badge),
-  not chat_messages. No login or name setting yet.
+  The player's own lines are UI-only entries (`kind: "player"`, the profile's display
+  name or "Player", broadcaster badge), not chat_messages. No login: the profile lives
+  in the browser.
 - `scripts/serve.js`: `npm run dev` static server on localhost:5173 (no dotfiles/node_modules)
 - `src/harness/`: mock-event harness (Node only). `scenario.js` (format), `runner.js`
   (plays a scenario, returns a JSON run record), `fakeGenerator.js` (OllamaClient stand-in

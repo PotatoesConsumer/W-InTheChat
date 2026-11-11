@@ -23,6 +23,13 @@ export const CONTEXT_LIMITS = Object.freeze({
 });
 
 /**
+ * A display name the player may set (the profile page): letters (with marks, for Thai),
+ * digits, spaces, `_`, `.` and `-`, up to maxStreamerNameLength. The service refuses
+ * anything else, so a name can't carry instructions into the prompt.
+ */
+export const STREAMER_NAME = /^[\p{L}\p{N}][\p{L}\p{M}\p{N} _.-]{0,24}$/u;
+
+/**
  * @param {ReturnType<import("../events/context.js").toContext>} ctx
  * @param {object} [opts]
  * @param {string} [opts.persona] - Key of PERSONA_PROMPTS.
@@ -58,7 +65,16 @@ export function buildPrompt(
   }
 
   if (typeof facts.playerMessage === "string") {
-    lines.push(`${name} typed in chat: "${oneLine(facts.playerMessage)}"`);
+    const how = facts.spoken === true ? "said on stream" : "typed in chat";
+    // Where they are, so chat doesn't cheer a game that isn't running.
+    if (facts.scene === "menu") {
+      lines.push(`Right now ${name} is in the game menu and hasn't started a game.`);
+    } else if (facts.scene === "shop") {
+      lines.push(`Right now ${name} is in the shop between waves, not fighting.`);
+    } else if (facts.scene === "paused") {
+      lines.push(`${name} has paused the game.`);
+    }
+    lines.push(`${name} ${how}: "${oneLine(facts.playerMessage)}"`);
   } else if (typeof facts.event === "string") {
     lines.push(`Event: ${name} just ${facts.event}.`);
     const details = formatDetails(facts.details);
