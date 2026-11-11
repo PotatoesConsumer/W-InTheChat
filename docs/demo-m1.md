@@ -39,6 +39,7 @@ the top bar.
 | Esc or P | Pause menu (Esc first closes the coin store) |
 | Enter, type, Enter | Player chat |
 | F2 | Study panel (AI chat / scripted chat) |
+| M or the top-bar button | Sound on / off (remembered in this browser) |
 
 **Donations** come like on a real stream: a cleared wave, a close call, a streak or a new
 best sometimes brings one (more likely when hype is high, never below 30 hype). Most are

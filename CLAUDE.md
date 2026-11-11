@@ -122,6 +122,10 @@ any of that, update the file in the same PR.
   - `stats.js`: followers / donations / hype as a pure reducer (`stats.initial/reduce`),
     registered in the contract tests. The model's replies never reach it.
   - `streamer.js`: the facecam avatar; mood from events (tested), `draw()` on the canvas
+  - `effects.js`: stream reactions over any game: a banner on big moments, a shake on a
+    hit, donation alerts by the facecam (state tested, `draw()` on the canvas).
+    `sound.js`: Web Audio sound effects per event, no audio files; M or the top-bar
+    button mutes.
   - `replyLatency.js`: p50/p95 from the game's send to the reply, shown in the top bar
     and in the console as `witc.latency()`
 - `src/ui/`: chat overlay and HUD. `chatLog.js` is the DOM-free state (streamed updates by

@@ -28,6 +28,8 @@ import { createInput } from "./input.js";
 import { stats } from "./stats.js";
 import { donationFor } from "./donations.js";
 import { createStreamer } from "./streamer.js";
+import { createEffects } from "./effects.js";
+import { createSound } from "./sound.js";
 import { createReplyLatency } from "./replyLatency.js";
 import { createHub } from "./hub.js";
 import { drawHub, drawPause, hubHit } from "./hubView.js";
@@ -100,13 +102,21 @@ const bot = params.has("bot")
 let streamStats = stats.initial();
 const hud = createStatsHud(document.getElementById("stats"), streamStats);
 const streamer = createStreamer();
+const effects = createEffects();
+const sound = createSound();
 bus.subscribe("*", (event) => {
   streamStats = stats.reduce(streamStats, event);
   hud.set(streamStats);
   streamer.react(event);
+  effects.react(event);
+  if (event.kind === "game") sound.play(event.name);
   // The same donation the stats just added (same event, same hype), shown in chat.
   const gift = donationFor(event, streamStats.hype);
-  if (gift) overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
+  if (gift) {
+    overlay.pushDonation({ id: `donation-${event.id}`, ts: event.ts, ...gift });
+    effects.donation(gift);
+    sound.play("donation");
+  }
 });
 
 // Chat service: every event goes out, chat_message updates come back.
@@ -271,6 +281,7 @@ function update(dt) {
   }
   publishGameEvents();
   streamer.update(dt);
+  effects.update(dt);
 
   // Every keymap sees every key; presses not used this step are dropped, so a key that
   // opened a screen doesn't also act in it.
@@ -303,7 +314,8 @@ function playBot(dt) {
 
 function render(alpha) {
   const scale = canvas.width / WORLD.width;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  const shake = effects.shake();
+  ctx.setTransform(scale, 0, 0, scale, shake.x * scale, shake.y * scale);
 
   if (hub.screen === "hub") {
     drawHub(ctx, hub, { world: WORLD, clock, hint: hubHint() });
@@ -314,8 +326,14 @@ function render(alpha) {
       pointer: paused ? null : mouse.pointer,
       clock,
     });
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    effects.draw(ctx, {
+      world: WORLD,
+      alertAt: { x: FACECAM_BLOCK.x, y: FACECAM_BLOCK.y, width: FACECAM.width },
+    });
     if (paused) drawPause(ctx, hub, { world: WORLD });
   }
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
   streamer.draw(ctx, {
     x: WORLD.width - FACECAM.width - FACECAM.margin,
@@ -342,6 +360,7 @@ canvas.addEventListener("pointermove", (event) => {
 });
 canvas.addEventListener("pointerdown", (event) => {
   if (event.button !== 0) return;
+  sound.unlock();
   // Clicking the game takes the keyboard back from the chat box.
   if (document.activeElement?.tagName === "INPUT") document.activeElement.blur();
   mouse.pointer = toWorld(event);
@@ -381,16 +400,33 @@ function resizeCanvas() {
 new ResizeObserver(resizeCanvas).observe(canvas);
 resizeCanvas();
 
+// Sound: M or the top-bar button mutes (remembered in this browser).
+const soundButton = document.getElementById("sound");
+function showMute() {
+  soundButton.textContent = sound.muted ? "sound off" : "sound on";
+  soundButton.setAttribute("aria-pressed", String(!sound.muted));
+}
+soundButton.addEventListener("click", () => {
+  sound.toggleMute();
+  showMute();
+  soundButton.blur(); // so Space goes back to the game
+});
+showMute();
+
 // Enter jumps to the chat box; Escape gives the keyboard back to the game; F2 toggles
-// the study panel.
+// the study panel; M mutes.
 window.addEventListener("keydown", (event) => {
+  sound.unlock();
   if (event.key === "F2") {
     event.preventDefault();
     study.toggle();
     return;
   }
   const typing = document.activeElement?.tagName === "INPUT";
-  if (event.key === "Enter" && !typing) {
+  if (event.code === "KeyM" && !typing) {
+    sound.toggleMute();
+    showMute();
+  } else if (event.key === "Enter" && !typing) {
     event.preventDefault();
     overlay.focusInput();
   } else if (event.key === "Escape" && typing) {

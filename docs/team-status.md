@@ -73,10 +73,10 @@ Sittipon's W09 benchmark is done (#24); the rest hasn't started.
 
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
-| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ⬜ Overlay and stats polish, per-persona styling | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
-| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | ⬜ Fixes from the pilot; sound and reaction effects | ⬜ Participant sessions, about 15–20 people, both conditions |
-| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional: MediaPipe expression signal behind an opt-in | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
-| W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | ⬜ Short demo video, final UI fixes | ⬜ Evaluation report, defense rehearsal |
+| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (`feature/w09-w12-polish`): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
+| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | 🟡 Sound and reaction effects done (`feature/w09-w12-polish`); fixes from Prin's pilot session once it has run | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | ⬜ Optional, not started: MediaPipe needs the camera and a model from a CDN; team decision first | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
+| W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
 
 So far: 24 done, 1 started (Prin's W04 demo clip), 11 not started. SEG 02 is complete;
 SEG 03 has started. `npm test` has no TODO
@@ -95,6 +95,25 @@ Don't change these without talking to the team first. The reasons are in the lin
 | Chat history is not sent to the model (`historySize: 0`) | The model copied the history's format and invented follow-ups | `docs/service.md` |
 
 ## Shapphanyu (frontend / game): what's next
+
+0. **W09–W12 in `feature/w09-w12-polish`:**
+   - **Bug, important for the study: the study panel (AI chat / Scripted chat) was visible
+     at startup** since #20. `.study-panel { display: flex }` beat the `hidden`
+     attribute, so participants could see their condition. Fixed with a global
+     `[hidden] { display: none !important }` in `overlay.css`, and a test guards it.
+     **Prin: check this before the pilot session**; any session run on `master` before
+     this merge showed the panel.
+   - Reaction effects (`src/game/effects.js`): "WAVE CLEARED!" / "CLOSE CALL!" /
+     "NEW BEST!" / "N KILL STREAK!" banners, a screen shake on a hit, and a donation
+     alert by the facecam. Sound (`src/game/sound.js`): Web Audio blips per event and a
+     donation chime, no audio files; M or the top-bar button mutes. Both react to bus
+     events, so the same events give the same effects in both conditions.
+   - Coin store: the pack price buttons overlapped "Back to the shop"; fixed. Lurker
+     lines are dimmer than the rest of chat (per-persona styling).
+   - W12: a 75 s draft clip and the shot list for the real video (`docs/demo-final.md`).
+     **Warm the model before recording: the first load took 84 s.**
+   - W11 (MediaPipe) is optional and not started: it needs the webcam, and the model
+     loads from a CDN, against "no runtime dependencies". Decide as a team.
 
 1. **Your W01–W04 is done** (#12, plus #14, which Sittipon wrote with the team's OK; it's
    your area, so read through it). Start new work from `master` on a `feature/...`
@@ -190,6 +209,8 @@ study materials.
 | What | Waiting on |
 |------|------------|
 | A look at the wave shooter before the catalog and evaluation set are frozen | the whole team |
+| Whether to do the optional W11 (MediaPipe, webcam) at all | the whole team |
+| Fixes from the pilot session with people (W10) | Prin's W09 pilot, then Shapphanyu |
 | Whether half the kills going without a chat line is fine for the study (`docs/pilot-w08.md`, finding 1) | the whole team |
 | Tightening `QA_LIMITS` with the pilot's numbers (`docs/pilot-w08.md`, finding 5) | Prin |
 | Recording the Month-1 demo clip | Prin (or anyone) |

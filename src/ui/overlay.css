@@ -20,6 +20,11 @@
   box-sizing: border-box;
 }
 
+/* Class rules like `display: flex` would otherwise override the hidden attribute. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -71,6 +76,20 @@ body {
 .latency {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.sound-toggle {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sound-toggle[aria-pressed="false"] {
+  text-decoration: line-through;
 }
 
 .service-status {
@@ -289,6 +308,10 @@ body {
 }
 .persona-lurker {
   --persona: var(--lurker);
+}
+/* The Lurker is the quiet one: its lines are dimmer than the rest of chat. */
+.persona-lurker .chat-text {
+  color: var(--muted);
 }
 .player {
   --persona: var(--player);
