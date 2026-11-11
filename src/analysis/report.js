@@ -26,6 +26,7 @@ export function formatSessions(sessions) {
     `| | ${conditions.join(" | ")} |`,
     `|---|${conditions.map(() => "---").join("|")}|`,
     row("Sessions", (s) => s.sessions),
+    row("Code version (prompts)", (s) => s.versions.join(", ")),
     row("Minutes played (first 5 min of each)", (s) => num(s.playedMinutes, 1)),
     row("Player messages", (s) => s.playerMessages),
     row("Chat lines", (s) => s.lines),

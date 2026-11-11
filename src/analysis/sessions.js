@@ -39,6 +39,8 @@ export function parseSessionLog(text, file = "session log") {
     session: start.session,
     condition: start.condition,
     startedAt: start.ts,
+    version: start.version ?? null,
+    model: start.model ?? null,
     events: of("event"),
     messages: of("message"),
     replies: of("reply"),
@@ -109,6 +111,8 @@ export function summarizeSessions(logs, { durationMs = SESSION_MS } = {}) {
     };
     out[condition] = {
       sessions: sessions.length,
+      // More than one version means the prompts changed mid-study: report them apart.
+      versions: [...new Set(sessions.map((s) => s.version ?? "unknown"))].sort(),
       playedMinutes: perSession.reduce((a, s) => a + s.playedMs, 0) / 60_000,
       playerMessages: perSession.reduce((a, s) => a + s.playerMessages, 0),
       lines: perSession.reduce((a, s) => a + s.all.lines, 0),

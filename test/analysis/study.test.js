@@ -80,6 +80,7 @@ test("sessions summarized per condition: latency, failures, filtered, variety", 
   const s = summarizeSessions([ai, scripted]);
   assert.deepEqual(Object.keys(s).sort(), ["ai", "scripted"]);
   assert.equal(s.ai.sessions, 1);
+  assert.deepEqual(s.ai.versions, ["unknown"], "logs from before the version was recorded");
   assert.equal(s.ai.playerMessages, 4);
   assert.deepEqual(s.ai.bySource, { ai: 2, fallback: 1, template: 1 });
   assert.deepEqual(s.ai.latency.model.completion, { n: 2, p50: 500, p95: 700, max: 700 });

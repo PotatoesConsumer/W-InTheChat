@@ -4,7 +4,7 @@
  * The study's session log: one JSON-lines file per participant and condition, written
  * when the service runs with `--log <dir>` (docs/study/protocol.md). One record a line:
  *
- *   {type: "start",   ts, session, condition}
+ *   {type: "start",   ts, session, condition, ...about}   about: {version, model}
  *   {type: "event",   ts, event}      every valid event in: game events and player chat
  *   {type: "message", ts, message}    every finished chat line out (done: true)
  *   {type: "reply",   ts, eventId, source, firstTextMs, completionMs, text, failure}
@@ -25,8 +25,10 @@ export const SESSION_LABEL = /^[A-Za-z0-9_-]{1,32}$/;
  * @param {object} opts
  * @param {string} opts.dir - Created if missing.
  * @param {() => number} [opts.now]
+ * @param {object} [opts.about] - Goes on every start record: the code version (git
+ *   commit, which pins the prompts) and the model, which the report has to name.
  */
-export function createSessionLog({ dir, now = Date.now }) {
+export function createSessionLog({ dir, now = Date.now, about = {} }) {
   let file = null;
 
   function write(record) {
@@ -43,7 +45,7 @@ export function createSessionLog({ dir, now = Date.now }) {
       mkdirSync(dir, { recursive: true });
       const stamp = new Date(now()).toISOString().replace(/[:.]/g, "-");
       file = join(dir, `${session ?? "session"}-${condition}-${stamp}.jsonl`);
-      write({ type: "start", session: session ?? null, condition });
+      write({ type: "start", session: session ?? null, condition, ...about });
       return file;
     },
     write,

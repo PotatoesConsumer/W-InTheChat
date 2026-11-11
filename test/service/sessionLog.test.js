@@ -28,7 +28,7 @@ test("session labels are file-name safe ids", () => {
 test("a file per session and condition, from start to end", () =>
   withDir((dir) => {
     let t = Date.UTC(2026, 10, 11, 9, 0, 0);
-    const log = createSessionLog({ dir, now: () => t++ });
+    const log = createSessionLog({ dir, now: () => t++, about: { version: "abc1234" } });
     const file = log.open({ session: "P01", condition: "ai" });
     assert.match(file, /P01-ai-2026-11-11T09-00-00-000Z\.jsonl$/);
     log.write({ type: "event", event: { id: "e1" } });
@@ -43,6 +43,7 @@ test("a file per session and condition, from start to end", () =>
       type: "start",
       session: "P01",
       condition: "ai",
+      version: "abc1234",
     });
   }));
 

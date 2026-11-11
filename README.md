@@ -17,6 +17,9 @@ date; where it disagrees with the proposal, the proposal wins.
 
 ## Requirements
 
+Full setup, with versions, the optional NVIDIA setting and troubleshooting:
+[docs/setup.md](docs/setup.md).
+
 - [Ollama](https://ollama.com) installed locally, with the model pulled:
   ```bash
   ollama pull qwen2.5:3b
