@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>W-InTheChat · Wave Survival</title>
+    <link rel="stylesheet" href="src/ui/overlay.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">W</span>W-InTheChat</a>
+      <span class="topbar-right">
+        <span id="latency" class="latency"></span>
+        <button
+          id="camera"
+          class="toggle"
+          type="button"
+          title="Optional: read your expression from the webcam (opt-in)"
+        ></button>
+        <button id="sound" class="toggle" type="button" title="Mute or unmute (M)"></button>
+        <span id="service-status" class="service-status" data-status="connecting">
+          connecting…
+        </span>
+      </span>
+    </header>
+    <main class="broadcast">
+      <section class="stage">
+        <div class="video">
+          <canvas id="game" aria-label="Game"></canvas>
+        </div>
+        <div class="stream-info">
+          <span class="channel-avatar" aria-hidden="true">W</span>
+          <div class="stream-meta">
+            <div class="channel-name">W-InTheChat</div>
+            <div class="stream-title">surviving waves until chat says stop</div>
+            <div class="stream-tags">
+              <span class="category">Wave Survival</span>
+              <span class="tag">English</span>
+              <span class="tag">Chill</span>
+            </div>
+          </div>
+          <div id="stats" aria-label="Stream stats"></div>
+        </div>
+      </section>
+      <aside id="chat" aria-label="Stream chat"></aside>
+    </main>
+    <section id="study"></section>
+    <script type="module" src="src/game/main.js"></script>
+  </body>
+</html>

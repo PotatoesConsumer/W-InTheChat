@@ -28,6 +28,7 @@ test("ids are valid session labels, and the URL gives the game both", () => {
   assert.throws(() => participantId(0), RangeError);
   assert.throws(() => studySchedule(0), RangeError);
   const url = new URL(sessionUrl("P07", "scripted"));
+  assert.equal(url.pathname, "/stream.html");
   assert.equal(conditionFromUrl(url.search), "scripted");
   assert.equal(sessionFromUrl(url.search), "P07");
 });

@@ -16,7 +16,7 @@ const { values } = parseArgs({
     participants: { type: "string", default: "20" },
     start: { type: "string", default: "1" },
     prefix: { type: "string", default: "P" },
-    game: { type: "string", default: "http://localhost:5173/" },
+    game: { type: "string", default: "http://localhost:5173/stream.html" },
     csv: { type: "boolean", default: false },
   },
 });

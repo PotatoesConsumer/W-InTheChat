@@ -36,7 +36,7 @@ export function studySchedule(count, { start = 1, prefix = "P" } = {}) {
 }
 
 /** The game URL for one half of a session. */
-export function sessionUrl(participant, condition, base = "http://localhost:5173/") {
+export function sessionUrl(participant, condition, base = "http://localhost:5173/stream.html") {
   const url = new URL(base);
   url.searchParams.set("condition", condition);
   url.searchParams.set("session", participant);

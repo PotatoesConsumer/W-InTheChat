@@ -58,7 +58,8 @@ npm run service
 npm run dev
 ```
 
-Then open <http://localhost:5173> in Chrome. The service warms the model before it
+Then open <http://localhost:5173> in Chrome: the home page, and **Watch and play**
+opens the stream (`/stream.html`). The service warms the model before it
 listens. **The first load after a reboot can take over a minute** (84 s once), so start
 the service before anything you're timing or recording. For the study, run the service
 as `npm run service -- --log study-logs` and follow `docs/study/protocol.md`.
