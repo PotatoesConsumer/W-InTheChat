@@ -85,3 +85,34 @@ test("rejects unknown personas and things that aren't context payloads", () => {
   assert.throws(() => buildPrompt({ facts: {} }), /event or a playerMessage/);
   assert.throws(() => buildPrompt(ctx, { history: "nope" }), /history must be an array/);
 });
+
+test("something the streamer said out loud is quoted as said on stream", () => {
+  const ctx = toContext(createChatEvent("these slimes are my friends", { ...FIXED, spoken: true }));
+  assert.deepEqual(ctx.facts, { playerMessage: "these slimes are my friends", spoken: true });
+  assert.equal(
+    buildPrompt(ctx, { streamerName: "Pu" }).prompt,
+    'Pu said on stream: "these slimes are my friends"\nWrite the chat message.',
+  );
+});
+
+test("in the menu or paused, the prompt says so before the message", () => {
+  const say = (scene) =>
+    buildPrompt(toContext(createChatEvent("hi chat", { ...FIXED, scene })), { streamerName: "Pu" })
+      .prompt;
+  assert.equal(
+    say("menu"),
+    "Right now Pu is in the game menu and hasn't started a game.\n" +
+      'Pu typed in chat: "hi chat"\nWrite the chat message.',
+  );
+  assert.ok(say("paused").startsWith("Pu has paused the game.\n"));
+  assert.ok(say("playing").startsWith('Pu typed in chat: "hi chat"'), "playing adds nothing");
+});
+
+test("in the shop, the prompt says nobody is fighting", () => {
+  const ctx = toContext(createChatEvent("what should I buy", { ...FIXED, scene: "shop" }));
+  assert.ok(
+    buildPrompt(ctx, { streamerName: "Pu" }).prompt.startsWith(
+      "Right now Pu is in the shop between waves, not fighting.\n",
+    ),
+  );
+});

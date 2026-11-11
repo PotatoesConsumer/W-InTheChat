@@ -43,6 +43,10 @@ export function toContext(event) {
     ...base,
     name: null,
     importance: null,
-    facts: Object.freeze({ playerMessage: event.text }),
+    facts: Object.freeze({
+      playerMessage: event.text,
+      ...(event.spoken && { spoken: true }),
+      ...(event.scene && { scene: event.scene }),
+    }),
   });
 }

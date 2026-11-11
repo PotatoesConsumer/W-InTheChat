@@ -428,6 +428,26 @@ test("an unsafe reply is never shown: the filter swaps in a fallback", async () 
   assert.deepEqual(handle.stats().failures, { unsafe: 1 });
 });
 
+test("onReply logs what was rejected, for review, without ever showing it", async () => {
+  const rows = [];
+  const { bus, messages, handle } = setup(["you're worthless, quit streaming", "gg wp"], {
+    onReply: (row) => rows.push(row),
+  });
+  bus.publish(game("loss", {}, "major"));
+  await handle.idle();
+  bus.publish(game("win", {}, "major"));
+  await handle.idle();
+  const [rejected, ok] = rows;
+  assert.equal(rejected.source, "fallback");
+  assert.equal(rejected.failure, "unsafe");
+  assert.equal(rejected.rejected.text, "you're worthless, quit streaming");
+  assert.equal(typeof rejected.rejected.category, "string");
+  assert.equal(typeof rejected.persona, "string");
+  assert.ok(!messages.some((m) => m.text.includes("worthless")));
+  assert.equal(ok.failure, null);
+  assert.equal("rejected" in ok, false);
+});
+
 test("minor-event templates stay with the Fan, whose voice they're written in", async () => {
   for (const condition of ["ai", "scripted"]) {
     const { bus, messages, handle } = setup(["unused"], { condition });
@@ -497,4 +517,37 @@ test("a quick follow-up player message is answered; the same line spammed is coa
     ["c0", "c1", "c2"],
   );
   assert.equal(handle.stats().coalesced, 2);
+});
+
+test("a chat call gets a few viewers spamming it, the same in both conditions, no model", async () => {
+  const run = async (condition) => {
+    const { bus, messages, handle, calls } = setup(["should never be used"], { condition });
+    bus.publish(createChatEvent("W in the chat", { id: "call-1", ts: Date.now() }));
+    await handle.idle();
+    return { lines: finals(messages), calls: calls.length };
+  };
+  const ai = await run("ai");
+  const scripted = await run("scripted");
+  assert.equal(ai.calls, 0, "the model isn't asked");
+  assert.equal(ai.lines.length, 3);
+  for (const m of ai.lines) {
+    assert.equal(m.source, "template");
+    assert.equal(m.eventId, "call-1");
+    assert.match(m.text, /^(W|L)/);
+  }
+  assert.equal(new Set(ai.lines.map((m) => m.viewer)).size, 3, "three different viewers");
+  const strip = (lines) => lines.map(({ persona, viewer, text }) => ({ persona, viewer, text }));
+  assert.deepEqual(strip(scripted.lines), strip(ai.lines), "same lines in both conditions");
+});
+
+test("two buys in a row get two different template lines", async () => {
+  const { bus, messages, handle } = setup([], { random: () => 0 });
+  // Far enough apart that the coalescer doesn't merge them, like two separate buys.
+  const t = Date.now();
+  bus.publish(createGameEvent("item_pickup", { item: "medkit" }, { id: "buy-1", ts: t }));
+  bus.publish(createGameEvent("item_pickup", { item: "boots" }, { id: "buy-2", ts: t + 60_000 }));
+  await handle.idle();
+  const [a, b] = finals(messages).map((m) => m.text);
+  assert.ok(a && b);
+  assert.notEqual(a, b);
 });

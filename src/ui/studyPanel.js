@@ -12,6 +12,12 @@
 
 export const CONDITION_LABELS = Object.freeze({ ai: "AI chat", scripted: "Scripted chat" });
 
+/** The study session label in the URL (`?session=P07`), or null. Same rule as the service's. */
+export function sessionFromUrl(search) {
+  const value = new URLSearchParams(search).get("session");
+  return value && /^[A-Za-z0-9_-]{1,32}$/.test(value) ? value : null;
+}
+
 /** The condition asked for in the URL, or null to keep whatever the service runs. */
 export function conditionFromUrl(search) {
   const value = new URLSearchParams(search).get("condition");

@@ -137,14 +137,13 @@ function drawFacecam(ctx, { x, y, width, height, hype, mood, clock }) {
 
   drawFace(ctx, { cx, cy, r: headR, mood, clock });
 
-  // Label
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  roundRect(ctx, x + 6, y + 6, 54, 18, 4);
-  ctx.fill();
-  ctx.fillStyle = "#e8e6ee";
-  ctx.font = "bold 11px system-ui, sans-serif";
-  ctx.fillText("● CAM", x + 12, y + 19);
-
+  ctx.restore();
+  // A thin frame, like a webcam overlay on a real stream.
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, x, y, width, height, 8);
+  ctx.stroke();
   ctx.restore();
 }
 

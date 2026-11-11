@@ -47,8 +47,8 @@ Node's `http` module only; no dependencies.
 | `GET /stream` | SSE. Each `chat_message` update is one `event: chat_message` frame with the message as JSON `data`. A `: ping` comment every 15 s keeps it open. |
 | `GET /health` | `{ok: true, clients}` |
 | `GET /stats` | The pipeline's reply counts, failure reasons and p50/p95 latency |
-| `GET /condition` | `{ok: true, condition, conditions}` |
-| `POST /condition` | `{condition: "ai" \| "scripted"}`. Restarts the pipeline in that condition, so stats and latency start fresh; replies still in flight are dropped. `200 {ok: true, condition}`; `400` for an unknown condition; `503` if the model couldn't be loaded and `409` if the pipeline can't start (both keep the old condition running). |
+| `GET /condition` | `{ok: true, condition, session?, streamer?, conditions}` |
+| `POST /condition` | `{condition: "ai" \| "scripted", session?, streamer?}`. Restarts the pipeline in that condition, so stats and latency start fresh; replies still in flight are dropped. A new `session` label (a participant id like `P07`: 1–32 letters, digits, `-` or `_`) restarts it too, even in the same condition; leaving it out keeps the current one. `streamer` is the player's display name from the profile page, for the prompts (`STREAMER_NAME` in `contextBuilder.js`: 1–25 letters, digits, spaces, `_ . -`); `""` goes back to "the streamer", and a new name restarts the pipeline too. `200 {ok: true, condition, session?, streamer?}`; `400` for an unknown condition, a bad label or a bad name; `503` if the model couldn't be loaded and `409` if the pipeline can't start (both keep the old condition running). |
 
 **Localhost only.** The server binds `127.0.0.1`, refuses requests whose `Host` isn't
 localhost (DNS rebinding), and only answers cross-origin requests from `localhost` /
@@ -74,9 +74,16 @@ chat.send(createGameEvent("win", { score: 12 })); // never rejects
 | Minor game event | `template` line (Fan) | `template` line (Fan) |
 | Major game event | model reply, persona from the selector | `scripted` line, persona from the selector |
 | Player message | model reply, persona from the selector | `scripted` line, persona from the selector |
+| Chat call: the player asks chat to spam something ("W in the chat", "F in chat", "drop a W", "press 1", "spam 🔥") | 3 `template` lines from 3 viewers: the selector's persona, a Fan and the Lurker. The Hater answers a W with an L | the same 3 lines |
 | Model times out, fails, or its reply is rejected | `fallback` line | (model never called) |
 
-- **At most one reply per event**, always linked by `eventId`.
+- **At most one reply per event**, always linked by `eventId`. The exception is a chat
+  call, which gets 3 lines (`CHAT_CALL_LINES`, inside the harness's
+  `maxMessagesPerEvent`). `chatCalls.js` finds the token only at the start of the
+  message, so "everyone in the chat is great" isn't a call. The token must pass the same
+  reply check as any chat line, so "spam" plus a blocked word gets nothing. The lines are
+  the same in both conditions and never wait on the model, so calls don't change the AI
+  vs scripted comparison.
 - **Choices come first.** Persona, viewer name and the fixed line are drawn from
   `deps.random` when the event arrives, before the model runs: three draws per event,
   coalesced or not. The same seed and events give the same chat whatever the model
@@ -212,3 +219,15 @@ No fallbacks. For comparison, with `streamPartials` on, the first partial text s
 
 These are short runs, not the pilot benchmark (W08/W09). Earlier, the cold model load
 took about 60 s.
+
+## Session log (the study)
+
+`npm run service -- --log study-logs` writes one JSON-lines file per session label and
+condition (`src/service/sessionLog.js`), named `<session>-<condition>-<time>.jsonl`.
+The game sends the label from `?session=` in its URL. Each line is one record: `start`
+(session, condition, code version, model), `event` (every valid event in, including what
+the player typed), `message` (every finished chat line out), `reply` (latency, source,
+persona, failure, and `rejected`: the model's text when the reply check or the safety
+filter turned it down, which is never shown) and `end` (the pipeline's stats and the
+peak GPU memory during that half, from nvidia-smi once a second). The folder is git-ignored and `npm run dev` won't serve it.
+How the study uses it: `docs/study/protocol.md`.

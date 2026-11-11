@@ -73,7 +73,9 @@ a slow GPU.
 
 **What it means for the study:** ~500 ms p50 / ~720 ms p95 is the honest number for this
 game on this laptop, and it's well inside the 3 s timeout. Ways to get the faster
-numbers, for the team to decide (W10), none of them done here:
+numbers, for the team to decide (W10), none of them done here. **Decided in W10:
+accept ~500 ms**, with the NVIDIA setting as an optional setup step
+(`docs/team-status.md`, "Decisions already made"):
 
 - Set the NVIDIA power setting for Ollama to "prefer maximum performance". It's a
   per-machine system setting, so it would go in the setup docs (W12), and every study

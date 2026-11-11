@@ -9,6 +9,7 @@ import {
   createGameEvent,
   createChatEvent,
   validateEvent,
+  SCENES,
   importanceOf,
 } from "../../src/events/schema.js";
 
@@ -151,4 +152,29 @@ test("rejects chat text that is missing, empty or too long", () => {
 test("reports every problem at once", () => {
   const paths = errorPaths({ v: 1, id: "", kind: "game", ts: -5, name: "nope", data: { a: {} } });
   assert.deepEqual(paths.sort(), ["data.a", "id", "name", "ts"]);
+});
+
+test("a spoken chat event says so; typed ones have no spoken field", () => {
+  const spoken = createChatEvent("  hi chat  ", { spoken: true });
+  assert.equal(spoken.spoken, true);
+  assert.equal(spoken.text, "hi chat");
+  assert.equal("spoken" in createChatEvent("hi chat"), false, "typed stays as before");
+  assert.equal("spoken" in createChatEvent("hi chat", { spoken: false }), false);
+
+  const typed = createChatEvent("hi");
+  assert.equal(validateEvent({ ...typed, spoken: true }).ok, true);
+  const bad = validateEvent({ ...typed, spoken: "yes" });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.errors[0].path, "spoken");
+  assert.equal(validateEvent({ ...typed, spoken: false }).ok, false, "true or absent");
+  assert.equal(validateEvent({ ...createGameEvent("win"), spoken: true }).ok, false);
+});
+
+test("a chat event can say where the player was: menu, playing, shop or paused", () => {
+  assert.deepEqual(SCENES, ["menu", "playing", "shop", "paused"]);
+  assert.equal(createChatEvent("hi", { scene: "menu" }).scene, "menu");
+  assert.equal("scene" in createChatEvent("hi"), false, "left out when unknown");
+  const bad = validateEvent({ ...createChatEvent("hi"), scene: "lobby" });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.errors[0].path, "scene");
 });

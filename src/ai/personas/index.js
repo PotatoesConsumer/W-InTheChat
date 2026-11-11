@@ -8,12 +8,18 @@ import { FAN_SYSTEM_PROMPT } from "./fan.js";
 import { HATER_SYSTEM_PROMPT } from "./hater.js";
 import { BACKSEAT_SYSTEM_PROMPT } from "./backseat.js";
 import { LURKER_SYSTEM_PROMPT } from "./lurker.js";
-import { parseChatLine } from "./parse.js";
+import { parseChatLine, limitSentences } from "./parse.js";
+
+/** The Backseat Gamer's limit: one instruction, as its prompt asks (docs/personas.md). */
+const BACKSEAT_MAX_WORDS = 15;
 
 export const PERSONA_PROMPTS = Object.freeze({
   fan: Object.freeze({ system: FAN_SYSTEM_PROMPT, parse: parseChatLine }),
   hater: Object.freeze({ system: HATER_SYSTEM_PROMPT, parse: parseChatLine }),
-  backseat: Object.freeze({ system: BACKSEAT_SYSTEM_PROMPT, parse: parseChatLine }),
+  backseat: Object.freeze({
+    system: BACKSEAT_SYSTEM_PROMPT,
+    parse: (raw) => limitSentences(parseChatLine(raw), BACKSEAT_MAX_WORDS),
+  }),
   lurker: Object.freeze({ system: LURKER_SYSTEM_PROMPT, parse: parseChatLine }),
 });
 

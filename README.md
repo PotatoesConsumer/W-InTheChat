@@ -17,6 +17,9 @@ date; where it disagrees with the proposal, the proposal wins.
 
 ## Requirements
 
+Full setup, with versions, the optional NVIDIA setting and troubleshooting:
+[docs/setup.md](docs/setup.md).
+
 - [Ollama](https://ollama.com) installed locally, with the model pulled:
   ```bash
   ollama pull qwen2.5:3b
@@ -31,12 +34,13 @@ date; where it disagrees with the proposal, the proposal wins.
 npm run dev
 ```
 
-Serves the game on <http://localhost:5173> (open it in Chrome). It opens on the game
-hub; the first game is Wave Survival, a top-down wave shooter: Space starts, WASD
+Serves the site on <http://localhost:5173> (open it in Chrome). It opens on the home
+page, laid out like a streaming site's front page; **Watch and play** (or **Go live**)
+opens the stream page, `stream.html`, on the game hub. The first game is Wave Survival, a top-down wave shooter: Space starts, WASD
 moves, arrow keys or the mouse shoot, the shop between waves takes 1–6 (buy) and C (the
 coin store, where donations buy coin packs). Esc pauses. Enter focuses the chat box and
-Escape leaves it. Controls and events: `docs/demo-m1.md`. The top bar shows followers, donations, the hype meter and the
-reply latency.
+Escape leaves it. Controls and events: `docs/demo-m1.md`. The info bar under the game shows followers,
+donations and the hype meter; the top bar shows the reply latency.
 
 ```bash
 npm run service

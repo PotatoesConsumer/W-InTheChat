@@ -1,12 +1,30 @@
 # Team status and handoff
 
-Last updated 2026-11-01, after #24 (Sittipon's W09 full pipeline benchmark in Chrome,
-`docs/benchmark-w09.md`) merged. Before that: #13 (team status), #14 (Month-1 demo), #15
-(persona prompts), #17 (persona selector, coalescing, rate limit), #18 (W08 regression
-pass and Month-2 demo guide), #19 (safety filter, the Hater live, player-chat coalescing
-fix), #20 (scripted baseline switch), #21/#22 (wave shooter, game hub, coin store) and
-#23 (W08 laptop pilot, limits) merged.
-Merged branches are deleted, `tawan` included; only `master` remains.
+Last updated 2026-11-12, for `fix/chat-fits-the-moment` (chat in the shop: a `shop`
+scene and a Backseat buying rule; fewer bat lines; no fixed line twice in a row, in both
+conditions. **Prompts and templates changed**: rerun `npm run eval:runs` before the
+study). Before that: #41 (the optional voice input with subtitles, joke rules, the menu
+scene), #40 (the stream
+page opens offline, a LIVE pill, a chat summary per past stream), #39 (the home page, profile and Go live recorded as extras in the report),
+#38 (Go live / End stream with an offline screen; a profile page
+with a display name, avatar colour, bio and the past streams; Home / Stream / Profile
+nav. The display name reaches the prompts through `POST /condition`. Study links
+(`?session=`) stay live with no name, so the study is unchanged), #37 (the home page; the stream moved to
+`stream.html`), #35 (the stream page restyled like Twitch), #34
+(Twitch-style donation alerts), #33 (chat
+calls: "W in the chat" gets viewers spamming W, the same in both conditions; modern
+slang for the Fan and the Hater), #32 (the last gaps against the proposal:
+rejected replies and peak GPU memory in the session logs, failure cases and 95%
+intervals, the deviations in the report draft), #31 (regression report), #30 (W12: `docs/setup.md`, the report draft and
+defense checklist), #29 (W10 prompt pass, idle-GPU decision), #28 (variety metrics,
+rating sheet, `npm run study:analyze`), #27 (the study kit, `docs/study/`),
+#26 (Shapphanyu's W09–W12 overlay polish, study panel fix, sound and effects, optional
+camera, draft demo clip), #13 (team status), #14 (Month-1 demo), #15 (persona prompts), #17 (persona
+selector, coalescing, rate limit), #18 (W08 regression pass and Month-2 demo guide), #19
+(safety filter, the Hater live, player-chat coalescing fix), #20 (scripted baseline
+switch), #21/#22 (wave shooter, game hub, coin store), #23 (W08 laptop pilot, limits),
+#24 (W09 full pipeline benchmark, `docs/benchmark-w09.md`) and #25 (status) merged.
+Merged branches are deleted, `tawan` included.
 
 Written for the three of us **and for the AI assistants we work with**. AI assistant:
 read this before starting a task, then check it against the code and `git log`. If
@@ -69,17 +87,23 @@ switch running on the same events.
 
 **SEG 03, Study & Report (W09–W12).** Milestone M3: a locally runnable prototype, AI vs
 scripted chat compared with real participants, p50/p95 reported, report ready to defend.
-Sittipon's W09 benchmark is done (#24); the rest hasn't started.
+Sittipon's W09 benchmark (#24) and Shapphanyu's W09 polish (#26) are done. Shapphanyu has
+started W10–W12, and the study materials are ready (`docs/study/`), so the pilot session
+can run. **From here, most tasks need people**: the pilot, 15–20 participants, blind
+raters, a real face for the camera thresholds, the video and the rehearsal.
 
 | Week | Sittipon (backend / AI) | Shapphanyu (frontend / game) | Prin (multimodal / QA) |
 |------|-------------------------|------------------------------|------------------------|
-| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (`feature/w09-w12-polish`): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | ⬜ Study materials (questionnaire, consent, counterbalanced order); pilot session |
-| W10 | ⬜ Prompt tuning from pilot logs (hosted API only if local is still too slow) | ✅ Sound and reaction effects; fixes from Shapphanyu's 3-person pilot: AI replies stopping (model unloaded), facecam blocking the player, a shot sound (`feature/w09-w12-polish`, see below) | ⬜ Participant sessions, about 15–20 people, both conditions |
-| W11 | ⬜ Variety metrics (repeat rate, distinct-2), latency and failure analysis | 🟡 Optional camera done (`feature/w09-w12-polish`): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | ⬜ Blind rating: relevance 1–5, persona identification, confusion matrix |
-| W12 | ⬜ Setup docs: Ollama install, model pull, prompt versions | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | ⬜ Evaluation report, defense rehearsal |
+| W09 | ✅ Full pipeline benchmark in Chrome: AI reply 507 / 721 ms p50 / p95, GPU 2.2 of 6 GB; the idle GPU explains the slower replies (#24, `docs/benchmark-w09.md`) | ✅ Overlay polish (#26): **the study panel showed at startup** (fixed, see below), coin store layout, Lurker lines dimmed | 🟡 Study materials done (#27): protocol, consent, questionnaire, `npm run study:order`, session log (`--log`). Shapphanyu ran a 3-person pilot of the game (#43); **a dry run of the full protocol (consent, questionnaire, session logs) is still to do** |
+| W10 | ✅ Prompt pass for the wave shooter from the bot pilot and #18's samples (#29, `docs/personas.md`): copied examples, loss-as-win, he/she and long Backseat lines all 0 of 44; local stays (no hosted API). Idle GPU: accept ~500 ms | ✅ Sound and reaction effects (#26); fixes from Shapphanyu's 3-person pilot: AI replies stopping (model unloaded), facecam blocking the player, a shot sound (#43, see below) | ⬜ Participant sessions, about 15–20 people, both conditions |
+| W11 | 🟡 Variety metrics (repeat rate, distinct-2), latency and failure analysis built (#28, `npm run study:analyze`); **the numbers come after the participant sessions** | 🟡 Optional camera done (#26): opt-in MediaPipe expression signal, tested with Chrome's fake camera; thresholds to tune on a real face | 🟡 Blind rating sheet, rater guide and analysis built (`npm run eval:runs`, `study:rating-sheet`, `study:analyze`); **needs 2–3 raters from outside the team** |
+| W12 | ✅ Setup docs: Ollama install, model pull, prompt versions, troubleshooting (`docs/setup.md`, #30) | 🟡 Draft clip and shot list (`docs/demo-final.md`); the final video after the participant sessions | 🟡 Report drafted with the measured parts filled (`docs/report/evaluation-report.md`) and a defense checklist (`docs/report/defense.md`); **results after the sessions, rehearsal with the team** |
 
-So far: 24 done, 1 started (Prin's W04 demo clip), 11 not started. SEG 02 is complete;
-SEG 03 has started. `npm test` has no TODO
+So far: 28 done, 7 started (Prin's W04 demo clip, W09 protocol dry run, W11 rating and
+W12 report, Shapphanyu's W11–W12, Sittipon's W11 analysis), 1 not started (Prin's W10
+participant sessions). **Everything left needs people**: the protocol dry run and the sessions, the raters, a
+real face for the camera, the video, the results in the report, and the rehearsal.
+SEG 02 is complete; SEG 03 has started. `npm test` has no TODO
 tests left.
 
 ## Decisions already made
@@ -93,10 +117,15 @@ Don't change these without talking to the team first. The reasons are in the lin
 | Model replies run **one at a time** from a first-in, first-out queue, with deadlines counted from event arrival | One 6 GB GPU; and routing on "is the model busy" made the same events get different chat | `docs/service.md` |
 | No routing decision may depend on timing | The same seed and events must give the same chat (`same-choices`) | `docs/pipeline-contract.md` |
 | Chat history is not sent to the model (`historySize: 0`) | The model copied the history's format and invented follow-ups | `docs/service.md` |
+| Idle GPU: accept ~500 ms p50 / ~720 ms p95 in the game (W10) | Well inside the 3 s timeout; keeping the GPU warm would queue with real replies, and a required driver setting is one more thing to get wrong on a study laptop. The NVIDIA "prefer maximum performance" setting stays an optional step in the setup docs | `docs/benchmark-w09.md` |
+| Template lines for minor events stay the Fan's (#18 finding 3) | They're the same in both conditions, so they don't change the comparison, and the rating sheet leaves them out | `docs/evaluation.md` |
+| Chat calls ("W in the chat") get 3 fixed lines in both conditions, not a model reply | Real chat spams the token, which one persona reply can't do; fixed lines keep the comparison fair and never wait on the model | `docs/service.md` |
+| Voice input (optional in the proposal) is added, off in the study (2026-11-12; it was left out until then) | The player asked for it. Chrome's Web Speech may send the audio to Google, so it's off until the player agrees to a prompt that says so; only text is used, never audio. The study's links hide it, so the comparison is unchanged | `docs/report/evaluation-report.md`, "Deviations" |
+| Prompts are frozen once the participant sessions start | Results must name one prompt version (the git commit); a change mid-study splits the data | `docs/study/protocol.md` |
 
 ## Shapphanyu (frontend / game): what's next
 
-0. **W09–W12 in `feature/w09-w12-polish`:**
+0. **W09–W12, merged (#26):**
    - **Bug, important for the study: the study panel (AI chat / Scripted chat) was visible
      at startup** since #20. `.study-panel { display: flex }` beat the `hidden`
      attribute, so participants could see their condition. Fixed with a global
@@ -105,7 +134,11 @@ Don't change these without talking to the team first. The reasons are in the lin
      this merge showed the panel.
    - Reaction effects (`src/game/effects.js`): "WAVE CLEARED!" / "CLOSE CALL!" /
      "NEW BEST!" / "N KILL STREAK!" banners, a screen shake on a hit, and a donation
-     alert by the facecam. Sound (`src/game/sound.js`): Web Audio blips per event and a
+     alert. **Since `feature/donation-alerts` (Sittipon) the alert is Twitch-style:**
+     one at a time at the top centre of the game, with the donor, the amount and their
+     message; $5+ and $20+ get a bigger, longer alert in another colour, $20+ adds
+     confetti, and the chime plays when the alert appears, not when it's queued.
+     `witc.testAlert(amount)` shows one for a demo. Sound (`src/game/sound.js`): Web Audio blips per event and a
      donation chime, no audio files; M or the top-bar button mutes. Both react to bus
      events, so the same events give the same effects in both conditions.
    - Coin store: the pack price buttons overlapped "Back to the shop"; fixed. Lurker
@@ -141,8 +174,8 @@ Don't change these without talking to the team first. The reasons are in the lin
        it.
      - "Should have more sound" (1 of 3): every event already had one, so firing got a
        short, quiet shot sound.
-     - "Should have more games" (2 of 3): not done; a team call (the hub has a "More
-       games" slot). Nobody missed a donation or the hype meter, and nothing was too
+     - "Should have more games" (2 of 3): not done; a team call (the hub draws one
+       tile per game in `games.js`). Nobody missed a donation or the hype meter, and nothing was too
        loud or too fast.
 
 1. **Your W01–W04 is done** (#12, plus #14, which Sittipon wrote with the team's OK; it's
@@ -219,8 +252,16 @@ now; `docs/demo-m1.md` has the run steps, a shot list and the first bug bash (fi
 and known issues). Add anything else you find there.
 
 **W08 is done (#18).** Run `npm run regression` (add `-- --model` with Ollama running)
-before every demo and after big merges; reports go in `docs/regression/`. Next up: W09
-study materials.
+before every demo and after big merges; reports go in `docs/regression/`.
+
+**W09 study materials are ready** (#27, written by Sittipon with your
+lane's tasks; read them before the pilot): `docs/study/protocol.md` is the session
+script, with `consent.md`, `questionnaire.md` and `responses-template.csv` next to it.
+`npm run study:order` prints the counterbalanced schedule. `npm run service -- --log
+study-logs` logs every half to its own file, labelled by the game's `?session=`. Still
+yours: **freeze the evaluation event set** (its `data` could use the shooter's wave /
+hp fields first), **run the pilot with 2 people**, then the participant sessions (W10).
+Fill in the advisor's name on the consent form.
 
 ## Sittipon (backend / AI): what's next
 
@@ -229,10 +270,12 @@ study materials.
 | W05 | Done (#15). Known weaknesses for a later prompt pass are in `docs/personas.md`; the Backseat Gamer's advice can name real actions once the mini-game is chosen |
 | W06 | Done (#17): persona selector, coalescing by event timestamps, and a rate limit that delays lines instead of dropping them. Since #19, player messages only coalesce when the same text repeats (a quick follow-up question used to get no reply, #18 finding 1) |
 | W07 | Done: the safety filter (#19), `src/service/safetyFilter.js`, registered in `filters`, the Hater in `aiPersonas`. Scripted lines per persona came with Shapphanyu's switch (#20, #18 finding 2) |
-| Prompt pass | From #18's real-model samples: the Fan invented a score, the Lurker answered a 5-kill streak with "hi". Also decide whether template lines stay all-Fan (#18 finding 3) |
+| Prompt pass | Done with W10 (#29): numbers only from the details, the Lurker's "hi" only to a greeting, and template lines stay all-Fan (decided below) |
 | W08 | Done (#23): `npm run pilot` (a bot plays the shooter into the real model) and `replyTimeoutMs` 3000, `minGenerationMs` 800, `maxTokens` 32 from its numbers (`docs/pilot-w08.md`) |
 | W09 | Done (#24): `npm run benchmark` with the bot in Chrome (`?bot=`): AI reply 507 / 721 ms p50 / p95, templates 6 ms, GPU 2.2 of 6 GB. Idle test: after ~2 s idle the GPU clocks down and replies run 2.4× slower per token, which is why the game is slower than `npm run e2e` (`docs/benchmark-w09.md`) |
-| W10 | Prompt tuning from pilot logs, plus a team decision on the idle GPU (NVIDIA power setting, keeping it warm, or accepting ~500 ms; `docs/benchmark-w09.md`) |
+| W10 | Done (#29): every prompt describes the shooter (`GAME_CONTEXT`), the Fan answers questions, the Backseat names real actions and is cut at 15 words; the trial's before/after is in `docs/personas.md`. Idle GPU: accepted ~500 ms (decision below). If Prin's pilot with people turns up new problems, do one more pass before the sessions, then freeze the prompts |
+| W11 | Built (#28): `npm run study:analyze`. Run it after the sessions |
+| W12 | Done (#30): `docs/setup.md`, with the prompt versions table. Session logs now record the code version and model, and `study:analyze` prints the version per condition |
 
 ## Waiting on someone
 

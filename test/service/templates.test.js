@@ -87,3 +87,38 @@ test("pick and lineFor use the given random, including its edges", () => {
   );
   assert.throws(() => lineFor({ kind: "game", name: "headshot" }, () => 0), /headshot/);
 });
+
+test("a fixed line never comes twice in a row when there's another", () => {
+  const list = ["a", "b", "c"];
+  assert.equal(
+    pick(list, () => 0, "a"),
+    "b",
+    "the draw's line was the last one: next",
+  );
+  assert.equal(
+    pick(list, () => 0.999999, "c"),
+    "a",
+    "wraps around",
+  );
+  assert.equal(
+    pick(list, () => 0, "b"),
+    "a",
+    "a different last line changes nothing",
+  );
+  assert.equal(
+    pick(["only"], () => 0, "only"),
+    "only",
+    "one line: nothing else to say",
+  );
+  const win = { kind: "game", name: "win" };
+  assert.notEqual(
+    lineFor(win, () => 0, EVENT_LINES.win[0]),
+    EVENT_LINES.win[0],
+  );
+  const chat = { kind: "chat", name: null };
+  const first = scriptedLineFor(chat, "fan", () => 0);
+  assert.notEqual(
+    scriptedLineFor(chat, "fan", () => 0, first),
+    first,
+  );
+});

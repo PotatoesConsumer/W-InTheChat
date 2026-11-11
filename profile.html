@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile · W-InTheChat</title>
+    <link rel="stylesheet" href="src/ui/overlay.css" />
+    <link rel="stylesheet" href="src/ui/home.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">W</span>W-InTheChat</a>
+      <nav class="topnav" aria-label="Site">
+        <a href="./">Home</a>
+        <a href="stream.html">Stream</a>
+        <a href="profile.html" aria-current="page">Profile</a>
+      </nav>
+      <span class="topbar-right">
+        <a id="go-live" class="button" href="stream.html">Go live</a>
+        <a class="topbar-avatar" href="profile.html" data-channel="avatar" title="Your profile"
+          >W</a
+        >
+      </span>
+    </header>
+
+    <main class="page">
+      <section class="profile-head" aria-label="Channel">
+        <div class="profile-banner" id="banner"></div>
+        <div class="profile-id">
+          <span
+            class="channel-avatar profile-avatar"
+            data-channel="avatar"
+            data-live="avatar"
+            aria-hidden="true"
+            >W</span
+          >
+          <div class="profile-who">
+            <h1 class="profile-name" data-channel="name">W-InTheChat</h1>
+            <p id="profile-bio" class="profile-bio"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-section" aria-labelledby="totals-title">
+        <h2 id="totals-title" class="section-title">All streams</h2>
+        <div class="totals">
+          <div class="stat">
+            <span class="stat-value" id="total-streams">0</span>
+            <span class="stat-label">streams</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="total-time">0 s</span>
+            <span class="stat-label">time live</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="total-wave">0</span>
+            <span class="stat-label">best wave</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="total-followers">0</span>
+            <span class="stat-label">followers</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="total-donations">$0</span>
+            <span class="stat-label">donations</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-section" aria-labelledby="streams-title">
+        <div class="section-head">
+          <h2 id="streams-title" class="section-title">Past streams</h2>
+          <button id="clear-history" class="button secondary" type="button">Clear history</button>
+        </div>
+        <div class="table-wrap">
+          <table class="streams">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Length</th>
+                <th scope="col">Game</th>
+                <th scope="col" class="num">Best wave</th>
+                <th scope="col" class="num">Followers</th>
+                <th scope="col" class="num">Donations</th>
+                <th scope="col" class="num">Your messages</th>
+                <th scope="col">Chat</th>
+              </tr>
+            </thead>
+            <tbody id="streams"></tbody>
+          </table>
+        </div>
+        <p id="no-streams" class="empty">No streams yet. Go live and your streams show up here.</p>
+        <p class="note">Your profile and streams are saved in this browser only.</p>
+      </section>
+
+      <section class="home-section" aria-labelledby="edit-title">
+        <h2 id="edit-title" class="section-title">Edit profile</h2>
+        <form id="profile-form" class="profile-form" novalidate>
+          <label class="field">
+            <span class="field-label">Display name</span>
+            <input id="name" name="name" type="text" maxlength="25" autocomplete="off" />
+            <span class="field-hint">
+              Chat calls you this. Up to 25 letters, numbers, spaces, _ . or -. Empty: chat says
+              "the streamer".
+            </span>
+            <span class="field-error" id="name-error" hidden></span>
+          </label>
+
+          <fieldset class="field">
+            <legend class="field-label">Avatar colour</legend>
+            <div class="swatches" id="swatches"></div>
+          </fieldset>
+
+          <label class="field">
+            <span class="field-label">Bio</span>
+            <textarea id="bio" name="bio" rows="3" maxlength="160"></textarea>
+            <span class="field-hint"><span id="bio-count">0</span> / 160</span>
+            <span class="field-error" id="bio-error" hidden></span>
+          </label>
+
+          <div class="form-actions">
+            <button class="button" type="submit">Save changes</button>
+            <span id="saved" class="saved" role="status"></span>
+          </div>
+        </form>
+      </section>
+    </main>
+    <script type="module" src="src/ui/profilePage.js"></script>
+  </body>
+</html>

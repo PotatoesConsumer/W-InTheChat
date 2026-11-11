@@ -7,6 +7,8 @@
  *   repeat of a recent event      -> coalesced: no message (coalesce.js; player messages
  *                                    only when the same text repeats)
  *   minor game event              -> template line (both conditions)
+ *   chat call ("W in the chat")   -> a few viewers spam it, fixed lines (both conditions;
+ *                                    chatCalls.js)
  *   major game event / chat       -> reply from the model, persona from the selector (ai)
  *                                 -> scripted line, model never called     (scripted)
  *   timeout / error / bad output  -> fallback line
@@ -38,6 +40,8 @@ import { createLatencyLog } from "./latency.js";
 import { selectPersona } from "./selector.js";
 import { createCoalescer, coalesceKey } from "./coalesce.js";
 import { createPacer } from "./pacer.js";
+import { chatCall, chatCallLines, CHAT_CALL_LINES } from "./chatCalls.js";
+import { seededRandom } from "../game/random.js";
 
 /**
  * Set from the W08 laptop pilot (docs/pilot-w08.md: the wave shooter played by a bot at
@@ -180,7 +184,7 @@ export default function startPipeline(bus, emit, deps = {}) {
     });
   }
 
-  function finished(ctx, { source, text, viewer, firstAt, doneAt, failure }) {
+  function finished(ctx, { source, persona, text, viewer, firstAt, doneAt, failure, rejected }) {
     counts[source]++;
     if (failure) failures[failure] = (failures[failure] ?? 0) + 1;
     remember(viewer, text);
@@ -191,14 +195,39 @@ export default function startPipeline(bus, emit, deps = {}) {
       completionMs: doneAt - ctx.ts,
     };
     latency.record(row);
-    onReply?.({ ...row, text, failure: failure ?? null });
+    onReply?.({ ...row, persona, text, failure: failure ?? null, ...(rejected && { rejected }) });
   }
 
   /** One-update reply from a fixed line (template, scripted). */
   function replyWithLine(ctx, { persona, viewer, source, text }) {
     send({ eventId: ctx.eventId, persona, viewer, source, text, done: true }, (sent) =>
-      finished(ctx, { source, text, viewer, firstAt: sent.ts, doneAt: sent.ts }),
+      finished(ctx, { source, persona, text, viewer, firstAt: sent.ts, doneAt: sent.ts }),
     );
+  }
+
+  /**
+   * A chat call: CHAT_CALL_LINES viewers spam the token. The selector's persona goes
+   * first, so both conditions show the same labels; the rest are a Fan and the Lurker.
+   * Viewers and wording come from `roll`, drawn at arrival like every other choice.
+   */
+  function replyWithChatCall(ctx, { persona, viewer, token, roll }) {
+    const personas = [persona, "fan", "lurker"].slice(0, CHAT_CALL_LINES);
+    const random = seededRandom((Math.floor(roll * 2 ** 32) ^ 0x9e3779b9) >>> 0);
+    const used = new Set([viewer]);
+    chatCallLines(token, personas, roll).forEach((line, i) => {
+      let who = viewer;
+      if (i > 0) {
+        const free = VIEWERS[line.persona].filter((v) => !used.has(v));
+        who = pick(free.length ? free : VIEWERS[line.persona], random);
+        used.add(who);
+      }
+      replyWithLine(ctx, {
+        persona: line.persona,
+        viewer: who,
+        source: "template",
+        text: line.text,
+      });
+    });
   }
 
   /**
@@ -239,6 +268,7 @@ export default function startPipeline(bus, emit, deps = {}) {
           (sent) =>
             finished(ctx, {
               source: "fallback",
+              persona,
               text: fallbackText,
               viewer,
               firstAt: sent.ts,
@@ -289,6 +319,7 @@ export default function startPipeline(bus, emit, deps = {}) {
     const task = (async () => {
       let reply = null;
       let failure = null;
+      let rejected = null;
       try {
         const result = await generate(prompt, {
           system,
@@ -296,9 +327,14 @@ export default function startPipeline(bus, emit, deps = {}) {
           signal: controller.signal,
           onText: limits.streamPartials ? onText : undefined,
         });
-        const check = checkReply(parse(String(result?.text ?? "")));
+        const parsed = parse(String(result?.text ?? ""));
+        const check = checkReply(parsed);
         if (check.ok) reply = check.text;
-        else failure = check.reason;
+        else {
+          failure = check.reason;
+          // Never shown; kept for the log so failures can be reviewed (proposal).
+          rejected = { text: parsed.slice(0, 200), category: check.category ?? null };
+        }
       } catch (err) {
         failure = err?.name === "TimeoutError" ? "timeout" : "error";
       } finally {
@@ -320,7 +356,16 @@ export default function startPipeline(bus, emit, deps = {}) {
         text = fallbackText;
       }
       update(text, true, source, (sent) =>
-        finished(ctx, { source, text, viewer, firstAt, doneAt: sent.ts, failure }),
+        finished(ctx, {
+          source,
+          persona,
+          text,
+          viewer,
+          firstAt,
+          doneAt: sent.ts,
+          failure,
+          rejected,
+        }),
       );
     })().finally(() => {
       active.delete(id);
@@ -330,9 +375,18 @@ export default function startPipeline(bus, emit, deps = {}) {
     active.set(id, { controller, task });
   }
 
+  /** The last fixed line per event (and per persona for scripted), so none repeats twice in a row. */
+  const lastLines = new Map();
+  const fixedLine = (key, choose) => {
+    const text = choose(lastLines.get(key));
+    lastLines.set(key, text);
+    return text;
+  };
+
   const off = bus.subscribe("*", (event) => {
     if (stopped) return;
     const ctx = toContext(event);
+    const lineKey = ctx.kind === "chat" ? "chat" : ctx.name;
 
     // Choices first, before the model runs: three draws per event on every path, even
     // for an event that's coalesced, so one event's fate never shifts another's choices.
@@ -345,12 +399,18 @@ export default function startPipeline(bus, emit, deps = {}) {
     const viewer = pick(VIEWERS[persona], random);
     const roll = random();
 
+    const token = ctx.kind === "chat" ? chatCall(ctx.facts.playerMessage) : null;
     if (!coalescer.admit(coalesceKey(ctx), ctx.ts)) {
       coalesced++;
+    } else if (token) {
+      replyWithChatCall(ctx, { persona, viewer, token, roll });
     } else if (ctx.importance === IMPORTANCE.MINOR) {
-      replyWithLine(ctx, { persona, viewer, source: "template", text: lineFor(ctx, () => roll) });
+      const text = fixedLine(`template:${lineKey}`, (prev) => lineFor(ctx, () => roll, prev));
+      replyWithLine(ctx, { persona, viewer, source: "template", text });
     } else if (condition === "scripted") {
-      const text = scriptedLineFor(ctx, persona, () => roll);
+      const text = fixedLine(`scripted:${persona}:${lineKey}`, (prev) =>
+        scriptedLineFor(ctx, persona, () => roll, prev),
+      );
       replyWithLine(ctx, { persona, viewer, source: "scripted", text });
     } else {
       replyWithModel(ctx, { persona, viewer, fallbackText: pick(FALLBACK_LINES, () => roll) });
