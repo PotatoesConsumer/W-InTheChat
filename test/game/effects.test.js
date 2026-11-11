@@ -1,7 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createGameEvent, GAME_EVENTS, IMPORTANCE } from "../../src/events/schema.js";
-import { createEffects, BANNERS, EFFECT_MS } from "../../src/game/effects.js";
+import {
+  createEffects,
+  BANNERS,
+  EFFECT_MS,
+  ALERT_TIERS,
+  MAX_QUEUED_ALERTS,
+  alertTier,
+} from "../../src/game/effects.js";
 import { SOUNDS, createSound } from "../../src/game/sound.js";
 
 test("big moments show a banner that fades away", () => {
@@ -26,15 +33,45 @@ test("a hit shakes the screen for a moment", () => {
   assert.deepEqual(fx.shake(), { x: 0, y: 0 });
 });
 
-test("donation alerts stack up to two and expire", () => {
+test("donation alerts show one at a time, in order, each with its chime", () => {
+  const shown = [];
+  const fx = createEffects({ onAlert: (a) => shown.push(a.amount) });
+  fx.donation({ viewer: "pixel_pal", amount: 2, message: "i love your stream" });
+  fx.donation({ viewer: "cozy_carrot", amount: 7, message: "" });
+  assert.equal(fx.alert, null, "appears on the next update");
+  fx.update(16);
+  assert.equal(fx.alert.viewer, "pixel_pal");
+  assert.equal(fx.alert.message, "i love your stream");
+  assert.equal(fx.queued, 1, "the second waits its turn");
+  assert.deepEqual(shown, [2]);
+
+  fx.update(alertTier(2).ms); // the first ends
+  assert.equal(fx.alert, null);
+  fx.update(EFFECT_MS.alertGap); // a short pause, then the next
+  assert.equal(fx.alert.viewer, "cozy_carrot");
+  assert.deepEqual(shown, [2, 7]);
+  fx.update(alertTier(7).ms);
+  assert.equal(fx.alert, null);
+  assert.equal(fx.queued, 0);
+});
+
+test("bigger donations get a bigger, longer alert; $20+ gets confetti", () => {
+  assert.equal(alertTier(1), ALERT_TIERS.at(-1));
+  assert.ok(alertTier(5).ms > alertTier(4).ms);
+  assert.ok(alertTier(20).ms > alertTier(19).ms);
+  assert.ok(alertTier(100).confetti && !alertTier(19).confetti);
   const fx = createEffects();
-  for (const amount of [1, 2, 3]) fx.donation({ viewer: "pixel_pal", amount });
-  assert.deepEqual(
-    fx.alerts.map((a) => a.amount),
-    [2, 3],
-  );
-  fx.update(EFFECT_MS.alert);
-  assert.equal(fx.alerts.length, 0);
+  fx.donation({ viewer: "big_fan", amount: 50, message: "" });
+  fx.update(16);
+  assert.ok(fx.alert.confetti.length > 0);
+});
+
+test("a burst of donations keeps the newest few waiting, never the one on screen", () => {
+  const fx = createEffects();
+  for (let amount = 1; amount <= 8; amount++) fx.donation({ viewer: "v", amount });
+  fx.update(16);
+  assert.equal(fx.alert.amount, 5, "1-4 were dropped from the queue before it showed");
+  assert.equal(fx.queued, MAX_QUEUED_ALERTS - 1);
 });
 
 test("every major event has a sound, and banners only use catalog events", () => {

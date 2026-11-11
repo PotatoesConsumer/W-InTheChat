@@ -1,8 +1,9 @@
 # Team status and handoff
 
-Last updated 2026-11-11, for `feature/chat-calls` (chat calls: "W in the chat" gets
-viewers spamming W, the same in both conditions; modern slang for the Fan and the
-Hater, `docs/personas.md`). Before that: #32 (the last gaps against the proposal:
+Last updated 2026-11-11, for `feature/donation-alerts` (Twitch-style donation alerts,
+Shapphanyu's area: please look through `src/game/effects.js`). Before that: #33 (chat
+calls: "W in the chat" gets viewers spamming W, the same in both conditions; modern
+slang for the Fan and the Hater), #32 (the last gaps against the proposal:
 rejected replies and peak GPU memory in the session logs, failure cases and 95%
 intervals, the deviations in the report draft), #31 (regression report), #30 (W12: `docs/setup.md`, the report draft and
 defense checklist), #29 (W10 prompt pass, idle-GPU decision), #28 (variety metrics,
@@ -123,7 +124,11 @@ Don't change these without talking to the team first. The reasons are in the lin
      this merge showed the panel.
    - Reaction effects (`src/game/effects.js`): "WAVE CLEARED!" / "CLOSE CALL!" /
      "NEW BEST!" / "N KILL STREAK!" banners, a screen shake on a hit, and a donation
-     alert by the facecam. Sound (`src/game/sound.js`): Web Audio blips per event and a
+     alert. **Since `feature/donation-alerts` (Sittipon) the alert is Twitch-style:**
+     one at a time at the top centre of the game, with the donor, the amount and their
+     message; $5+ and $20+ get a bigger, longer alert in another colour, $20+ adds
+     confetti, and the chime plays when the alert appears, not when it's queued.
+     `witc.testAlert(amount)` shows one for a demo. Sound (`src/game/sound.js`): Web Audio blips per event and a
      donation chime, no audio files; M or the top-bar button mutes. Both react to bus
      events, so the same events give the same effects in both conditions.
    - Coin store: the pack price buttons overlapped "Back to the shop"; fixed. Lurker
