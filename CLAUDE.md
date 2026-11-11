@@ -116,7 +116,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     `node scripts/blocklist-hash.js <word> <category>`.
   - `templates.js`: template / scripted / fallback lines and viewer names. Needs lines for
     every `GAME_EVENTS` name, and scripted lines per persona for every major one (tests
-    check). Scripted replies use the same persona selector as ai ones.
+    check). Scripted replies use the same persona selector as ai ones. A fixed line
+    never repeats twice in a row for the same event (`pick`'s `previous`).
 - `index.html`: the home page, like a streaming site's front page (`src/ui/home.js`,
   `home.css`): the featured stream with a live preview, who's in the chat, how it works.
   A URL with a query (`?condition=`, `?session=`, `?bot=`, `?service=`) is forwarded to
@@ -173,7 +174,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     while live, it goes to chat as a spoken chat event (`spoken: true`, at most one
     every 4 s, filler dropped; `voice.js`, tested) and the personas react, playing
     along with jokes. Every chat event (typed or spoken) carries the `scene` (menu,
-    playing, paused), so chat doesn't react to plays while the player is in the hub. Hidden for the study and the bot.
+    playing, shop, paused; a game reports its shop with `chatScene()`), so chat fits
+    the moment. Hidden for the study and the bot.
   - `expression.js` + `camera.js`: the optional camera (W11), off until the player opts
     in with the top-bar button and a consent prompt. MediaPipe Face Landmarker (loaded
     from a CDN, pinned, only when turned on; CPU, not the GPU) gives blendshape scores in

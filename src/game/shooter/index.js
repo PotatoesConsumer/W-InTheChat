@@ -140,6 +140,11 @@ export const waveSurvival = Object.freeze({
       quit() {
         game.abandon();
       },
+
+      /** Between waves the player is in the shop, not fighting. */
+      chatScene() {
+        return game.state.phase === "shop" ? "shop" : undefined;
+      },
     };
   },
 });

@@ -1,9 +1,10 @@
 # Team status and handoff
 
-Last updated 2026-11-12, for `feature/voice-input` (the optional voice input: a mic
-button with a consent prompt, subtitles of what it hears, spoken chat events the
-personas react to, and joke rules in every prompt. **Prompts changed**: rerun
-`npm run eval:runs` before the study. Off in the study). Before that: #40 (the stream
+Last updated 2026-11-12, for `fix/chat-fits-the-moment` (chat in the shop: a `shop`
+scene and a Backseat buying rule; fewer bat lines; no fixed line twice in a row, in both
+conditions. **Prompts and templates changed**: rerun `npm run eval:runs` before the
+study). Before that: #41 (the optional voice input with subtitles, joke rules, the menu
+scene), #40 (the stream
 page opens offline, a LIVE pill, a chat summary per past stream), #39 (the home page, profile and Go live recorded as extras in the report),
 #38 (Go live / End stream with an offline screen; a profile page
 with a display name, avatar colour, bio and the past streams; Home / Stream / Profile

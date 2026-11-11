@@ -170,8 +170,8 @@ test("a spoken chat event says so; typed ones have no spoken field", () => {
   assert.equal(validateEvent({ ...createGameEvent("win"), spoken: true }).ok, false);
 });
 
-test("a chat event can say where the player was: menu, playing or paused", () => {
-  assert.deepEqual(SCENES, ["menu", "playing", "paused"]);
+test("a chat event can say where the player was: menu, playing, shop or paused", () => {
+  assert.deepEqual(SCENES, ["menu", "playing", "shop", "paused"]);
   assert.equal(createChatEvent("hi", { scene: "menu" }).scene, "menu");
   assert.equal("scene" in createChatEvent("hi"), false, "left out when unknown");
   const bad = validateEvent({ ...createChatEvent("hi"), scene: "lobby" });

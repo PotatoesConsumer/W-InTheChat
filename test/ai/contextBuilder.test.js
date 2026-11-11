@@ -107,3 +107,12 @@ test("in the menu or paused, the prompt says so before the message", () => {
   assert.ok(say("paused").startsWith("Pu has paused the game.\n"));
   assert.ok(say("playing").startsWith('Pu typed in chat: "hi chat"'), "playing adds nothing");
 });
+
+test("in the shop, the prompt says nobody is fighting", () => {
+  const ctx = toContext(createChatEvent("what should I buy", { ...FIXED, scene: "shop" }));
+  assert.ok(
+    buildPrompt(ctx, { streamerName: "Pu" }).prompt.startsWith(
+      "Right now Pu is in the shop between waves, not fighting.\n",
+    ),
+  );
+});

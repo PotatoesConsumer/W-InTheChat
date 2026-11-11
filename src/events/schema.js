@@ -10,7 +10,7 @@
  *     which is also the single source of each event's importance.
  *   - "chat": the player typed a message to chat, or said it out loud (`spoken: true`,
  *     the optional voice input). `scene` says where the player was: in the game's menu,
- *     playing, or paused (SCENES), so chat doesn't react to a game that isn't running.
+ *     playing, in the shop or paused (SCENES), so chat fits the moment.
  *
  * Uses nothing beyond globalThis.crypto, so the game and the service import the
  * same file. Events are plain JSON so they survive the browser -> service hop.
@@ -54,8 +54,11 @@ export const GAME_EVENTS = Object.freeze({
  * Input limits. Provisional: the proposal sets numeric limits during the laptop
  * pilot. `data` is the only game context the model ever sees, so it stays small and flat.
  */
-/** Where the player is when they chat: the game hub (menu), a run, or the pause menu. */
-export const SCENES = Object.freeze(["menu", "playing", "paused"]);
+/**
+ * Where the player is when they chat: the game hub (menu), a run, the shop between
+ * rounds, or the pause menu.
+ */
+export const SCENES = Object.freeze(["menu", "playing", "shop", "paused"]);
 
 export const LIMITS = Object.freeze({
   maxIdLength: 64,

@@ -109,6 +109,7 @@ const overlay = createChatOverlay(document.getElementById("chat"), { onSend: sen
 
 /** Where the player is, for chat events: the hub is the game menu. */
 function currentScene() {
+  if (hub.screen === "playing" && hub.current.instance.chatScene?.() === "shop") return "shop";
   return { hub: "menu", playing: "playing", paused: "paused" }[hub.screen];
 }
 
