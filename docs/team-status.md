@@ -1,6 +1,7 @@
 # Team status and handoff
 
-Last updated 2026-11-12, for `feature/eval-set-shooter` (#36, Prin: the evaluation set
+Last updated 2026-11-12, for `fix/no-voice-subtitles` (voice input no longer shows
+subtitles; chat still hears it). Before that: `feature/eval-set-shooter` (#36, Prin: the evaluation set
 rewritten for the wave shooter, `QA_LIMITS` from the laptop pilot; still a draft, freeze
 it before the study). Before that: #42 (chat in the shop: a `shop` scene and a Backseat
 buying rule; fewer bat lines; no fixed line twice in a row, in both conditions.

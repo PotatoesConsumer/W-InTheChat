@@ -29,7 +29,7 @@
  *
  * Optional voice input: the mic button turns on Chrome's speech recognition after a
  * consent prompt (Chrome may send the audio to Google to turn it into text; the game
- * never records it). What it hears shows as subtitles over the video, and while live,
+ * never records it). Nothing it hears is shown on screen; while live, it
  * goes to chat as a spoken chat event (at most one every 4 s, voice.js) that the
  * personas react to. Off by default, and hidden for the study and the bot.
  *
@@ -48,7 +48,7 @@ import { createEffects } from "./effects.js";
 import { createSound } from "./sound.js";
 import { createExpressionTracker } from "./expression.js";
 import { startCamera, drawCamera } from "./camera.js";
-import { createVoiceBuffer, createSubtitles } from "./voice.js";
+import { createVoiceBuffer } from "./voice.js";
 import { startSpeech, speechSupported, SPEECH_LANGUAGES } from "./speech.js";
 import { createReplyLatency } from "./replyLatency.js";
 import { createHub } from "./hub.js";
@@ -574,20 +574,16 @@ cameraButton.addEventListener("click", async () => {
 });
 showCamera("camera off");
 
-// Optional voice input: subtitles of what the mic hears, and while live, chat hears it.
+// Optional voice input: while live, chat hears what the mic hears.
 const micButton = document.getElementById("mic");
 const micLang = document.getElementById("mic-lang");
-const subtitlesEl = document.getElementById("subtitles");
 const voice = createVoiceBuffer();
-const subtitles = createSubtitles();
 let speech = null; // {stop} while on
-let shownSubtitles = "";
 const MIC_CONSENT =
   "Turn on the microphone?\n\n" +
   "Chrome's speech recognition turns what you say into text, and it may send the audio " +
   "to Google's servers to do that. This game never records or saves your audio: only " +
-  "the text is used. It shows as subtitles on the stream, and while you're live, chat " +
-  "hears it and reacts.\n\n" +
+  "the text is used. While you're live, chat hears it and reacts.\n\n" +
   "Turn it off any time with the same button.";
 
 function showMic(text) {
@@ -610,9 +606,8 @@ function startMic() {
   try {
     speech = startSpeech({
       lang: micLang.value,
-      onInterim: (text) => subtitles.interim(text, performance.now()),
+      onInterim: () => {},
       onFinal(text) {
-        subtitles.final(text, performance.now());
         if (live) voice.push(text);
       },
       onError(err) {
@@ -633,7 +628,6 @@ function stopMic() {
   speech?.stop();
   speech = null;
   voice.clear();
-  subtitles.clear();
   showMic("mic off");
 }
 
@@ -655,7 +649,7 @@ micLang.addEventListener("change", () => {
   }
 });
 
-/** Each step: a spoken message to chat if one is due, and the subtitles. */
+/** Each step: a spoken message to chat if one is due. */
 function flushVoice() {
   const now = performance.now();
   const text = live ? voice.take(now) : null;
@@ -667,25 +661,6 @@ function flushVoice() {
       console.warn("Spoken message rejected:", err);
     }
   }
-  const shown = subtitles.current(now);
-  const key = shown ? `${shown.lines.join("\n")}|${shown.interim}` : "";
-  if (key === shownSubtitles) return;
-  shownSubtitles = key;
-  subtitlesEl.hidden = !shown;
-  if (!shown) return subtitlesEl.replaceChildren();
-  const parts = shown.lines.map((line) => {
-    const el = document.createElement("div");
-    el.className = "heard";
-    el.textContent = line;
-    return el;
-  });
-  if (shown.interim) {
-    const el = document.createElement("div");
-    el.className = "hearing";
-    el.textContent = shown.interim;
-    parts.push(el);
-  }
-  subtitlesEl.replaceChildren(...parts);
 }
 
 micButton.hidden = locked;

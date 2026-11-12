@@ -65,7 +65,7 @@ createChatEvent("  gg chat  ")
   field at all; when present it must be `true`. The context payload's facts carry it
   (`{ playerMessage, spoken: true }`), and the prompt says "said on stream" instead of
   "typed in chat". Spoken messages don't show as chat lines (the streamer's speech isn't
-  chat); the game shows them as subtitles. The study never sends them (voice is off for
+  chat), and the game doesn't show them anywhere. The study never sends them (voice is off for
   `?session=` links).
 - `scene` (optional) says where the player was: `"menu"` (the game hub), `"playing"`,
   `"shop"` (between rounds; a game says so with its optional `chatScene()`) or `"paused"`
