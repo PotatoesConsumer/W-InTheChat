@@ -82,6 +82,18 @@ test("offline until the stream page goes live", () => {
   assert.equal(store.isLive(), false);
 });
 
+test("subtitles are off until turned on in the profile, and stay as set", () => {
+  const storage = memoryStorage();
+  const store = createProfileStore(storage);
+  assert.equal(store.subtitles(), false, "off by default");
+  store.setSubtitles(true);
+  assert.equal(createProfileStore(storage).subtitles(), true, "remembered for the stream page");
+  store.setSubtitles(false);
+  assert.equal(store.subtitles(), false);
+  storage.setItem("witc.subtitles", '"yes"');
+  assert.equal(store.subtitles(), false, "only true turns them on");
+});
+
 test("a stream's chat is summed up: lines per persona and the first reply to each of yours", () => {
   const store = createProfileStore(memoryStorage());
   let record = store.startStream(1_000);
@@ -232,6 +244,8 @@ test("storage that throws (blocked, full) doesn't break the page", () => {
   const store = createProfileStore(broken);
   assert.deepEqual(store.profile(), DEFAULT_PROFILE);
   assert.equal(store.isLive(), false);
+  assert.equal(store.subtitles(), false);
+  store.setSubtitles(true);
   assert.equal(store.saveProfile({ name: "Pu" }).ok, true);
   assert.ok(store.startStream(1));
   assert.deepEqual(store.streams(), []);

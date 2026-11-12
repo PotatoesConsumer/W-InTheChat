@@ -2,8 +2,8 @@
  * profilePage.js
  *
  * The profile page (profile.html): the channel header, totals over every stream, the
- * past streams (each opens to its chat summary) and the edit form. Everything is in this
- * browser (profile.js). The new name reaches the prompts the next time the stream page
+ * past streams (each opens to its chat summary), the edit form and the stream settings
+ * (subtitles on or off). Everything is in this browser (profile.js). The new name reaches the prompts the next time the stream page
  * connects to the service.
  */
 
@@ -182,6 +182,16 @@ form.addEventListener("submit", (event) => {
   form.elements.name.value = profile.name;
   showProfile();
   $("saved").textContent = "Saved. Chat uses the new name next time you open the stream.";
+});
+
+// Stream settings: saved as soon as they change.
+const subtitlesSwitch = $("subtitles");
+subtitlesSwitch.checked = store.subtitles();
+subtitlesSwitch.addEventListener("change", () => {
+  store.setSubtitles(subtitlesSwitch.checked);
+  $("subtitles-saved").textContent = subtitlesSwitch.checked
+    ? "Subtitles on. They show when the mic is on."
+    : "Subtitles off.";
 });
 
 $("clear-history").addEventListener("click", () => {

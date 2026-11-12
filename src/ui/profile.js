@@ -8,6 +8,8 @@
  * - profile: a display name (chat calls the player by it, and the prompts use it), an
  *   avatar colour and a short bio. Empty name: the channel is "W-InTheChat" and the
  *   prompts say "the streamer".
+ * - subtitles: whether the stream page shows what the mic hears as subtitles over the
+ *   video (off by default; the profile page's switch). Chat hears the mic either way.
  * - live: true while the stream page is live (Go live until End stream or leaving the
  *   page), so the other pages can show LIVE or OFFLINE.
  * - streams: one record per stream (Go live to End stream), newest first, with a summary
@@ -42,6 +44,7 @@ const KEYS = Object.freeze({
   live: "witc.live",
   streams: "witc.streams",
   current: "witc.stream",
+  subtitles: "witc.subtitles",
 });
 
 /**
@@ -208,6 +211,14 @@ export function createProfileStore(storage = browserStorage()) {
       const result = checkProfile(input);
       if (result.ok) write(KEYS.profile, result.profile);
       return result;
+    },
+
+    /** Whether the stream page shows subtitles of what the mic hears. Off by default. */
+    subtitles() {
+      return read(KEYS.subtitles, false) === true;
+    },
+    setSubtitles(on) {
+      write(KEYS.subtitles, Boolean(on));
     },
 
     /** Whether the stream page is live right now. */
