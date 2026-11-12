@@ -124,7 +124,7 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
   `stream.html`, so old links still open the game. Every page has the nav (Home, Stream,
   Profile) and the avatar link to the profile.
 - `profile.html`: the profile page (`src/ui/profilePage.js`): display name, avatar colour
-  and bio, totals and the past streams, each opening to its chat summary (lines per
+  and bio, a stream setting (subtitles on/off), totals and the past streams, each opening to its chat summary (lines per
   persona and the first reply to each of the player's messages; counts, no model call).
   `src/ui/profile.js` is the DOM-free store (localStorage, tested): the profile, whether
   the stream page is live, and one record per stream (Go live to End stream), saved as
@@ -170,8 +170,9 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     button mutes.
   - `voice.js` + `speech.js`: the optional voice input. The mic button (consent prompt:
     Chrome's speech recognition may send the audio to Google; the game never records
-    it) and an EN/TH language pick. Nothing it hears is shown on screen; while
-    live, it goes to chat as a spoken chat event (`spoken: true`, at most one
+    it) and an EN/TH language pick. What it hears shows as subtitles over the video only
+    if they're turned on in the profile's stream settings (off by default);
+    while live, it goes to chat as a spoken chat event (`spoken: true`, at most one
     every 4 s, filler dropped; `voice.js`, tested) and the personas react, playing
     along with jokes. Every chat event (typed or spoken) carries the `scene` (menu,
     playing, shop, paused; a game reports its shop with `chatScene()`), so chat fits

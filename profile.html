@@ -124,6 +124,21 @@
           </div>
         </form>
       </section>
+
+      <section class="home-section" aria-labelledby="settings-title">
+        <h2 id="settings-title" class="section-title">Stream settings</h2>
+        <label class="switch-field">
+          <input id="subtitles" type="checkbox" role="switch" />
+          <span class="switch" aria-hidden="true"></span>
+          <span class="switch-text">
+            <span class="field-label">Subtitles</span>
+            <span class="field-hint">
+              Show what the mic hears over the video. Chat hears you either way.
+            </span>
+          </span>
+        </label>
+        <p id="subtitles-saved" class="saved" role="status"></p>
+      </section>
     </main>
     <script type="module" src="src/ui/profilePage.js"></script>
   </body>
