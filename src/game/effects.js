@@ -189,17 +189,19 @@ function drawAlert(ctx, { viewer, amount, message, tier, ms, confetti }, world, 
   }
 
   ctx.globalAlpha = fade;
-  // A glow that pulses with the tier's colour.
-  ctx.shadowColor = tier.color;
-  ctx.shadowBlur = 18 + 8 * Math.sin(age / 180);
-  ctx.fillStyle = "rgba(24, 16, 34, 0.94)";
+  // See-through card, so the game stays visible behind it; the tier's colour pulses on the border.
+  ctx.fillStyle = "rgba(24, 16, 34, 0.45)";
   ctx.beginPath();
   ctx.roundRect(x, y, width, height, 14);
   ctx.fill();
-  ctx.shadowBlur = 0;
+  ctx.shadowColor = tier.color;
+  ctx.shadowBlur = 10 + 6 * Math.sin(age / 180);
   ctx.strokeStyle = tier.color;
   ctx.lineWidth = 3;
   ctx.stroke();
+  // A dark halo keeps the text readable over a busy game.
+  ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+  ctx.shadowBlur = 4;
 
   // The coin.
   const r = 22 * tier.size;
