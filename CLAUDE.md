@@ -170,8 +170,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     button mutes.
   - `voice.js` + `speech.js`: the optional voice input. The mic button (consent prompt:
     Chrome's speech recognition may send the audio to Google; the game never records
-    it) and an EN/TH language pick. What it hears shows as subtitles over the video;
-    while live, it goes to chat as a spoken chat event (`spoken: true`, at most one
+    it) and an EN/TH language pick. Nothing it hears is shown on screen; while
+    live, it goes to chat as a spoken chat event (`spoken: true`, at most one
     every 4 s, filler dropped; `voice.js`, tested) and the personas react, playing
     along with jokes. Every chat event (typed or spoken) carries the `scene` (menu,
     playing, shop, paused; a game reports its shop with `chatScene()`), so chat fits

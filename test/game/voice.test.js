@@ -1,11 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  VOICE_LIMITS,
-  cleanPhrase,
-  createSubtitles,
-  createVoiceBuffer,
-} from "../../src/game/voice.js";
+import { cleanPhrase, createVoiceBuffer } from "../../src/game/voice.js";
 import { LIMITS } from "../../src/events/schema.js";
 
 test("cleanPhrase drops filler, tidies spaces and fits a chat message", () => {
@@ -29,7 +24,7 @@ test("one spoken message per gap: phrases in between are joined", () => {
   assert.equal(voice.take(9000), null, "nothing waiting");
 });
 
-test("filler and tiny phrases stay on the subtitles only", () => {
+test("filler and tiny phrases don't go to chat", () => {
   const voice = createVoiceBuffer();
   voice.push("uh");
   voice.push("ok");
@@ -38,27 +33,4 @@ test("filler and tiny phrases stay on the subtitles only", () => {
   voice.push("W in the chat");
   voice.clear();
   assert.equal(voice.take(0), null, "cleared when the mic or the stream stops");
-});
-
-test("subtitles show the last phrases and what's being heard, then clear", () => {
-  const subs = createSubtitles({ holdMs: 4000, lines: 2 });
-  assert.equal(subs.current(0), null);
-
-  subs.interim("these sli", 0);
-  assert.deepEqual(subs.current(10), { lines: [], interim: "these sli" });
-  subs.final("these slimes are my friends", 100);
-  subs.final("chat", 200);
-  subs.final("look at this", 300);
-  subs.interim("I'm gon", 400);
-  assert.deepEqual(subs.current(500), {
-    lines: ["chat", "look at this"],
-    interim: "I'm gon",
-  });
-
-  assert.equal(subs.current(400 + VOICE_LIMITS.holdMs + 1), null, "quiet: cleared");
-  assert.equal(subs.current(400 + VOICE_LIMITS.holdMs + 2), null);
-  subs.final("back", 10_000);
-  assert.deepEqual(subs.current(10_001), { lines: ["back"], interim: "" }, "old lines gone");
-  subs.clear();
-  assert.equal(subs.current(10_002), null);
 });

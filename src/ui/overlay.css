@@ -273,30 +273,6 @@ body[data-locked] .topbar-avatar {
   cursor: pointer;
 }
 
-/* What the mic heard, as stream subtitles over the bottom of the video. */
-.subtitles {
-  position: absolute;
-  bottom: 8%;
-  left: 50%;
-  max-width: 62%;
-  padding: 6px 14px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.78);
-  color: #fff;
-  font-size: clamp(14px, 1.5vw, 22px);
-  font-weight: 600;
-  line-height: 1.35;
-  text-align: center;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.subtitles .hearing {
-  color: #c8c8d0;
-  font-style: italic;
-  font-weight: 400;
-}
-
 .service-status::before {
   content: "";
   display: inline-block;
