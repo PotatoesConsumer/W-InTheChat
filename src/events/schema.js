@@ -48,6 +48,21 @@ export const GAME_EVENTS = Object.freeze({
   // The optional camera (W11): {expression: "smiling" | "surprised" | "frowning"}. Minor,
   // so it gets fixed lines and never a model reply about the streamer's face.
   expression: { importance: IMPORTANCE.MINOR, phrase: "reacted on camera", optional: true },
+  // The Dark House (src/game/horror/game.js), an extra game outside the study. Minor, so
+  // chat answers with fixed lines: the persona prompts only describe the wave shooter.
+  horror_start: {
+    importance: IMPORTANCE.MINOR,
+    phrase: "walked into the dark house",
+    optional: true,
+  },
+  key_found: { importance: IMPORTANCE.MINOR, phrase: "found a key in the dark", optional: true },
+  monster_near: {
+    importance: IMPORTANCE.MINOR,
+    phrase: "has the monster right behind them",
+    optional: true,
+  },
+  escaped: { importance: IMPORTANCE.MINOR, phrase: "escaped the dark house", optional: true },
+  caught: { importance: IMPORTANCE.MINOR, phrase: "got caught by the monster", optional: true },
 });
 
 /**

@@ -18,6 +18,8 @@ export const BANNERS = Object.freeze({
   close_call: Object.freeze({ text: "CLOSE CALL!", color: "#ff9f43" }),
   new_best: Object.freeze({ text: "NEW BEST!", color: "#ffd34e" }),
   streak: Object.freeze({ text: "KILL STREAK!", color: "#ff6fae" }),
+  escaped: Object.freeze({ text: "ESCAPED!", color: "#7ee08a" }),
+  caught: Object.freeze({ text: "CAUGHT!", color: "#ff4d4d" }),
 });
 
 export const EFFECT_MS = Object.freeze({ banner: 1400, shake: 300, alertGap: 400 });

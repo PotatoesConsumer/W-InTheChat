@@ -152,6 +152,13 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     seeded random), which says which catalog event fires when; `waves.js` makes each
     wave harder; `shop.js` upgrades and the coin store (donations buy coin packs and
     are spent: `coin_purchase`); `view.js` draws it and the shop's click layout.
+  - `horror/`: The Dark House, a 3D first-person horror game, an extra outside the
+    study: find the keys by flashlight and leave through the door before the monster
+    catches you. `game.js` the house, rules and monster AI with no DOM (tested; seeded
+    random); `view3d.js` draws it with Three.js (CDN, pinned, loaded only when the game
+    opens; the flashlight is the only light; the monster is built from plain shapes);
+    `index.js` the hub module (keys, pointer-lock mouse look, HUD). Its events are
+    minor and `optional`, so chat answers with fixed lines.
   - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
   - `input.js`: keyboard -> actions; ignores keys typed into the chat box
   - `donations.js`: viewer donations: which big moments bring one, the amount (mostly

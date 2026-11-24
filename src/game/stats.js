@@ -31,6 +31,12 @@ export const STAT_RULES = Object.freeze({
   streak: { hype: 12, followers: 2 },
   close_call: { hype: 10, followers: 1 },
   new_best: { hype: 15, followers: 5 },
+  // The Dark House
+  horror_start: { hype: 2, followers: 0 },
+  key_found: { hype: 4, followers: 0 },
+  monster_near: { hype: 6, followers: 0 },
+  escaped: { hype: 20, followers: 3 },
+  caught: { hype: -10, followers: 0 },
 });
 
 /** The streamer talking to chat keeps the room warm. */

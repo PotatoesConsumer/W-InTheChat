@@ -100,6 +100,11 @@ else `new_best` the first time a run passes the best wave of earlier runs, else 
 | `item_pickup` | minor | bought an upgrade in the shop |
 | `coin_purchase` | minor | spent chat's donations on coins |
 | `expression` | minor | reacted on camera (optional camera, W11: `{expression}`) |
+| `horror_start` | minor | walked into the dark house (The Dark House, optional: `{keys}`) |
+| `key_found` | minor | found a key in the dark (optional: `{keys, total}`) |
+| `monster_near` | minor | has the monster right behind them (optional) |
+| `escaped` | minor | escaped the dark house (optional: `{keys, seconds}`) |
+| `caught` | minor | got caught by the monster (optional: `{keys, total}`) |
 | `win` | major | cleared a wave |
 | `loss` | major | died and lost the run |
 | `streak` | major | went on a kill streak without getting hit |

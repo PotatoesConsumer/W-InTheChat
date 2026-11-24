@@ -50,6 +50,23 @@ export const SOUNDS = Object.freeze({
     [330, 160, "triangle"],
     [196, 360, "triangle"],
   ],
+  key_found: [
+    [1319, 70, "sine"],
+    [1760, 160, "sine"],
+  ],
+  monster_near: [
+    [62, 600, "sawtooth"],
+    [58, 700, "sawtooth"],
+  ],
+  escaped: [
+    [523, 90, "triangle"],
+    [784, 90, "triangle"],
+    [1047, 260, "triangle"],
+  ],
+  caught: [
+    [880, 120, "sawtooth"],
+    [110, 700, "sawtooth"],
+  ],
   donation: [
     [1047, 120, "sine"],
     [1568, 280, "sine"],

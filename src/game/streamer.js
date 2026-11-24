@@ -19,6 +19,10 @@ export const EVENT_MOODS = Object.freeze({
   new_best: "hyped",
   close_call: "shocked",
   loss: "sad",
+  key_found: "happy",
+  monster_near: "shocked",
+  escaped: "hyped",
+  caught: "shocked",
 });
 
 /** How long a reaction lasts before the face relaxes back to neutral. */

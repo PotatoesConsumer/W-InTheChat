@@ -35,6 +35,15 @@ export const EVENT_LINES = Object.freeze({
   streak: Object.freeze(["on fire 🔥", "cant miss", "who is stopping this"]),
   close_call: Object.freeze(["HOW are you alive", "1 hp gamer", "my heart"]),
   new_best: Object.freeze(["NEW PB!!", "record broken", "history made"]),
+  horror_start: Object.freeze([
+    "nope nope nope",
+    "lights off, chat 👀",
+    "im watching through my fingers",
+  ]),
+  key_found: Object.freeze(["KEY!!", "grab it and go", "one less to find"]),
+  monster_near: Object.freeze(["BEHIND YOU", "RUN RUN RUN", "its right there 😱"]),
+  escaped: Object.freeze(["YOU MADE IT OUT", "ESCAPED!! GG", "my heart cant take this"]),
+  caught: Object.freeze(["NOOOO", "it got you 💀", "i screamed"]),
 });
 
 /** Answers to a typed player message when no model reply is used. */

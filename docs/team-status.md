@@ -128,6 +128,25 @@ Don't change these without talking to the team first. The reasons are in the lin
 
 ## Shapphanyu (frontend / game): what's next
 
+0. **A second game, The Dark House (`feature/horror-game`), an extra outside the
+   study** (2 of 3 W10 pilot players asked for more games). 3D first person: find 3 keys
+   by flashlight in a dark house, then leave through the door before the monster catches
+   you (`src/game/horror/`). The flashlight is the only light; the monster is a
+   low-poly figure built from plain shapes, no model file. It draws at 960 x 540 off
+   screen whatever the screen size. On the dev PC (RTX 5060) the GPU sat at 2-4 % with
+   the house on screen and AI replies took 161-371 ms; **not measured on the RTX 4050
+   laptop yet** (`npm run benchmark` only drives the shooter).
+   - Its 5 events (`horror_start`, `key_found`, `monster_near`, `escaped`, `caught`)
+     are **minor and `optional`**: chat answers with fixed lines, the evaluation set
+     leaves them out, and no prompt changed. Typed chat still goes to the model, whose
+     prompts describe only the shooter, so a persona can mention waves. Teaching the
+     prompts which game is on is Sittipon's call, after the study.
+   - **Team calls:** Three.js from a CDN is a second exception to "no runtime
+     dependencies" (pinned 0.160.0, loaded only when the game opens, needs the internet
+     the first time). Keep it out of the study: participants play Wave Survival only.
+   - Next: a badge for escaping that gives a ghost ally in Wave Survival, switched off
+     in study sessions.
+
 0. **W09–W12, merged (#26):**
    - **Bug, important for the study: the study panel (AI chat / Scripted chat) was visible
      at startup** since #20. `.study-panel { display: flex }` beat the `hidden`
