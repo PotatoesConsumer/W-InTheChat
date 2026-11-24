@@ -170,6 +170,7 @@ const streamer = createStreamer();
 const effects = createEffects({ onAlert: () => sound.play("donation") });
 const sound = createSound();
 bus.subscribe("*", (event) => {
+  if (event.name === "escaped" && !locked) store.earnBadge("ghost");
   streamStats = stats.reduce(streamStats, event);
   hud.set(streamStats);
   streamer.react(event);
@@ -320,6 +321,8 @@ const hub = createHub({
     return game.create({
       world: WORLD,
       stream: { donations: () => streamStats.donations },
+      // Badges never apply in the study or the benchmark: everyone plays the same game.
+      perks: { ghost: () => !locked && store.badges().includes("ghost") },
     });
   },
 });

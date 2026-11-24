@@ -144,8 +144,13 @@ Don't change these without talking to the team first. The reasons are in the lin
    - **Team calls:** Three.js from a CDN is a second exception to "no runtime
      dependencies" (pinned 0.160.0, loaded only when the game opens, needs the internet
      the first time). Keep it out of the study: participants play Wave Survival only.
-   - Next: a badge for escaping that gives a ghost ally in Wave Survival, switched off
-     in study sessions.
+   - **Badges** carry a reward from one game to another. Escaping the house earns the
+     **Ghost Friend** (`BADGES` in `src/ui/profile.js`, saved in this browser, listed on
+     the profile page): from the next Wave Survival run, a ghost circles the player and
+     shoots the nearest enemy (`GHOST` in `shooter/game.js`, about a third of the
+     starting fire). Games get it as `perks.ghost()`, asked when a run starts. **Never
+     in the study or the benchmark** (`?session=`, `?bot=`): no badge is earned there and
+     the ghost stays off, so every participant plays the same shooter.
 
 0. **W09–W12, merged (#26):**
    - **Bug, important for the study: the study panel (AI chat / Scripted chat) was visible

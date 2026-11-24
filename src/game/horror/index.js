@@ -40,7 +40,7 @@ export const darkHouse = Object.freeze({
    * @param {{width: number, height: number}} opts.world
    * @param {() => number} [opts.random]
    */
-  create({ world, random }) {
+  create({ world, random, perks = {} }) {
     const game = createHorror({ random });
     let view = null;
     let failed = null;
@@ -115,7 +115,7 @@ export const darkHouse = Object.freeze({
         }
         const s = game.state;
         ctx.drawImage(view.render(s, clock), 0, 0, width, height);
-        drawHud(ctx, world, s, { locked: locked() });
+        drawHud(ctx, world, s, { locked: locked(), ghost: perks.ghost?.() ?? false });
       },
 
       takeEvents() {
@@ -143,7 +143,7 @@ function drawCentre(ctx, { width, height }, text, size = 22, color = "#ddd") {
   ctx.fillText(text, width / 2, height / 2);
 }
 
-function drawHud(ctx, world, s, { locked }) {
+function drawHud(ctx, world, s, { locked, ghost }) {
   const { width, height } = world;
 
   // The closer the monster, the redder the edges.
@@ -196,6 +196,15 @@ function drawHud(ctx, world, s, { locked }) {
   drawCentre(ctx, { width, height: height - 70 }, lines[0], 40, color);
   drawCentre(ctx, { width, height: height + 10 }, lines[1], 18);
   drawCentre(ctx, { width, height: height + 70 }, "Click or press Space to play", 16, "#aaa");
+  if (s.phase === "escaped" && ghost) {
+    drawCentre(
+      ctx,
+      { width, height: height + 140 },
+      "👻 Ghost Friend badge: a ghost now fights beside you in Wave Survival",
+      16,
+      "#9fe7ff",
+    );
+  }
 }
 
 /** The hub card: darkness, a flashlight cone, two eyes that blink. */

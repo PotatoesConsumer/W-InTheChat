@@ -10,6 +10,7 @@ import {
   channelName,
   checkProfile,
   createProfileStore,
+  BADGES,
   formatDuration,
   formatUptime,
   summarize,
@@ -264,4 +265,18 @@ test("a stream gone live by mistake (seconds long, nothing said) isn't saved", (
   store.startStream(0);
   assert.ok(store.endStream(PROFILE_LIMITS.minStreamMs), "long enough");
   assert.equal(store.streams().length, 2);
+});
+
+test("badges: earned once, remembered, unknown ids and junk ignored", () => {
+  const storage = memoryStorage();
+  const store = createProfileStore(storage);
+  assert.deepEqual(store.badges(), []);
+  assert.equal(store.earnBadge("ghost"), true);
+  assert.equal(store.earnBadge("ghost"), false);
+  assert.equal(store.earnBadge("not-a-badge"), false);
+  assert.deepEqual(createProfileStore(storage).badges(), ["ghost"]);
+  assert.ok(BADGES.ghost.name);
+
+  storage.setItem("witc.badges", '{"oops": true}');
+  assert.deepEqual(store.badges(), []);
 });

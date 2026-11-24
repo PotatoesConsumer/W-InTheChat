@@ -18,6 +18,9 @@
  *   progress is saved as it goes, so a crash doesn't lose it: the next page load ends it
  *   at its last update.
  *
+ * - badges: rewards earned in one game that help in another (BADGES). Escaping The Dark
+ *   House earns the Ghost Friend: a ghost fights beside you in Wave Survival.
+ *
  * The study's links (`?session=`) and the benchmark bot (`?bot=`) don't use any of this:
  * they're always live, with no name and no history.
  */
@@ -45,6 +48,17 @@ const KEYS = Object.freeze({
   streams: "witc.streams",
   current: "witc.stream",
   subtitles: "witc.subtitles",
+  badges: "witc.badges",
+});
+
+/** Badges, by id: how one is earned and what it gives. */
+export const BADGES = Object.freeze({
+  ghost: Object.freeze({
+    name: "Ghost Friend",
+    icon: "👻",
+    earn: "Escape The Dark House.",
+    gives: "A ghost floats beside you in Wave Survival and shoots the nearest enemy.",
+  }),
 });
 
 /**
@@ -189,6 +203,11 @@ export function createProfileStore(storage = browserStorage()) {
     }
   }
 
+  function badges() {
+    const ids = read(KEYS.badges, []);
+    return Array.isArray(ids) ? ids.filter((id) => Object.hasOwn(BADGES, id)) : [];
+  }
+
   function end(record, endedAt) {
     const done = { ...record, endedAt };
     delete done.updatedAt;
@@ -219,6 +238,15 @@ export function createProfileStore(storage = browserStorage()) {
     },
     setSubtitles(on) {
       write(KEYS.subtitles, Boolean(on));
+    },
+
+    /** Ids of the badges earned in this browser, oldest first. */
+    badges,
+    /** Earns a badge; true if it's new. */
+    earnBadge(id) {
+      if (!Object.hasOwn(BADGES, id) || badges().includes(id)) return false;
+      write(KEYS.badges, [...badges(), id]);
+      return true;
     },
 
     /** Whether the stream page is live right now. */

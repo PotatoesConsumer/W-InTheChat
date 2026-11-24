@@ -72,7 +72,30 @@ export function playerStats(levels) {
  *   Solid rectangles (none in the game since W10; tests use them).
  * @param {() => number} [opts.random] - In [0, 1); seed it for reproducible games.
  */
-export function createShooter({ arena, obstacles = [], random = Math.random }) {
+/**
+ * The Ghost Friend badge's ally (src/ui/profile.js, BADGES.ghost): it circles the
+ * player and shoots the nearest enemy, about a third of the player's starting fire.
+ */
+export const GHOST = Object.freeze({
+  orbit: 46,
+  orbitMs: 3000,
+  fireDelayMs: 900,
+  range: 260,
+  damage: 1,
+  bulletSpeed: 420,
+});
+
+/**
+ * @param {object} opts
+ * @param {() => boolean} [opts.ghost] - Asked at the start of each run: whether the
+ *   Ghost Friend helps (the badge is earned and this isn't a study session).
+ */
+export function createShooter({
+  arena,
+  obstacles = [],
+  random = Math.random,
+  ghost = () => false,
+}) {
   const s = {
     phase: "ready",
     wave: 0,
@@ -89,6 +112,8 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
     bursts: [],
     spawn: { config: null, spawned: 0, timerMs: 0 },
     notice: null,
+    /** The Ghost Friend, or null without the badge. */
+    ghost: null,
   };
   let events = [];
   let nextId = 1;
@@ -273,6 +298,37 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
     for (const e of s.enemies) keepInside(e);
   }
 
+  function ghostAttack(dt) {
+    const g = s.ghost;
+    if (!g) return;
+    const p = s.player;
+    g.angle += (2 * Math.PI * dt) / GHOST.orbitMs;
+    g.x = p.x + Math.cos(g.angle) * GHOST.orbit;
+    g.y = p.y + Math.sin(g.angle) * GHOST.orbit;
+    g.cooldownMs = Math.max(0, g.cooldownMs - dt);
+    if (g.cooldownMs > 0) return;
+    let target = null;
+    let best = GHOST.range;
+    for (const e of s.enemies) {
+      const d = Math.hypot(e.x - g.x, e.y - g.y);
+      if (e.hp > 0 && d < best) [target, best] = [e, d];
+    }
+    if (!target) return;
+    s.bullets.push({
+      x: g.x,
+      y: g.y,
+      prevX: g.x,
+      prevY: g.y,
+      vx: ((target.x - g.x) / best) * GHOST.bulletSpeed,
+      vy: ((target.y - g.y) / best) * GHOST.bulletSpeed,
+      r: PLAYER.bulletRadius,
+      damage: GHOST.damage,
+      lifeMs: PLAYER.bulletLifeMs,
+      ghost: true,
+    });
+    g.cooldownMs = GHOST.fireDelayMs;
+  }
+
   function moveBullets(dt) {
     const alive = [];
     for (const b of s.bullets) {
@@ -418,6 +474,10 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
       s.bursts = [];
       s.newBestThisRun = false;
       s.notice = null;
+      const p = s.player;
+      s.ghost = ghost()
+        ? { x: p.x + GHOST.orbit, y: p.y, angle: 0, cooldownMs: GHOST.fireDelayMs }
+        : null;
       startWave(1);
       return true;
     },
@@ -512,6 +572,7 @@ export function createShooter({ arena, obstacles = [], random = Math.random }) {
 
       movePlayer(dt, controls);
       shoot(dt, controls);
+      ghostAttack(dt);
       spawnEnemies(dt);
       moveEnemies(dt);
       moveBullets(dt);

@@ -7,6 +7,7 @@ import {
   playerStats,
   PLAYER,
   STREAK_KILLS,
+  GHOST,
 } from "../../src/game/shooter/game.js";
 import { waveConfig, pickEnemyType, FIRST_WAVE } from "../../src/game/shooter/waves.js";
 import {
@@ -330,4 +331,38 @@ test("shop clicks hit the item cards and buttons", () => {
   assert.deepEqual(shopHit(...centre(layout.packs[2]), true), { kind: "pack", id: "chest" });
   assert.deepEqual(shopHit(...centre(layout.closeStore), true), { kind: "closeStore" });
   assert.notEqual(shopHit(...centre(layout.cards[0]), true)?.kind, "item", "store covers the shop");
+});
+
+test("the Ghost Friend: only with the badge, asked each run, and it kills enemies on its own", () => {
+  let badge = false;
+  const game = createShooter({ arena: ARENA, random: seededRandom(1), ghost: () => badge });
+  game.start();
+  assert.equal(game.state.ghost, null);
+  game.abandon();
+
+  badge = true;
+  game.start();
+  game.takeEvents();
+  const s = game.state;
+  assert.ok(s.ghost);
+  s.spawn.timerMs = Infinity; // no spawns: place the enemy by hand
+  const enemy = { x: s.player.x, y: s.player.y - 150, id: 99, type: "slime", r: 14 };
+  s.enemies.push({
+    ...enemy,
+    hp: 1,
+    maxHp: 1,
+    speed: 0,
+    damage: 1,
+    coins: 1,
+    hitMs: 0,
+    ageMs: 0,
+    wobble: 0,
+  });
+
+  // The player never shoots; the ghost fires within fireDelayMs and the bullet lands.
+  for (let t = 0; t < GHOST.fireDelayMs + 1000 && s.enemies.length > 0; t += STEP)
+    game.update(STEP, {});
+  assert.equal(s.enemies.length, 0);
+  assert.ok(names(game.takeEvents()).includes("kill"));
+  assert.equal(s.player.shots, 0);
 });

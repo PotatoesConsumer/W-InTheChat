@@ -14,7 +14,7 @@
  *     controls: [[keys, what], ...],      // shown in the hub and the pause menu
  *     bindings: {KeyboardEvent.code: action},  // its own keymap (input.js)
  *     drawThumbnail?(ctx, rect, clock),    // the hub card's picture
- *     create({world, obstacles, random, stream}) -> instance
+ *     create({world, obstacles, random, stream, perks}) -> instance
  *   }
  *
  * An instance:
@@ -32,7 +32,8 @@
  *   state                        for the console (witc.game())
  *
  * `world` is the scene size ({width, height}); `obstacles` are optional solid rectangles (none
- * now). `stream` gives a game read-only stream numbers (`donations()`); games never change
+ * now). `perks` are badge rewards, asked when a run starts (`ghost()`: the Ghost Friend
+ * helps; never in a study session). `stream` gives a game read-only stream numbers (`donations()`); games never change
  * the stats themselves, they send events. Entries with `comingSoon: true` are shown in
  * the hub but can't be played.
  */

@@ -9,6 +9,7 @@
 
 import {
   AVATAR_COLORS,
+  BADGES,
   PROFILE_LIMITS,
   createProfileStore,
   formatDuration,
@@ -193,6 +194,28 @@ subtitlesSwitch.addEventListener("change", () => {
     ? "Subtitles on. They show when the mic is on."
     : "Subtitles off.";
 });
+
+// Badges: earned ones lit, the rest dimmed with how to earn them.
+const earned = new Set(store.badges());
+$("badges").replaceChildren(
+  ...Object.entries(BADGES).map(([id, badge]) => {
+    const item = document.createElement("li");
+    item.className = earned.has(id) ? "badge earned" : "badge";
+    const icon = document.createElement("span");
+    icon.className = "badge-icon";
+    icon.textContent = badge.icon;
+    icon.setAttribute("aria-hidden", "true");
+    const name = document.createElement("strong");
+    name.textContent = badge.name;
+    const text = document.createElement("span");
+    text.className = "field-hint";
+    text.textContent = earned.has(id) ? badge.gives : `Locked. ${badge.earn}`;
+    const words = document.createElement("span");
+    words.append(name, text);
+    item.append(icon, words);
+    return item;
+  }),
+);
 
 $("clear-history").addEventListener("click", () => {
   if (!window.confirm("Clear every past stream from this browser? This can't be undone.")) return;

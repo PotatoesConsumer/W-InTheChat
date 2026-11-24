@@ -44,9 +44,9 @@ export const waveSurvival = Object.freeze({
    * @param {() => number} [opts.random]
    * @param {{donations: () => number}} opts.stream
    */
-  create({ world, obstacles = [], random, stream }) {
+  create({ world, obstacles = [], random, stream, perks = {} }) {
     const arena = { x: 0, y: HUD_HEIGHT, width: world.width, height: world.height - HUD_HEIGHT };
-    const game = createShooter({ arena, obstacles, random });
+    const game = createShooter({ arena, obstacles, random, ghost: () => perks.ghost?.() ?? false });
     // Dollars spent on coin packs whose events haven't reached the stats yet, so two
     // buys before the next takeEvents() can't spend the same dollars.
     let unsettled = 0;

@@ -27,6 +27,8 @@ const COLORS = Object.freeze({
   bat: "#9b6bd6",
   brute: "#c8553d",
   bullet: "#ffe9a3",
+  ghost: "#eef4ff",
+  ghostBullet: "#9fe7ff",
   store: "#2d6cdf",
   ribbon: "#e5323b",
 });
@@ -113,8 +115,11 @@ export function drawShooter(ctx, game, { arena, alpha, donations, pointer, start
   for (const b of s.bursts) drawBurst(ctx, b);
   for (const e of s.enemies) drawEnemy(ctx, e, alpha, clock);
   if (s.phase !== "ready") drawPlayer(ctx, s.player, alpha, clock);
-  ctx.fillStyle = COLORS.bullet;
-  for (const b of s.bullets) circle(ctx, lerp(b.prevX, b.x, alpha), lerp(b.prevY, b.y, alpha), b.r);
+  if (s.ghost && s.phase !== "ready") drawGhost(ctx, s.ghost, clock);
+  for (const b of s.bullets) {
+    ctx.fillStyle = b.ghost ? COLORS.ghostBullet : COLORS.bullet;
+    circle(ctx, lerp(b.prevX, b.x, alpha), lerp(b.prevY, b.y, alpha), b.r);
+  }
   ctx.restore();
 
   drawHud(ctx, s, arena);
@@ -146,6 +151,28 @@ function drawGrass(ctx, arena) {
       }
     }
   }
+}
+
+/** The Ghost Friend: a see-through sheet with a wavy hem and two dark eyes. */
+function drawGhost(ctx, g, clock) {
+  const x = g.x;
+  const y = g.y + Math.sin(clock / 300) * 3;
+  ctx.save();
+  ctx.globalAlpha = 0.8;
+  ctx.fillStyle = COLORS.ghost;
+  ctx.beginPath();
+  ctx.arc(x, y - 4, 11, Math.PI, 0);
+  ctx.lineTo(x + 11, y + 10);
+  for (let i = 1; i <= 4; i++) {
+    const wave = (i + Math.floor(clock / 200)) % 2 ? 3 : 0;
+    ctx.lineTo(x + 11 - i * 5.5, y + 7 + wave);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#1b1b2e";
+  circle(ctx, x - 4, y - 4, 2);
+  circle(ctx, x + 4, y - 4, 2);
+  ctx.restore();
 }
 
 function drawPlayer(ctx, p, alpha, clock) {

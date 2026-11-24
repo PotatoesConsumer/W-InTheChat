@@ -158,7 +158,9 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     random); `view3d.js` draws it with Three.js (CDN, pinned, loaded only when the game
     opens; the flashlight is the only light; the monster is built from plain shapes);
     `index.js` the hub module (keys, pointer-lock mouse look, HUD). Its events are
-    minor and `optional`, so chat answers with fixed lines.
+    minor and `optional`, so chat answers with fixed lines. Escaping earns the Ghost
+    Friend badge (`BADGES` in `src/ui/profile.js`): games get `perks.ghost()`, and Wave
+    Survival adds a ghost that shoots for the player (`GHOST`). Off in study and bot runs.
   - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
   - `input.js`: keyboard -> actions; ignores keys typed into the chat box
   - `donations.js`: viewer donations: which big moments bring one, the amount (mostly

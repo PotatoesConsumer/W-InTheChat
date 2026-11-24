@@ -662,3 +662,43 @@
   padding-left: 14px;
   border-left: 2px solid var(--border);
 }
+
+/* Badges on the profile page: earned ones lit, locked ones dimmed. */
+.badges {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 520px;
+}
+
+.badge {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  opacity: 0.55;
+}
+
+.badge.earned {
+  border-color: var(--accent);
+  opacity: 1;
+}
+
+.badge > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.badge-icon {
+  font-size: 26px;
+  filter: grayscale(1);
+}
+
+.badge.earned .badge-icon {
+  filter: none;
+}
