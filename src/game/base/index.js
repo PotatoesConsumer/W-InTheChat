@@ -562,17 +562,31 @@ function drawTrader(ctx, r) {
 // --- inside ---------------------------------------------------------------------------
 
 function drawInside(ctx, s, p, { alpha, clock, looks, target, ghost, placing, at }) {
-  ctx.fillStyle = COLORS.wall;
-  ctx.fillRect(0, VIEW.top, VIEW.width, VIEW.height);
+  // The yard's grass around the house, the same checks as outside.
+  const size = 64;
+  for (let y = VIEW.top; y < VIEW.top + VIEW.height; y += size) {
+    for (let x = 0; x < VIEW.width; x += size) {
+      ctx.fillStyle = COLORS.grass[(x / size + (y - VIEW.top) / size) % 2 === 0 ? 0 : 1];
+      ctx.fillRect(x, y, size, size);
+    }
+  }
   for (let gy = 0; gy < ROOM_GRID.rows; gy++) {
     for (let gx = 0; gx < ROOM_GRID.cols; gx++) {
       ctx.fillStyle = COLORS.floor[(gx + gy) % 2];
       ctx.fillRect(ROOM.x + gx * TILE, ROOM.y + gy * TILE, TILE, TILE);
     }
   }
-  // The door: a gap in the bottom wall with a mat.
-  ctx.fillStyle = "#5a3520";
-  ctx.fillRect(ROOM_DOOR.x - 40, ROOM_DOOR.y, 80, 12);
+  // A thin wall around the floor, with a gap for the door at the bottom.
+  const wall = 8;
+  const gap = 80;
+  ctx.fillStyle = COLORS.wall;
+  ctx.fillRect(ROOM.x - wall, ROOM.y - wall, ROOM.width + wall * 2, wall); // top
+  ctx.fillRect(ROOM.x - wall, ROOM.y, wall, ROOM.height + wall); // left
+  ctx.fillRect(ROOM.x + ROOM.width, ROOM.y, wall, ROOM.height + wall); // right
+  const bottom = ROOM.y + ROOM.height;
+  ctx.fillRect(ROOM.x, bottom, ROOM_DOOR.x - gap / 2 - ROOM.x, wall);
+  ctx.fillRect(ROOM_DOOR.x + gap / 2, bottom, ROOM.x + ROOM.width - ROOM_DOOR.x - gap / 2, wall);
+  // The doormat.
   ctx.fillStyle = "#9b3f3a";
   ctx.fillRect(ROOM_DOOR.x - 34, ROOM_DOOR.y - 20, 68, 16);
 
