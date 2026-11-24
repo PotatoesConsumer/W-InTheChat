@@ -318,14 +318,11 @@ function drawItems(ctx, { height }, s, base) {
     status.push(`❄ monster frozen ${Math.ceil(s.monster.frozenMs / 1000)} s`);
   ctx.fillStyle = "#9fe7ff";
   ctx.fillText(status.join("   "), 16, 54);
-  const item = base?.item && HORROR_ITEMS[base.item];
+  // The sonar has no line: its radar shows it's on.
+  const item = base?.item && base.item !== "sonar" && HORROR_ITEMS[base.item];
   if (item) {
     const ready =
-      base.item === "sonar"
-        ? "always on"
-        : s.cooldownMs > 0
-          ? `ready in ${Math.ceil(s.cooldownMs / 1000)} s`
-          : "1 / Q to use";
+      s.cooldownMs > 0 ? `ready in ${Math.ceil(s.cooldownMs / 1000)} s` : "1 / Q to use";
     ctx.fillStyle = s.cooldownMs > 0 ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.8)";
     ctx.fillText(`${item.name}: ${ready}`, 16, height - 26);
   }

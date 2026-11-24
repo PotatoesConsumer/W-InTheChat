@@ -160,6 +160,10 @@ export const justChatting = Object.freeze({
         const on = progress.toggleWear(action.id).clothes.worn[slot] === action.id;
         return say(on ? `Wearing the ${name.toLowerCase()}` : `Took off the ${name.toLowerCase()}`);
       }
+      if (action.kind === "play") {
+        if (progress.get().house < 2) return say("Upgrade the Haunted House to unlock level 2");
+        return say(`You'll play level ${progress.nextPlayLevel().play}`);
+      }
       if (action.kind === "carry") {
         const carried = progress.toggleCarry(action.id).carry === action.id;
         const { name } = HORROR_ITEMS[action.id];
@@ -707,8 +711,8 @@ function drawHud(ctx, world, progress, donations) {
   }
   text(ctx, `$${donations} donations`, x + 10, 20, { size: 14, weight: 700, color: "#ffd34e" });
   if (progress.fixed.haunted) {
-    const reward = HOUSE_LEVELS[progress.house - 1].reward;
-    text(ctx, `Haunted House Lv ${progress.house} · pays ${reward} 🌑`, BAG_BUTTON.x - 14, 20, {
+    const reward = HOUSE_LEVELS[progress.play - 1].reward;
+    text(ctx, `Dark House Lv ${progress.play} · pays ${reward} 🌑`, BAG_BUTTON.x - 14, 20, {
       size: 12,
       align: "right",
       color: COLORS.muted,

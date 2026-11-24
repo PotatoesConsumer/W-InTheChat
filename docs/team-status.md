@@ -159,7 +159,7 @@ Don't change these without talking to the team first. The reasons are in the lin
      In Wave Survival the ghost flies to an enemy and hurts it: 0.4 a hit at level 0, so
      5 hits for a slime. Haunted House levels: 2 is 5 keys in a bigger house with a
      monster as fast as your walk, 3 is 8 keys, bigger again, a faster monster and less
-     stamina. Horror items are bought once and kept; you carry one into a run: the sonar
+     stamina; the Haunted House menu picks which unlocked level you play. Horror items are bought once and kept; you carry one into a run: the sonar
      is always on, energy (5 s) and the freeze gun (10 s) then cool down (20 s / 40 s).
      The monster's footsteps play louder when it's near, from its side. Donations can now
      come on a key, an escape and (rarely) petting the ghost. New minor, optional events:

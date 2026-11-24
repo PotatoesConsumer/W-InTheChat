@@ -91,7 +91,7 @@ export const HOUSE_LEVELS = Object.freeze([
 export const HORROR_ITEMS = Object.freeze({
   sonar: Object.freeze({
     name: "Sonar",
-    text: "Always on: points to the nearest key",
+    text: "Points to the nearest key",
     cost: { darkMatter: 1, rock: 5 },
   }),
   energy: Object.freeze({
@@ -118,6 +118,8 @@ export function emptyProgress() {
     materials: { wood: 0, rock: 0, darkMatter: 0 },
     ghost: { damage: 0, speed: 0, rate: 0 },
     house: 1,
+    /** The level played in The Dark House: any unlocked one, 1 to `house`. */
+    play: 1,
     fixed: { haunted: false, training: false },
     items: { sonar: false, energy: false, gun: false },
     /** The one horror item taken into a run, or null. */
@@ -180,6 +182,7 @@ export function checkProgress(raw) {
   for (const m of Object.keys(p.materials)) p.materials[m] = int(raw.materials?.[m]);
   for (const g of Object.keys(p.ghost)) p.ghost[g] = int(raw.ghost?.[g], GHOST_MAX_LEVEL);
   p.house = Math.max(1, int(raw.house, HOUSE_LEVELS.length));
+  p.play = Math.min(p.house, Math.max(1, int(raw.play) || p.house));
   for (const f of Object.keys(p.fixed)) p.fixed[f] = raw.fixed?.[f] === true;
   for (const i of Object.keys(p.items)) p.items[i] = raw.items?.[i] === true;
   p.carry = p.items[raw.carry] ? raw.carry : null;
@@ -287,7 +290,8 @@ export function buy(p, action) {
     next.clothes.worn[CLOTHES[id].slot] = id;
   } else if (kind === "ghost") next.ghost[id]++;
   else if (kind === "fix") next.fixed[id] = true;
-  else if (kind === "house") next.house++;
+  else if (kind === "house")
+    next.play = ++next.house; // play the new level
   else if (kind === "item") {
     next.items[id] = true;
     next.carry = id;
@@ -308,6 +312,11 @@ export function toggleWear(p, id) {
 export function toggleCarry(p, id) {
   if (!p.items[id]) return p;
   return { ...p, carry: p.carry === id ? null : id };
+}
+
+/** Switches the level played to the next unlocked one, back to 1 after the highest. */
+export function nextPlayLevel(p) {
+  return { ...p, play: (p.play % p.house) + 1 };
 }
 
 /** Places a piece from the bag. @returns the new state, or null if it can't go there. */
@@ -380,6 +389,7 @@ export function createProgressStore(storage = browserStorage()) {
     },
     toggleWear: (id) => save(toggleWear(p, id)),
     toggleCarry: (id) => save(toggleCarry(p, id)),
+    nextPlayLevel: () => save(nextPlayLevel(p)),
     /** Each returns the new progress, or null if the piece can't go there. */
     place: (id, gx, gy) => save(place(p, id, gx, gy)),
     move: (index, gx, gy) => save(move(p, index, gx, gy)),

@@ -10,6 +10,7 @@ import {
   ghostStats,
   priceFor,
   toggleCarry,
+  nextPlayLevel,
   toggleWear,
   BOOST_COSTS,
   DOOR_TILES,
@@ -164,4 +165,19 @@ test("saves reload; junk saves are repaired", () => {
   assert.deepEqual(fixed.room, [{ id: "chair", gx: 1, gy: 2 }]);
   assert.deepEqual(fixed.bag, { chair: 2 });
   assert.equal(canAfford({ wood: 1 }, { wood: 2 }), false);
+});
+
+test("the level played: any unlocked one, the new one after an upgrade, cycling back to 1", () => {
+  let p = buy(rich(), { kind: "fix", id: "haunted" }).progress;
+  assert.equal(p.play, 1);
+  assert.equal(nextPlayLevel(p).play, 1, "only level 1 unlocked");
+  p = buy(p, { kind: "house" }).progress;
+  p = buy(p, { kind: "house" }).progress;
+  assert.deepEqual([p.house, p.play], [3, 3]);
+  p = nextPlayLevel(p);
+  assert.equal(p.play, 1);
+  p = nextPlayLevel(p);
+  assert.equal(p.play, 2);
+  assert.equal(checkProgress({ house: 2, play: 3 }).play, 2, "never above the unlocked level");
+  assert.equal(checkProgress({ house: 3 }).play, 3, "old saves play their highest level");
 });

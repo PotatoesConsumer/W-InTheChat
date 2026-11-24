@@ -345,7 +345,7 @@ const hub = createHub({
           };
         },
         loot: (material) => progress.add({ [material]: 1 }),
-        horror: () => (locked ? null : { level: progress.get().house, item: progress.get().carry }),
+        horror: () => (locked ? null : { level: progress.get().play, item: progress.get().carry }),
       },
       sound,
     });

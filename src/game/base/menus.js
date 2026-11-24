@@ -101,7 +101,14 @@ export function baseRows(target, { progress }) {
         action: { kind: "carry", id },
       };
     });
-    return [house, ...items];
+    const reward = HOUSE_LEVELS[progress.play - 1].reward;
+    const play = {
+      label: `Play level ${progress.play} of ${progress.house} (pays ${reward} 🌑)`,
+      detail: progress.house > 1 ? "choose to switch level" : "unlock more levels above",
+      ok: progress.house > 1,
+      action: { kind: "play" },
+    };
+    return [house, play, ...items];
   }
   if (target === "training") {
     const fix = fixRow(progress, "training");
