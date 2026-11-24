@@ -1,15 +1,38 @@
 /**
  * index.js
  *
- * Just Chatting as a hub game module (interface in src/game/hub.js): walk the room with
- * WASD, E at a station opens its menu (menus.js), and what's bought is saved in progress
- * (src/game/progress.js). Furniture goes where you stand. Buying materials spends the
+ * Just Chatting as a hub game module (interface in src/game/hub.js). You start outside;
+ * E uses what's in reach (a door, a place, a piece of furniture, the ghost). Crafted
+ * furniture goes in the bag (the button top right, or B); from the bag you place it on
+ * the house's grid. Right-click a piece to move it or put it back in the bag. What's
+ * bought is saved in progress (src/game/progress.js). Buying materials spends the
  * stream's donations through a `material_purchase` event, like the coin store.
  */
 
-import { createBase, STATIONS, BASE } from "./game.js";
-import { baseRows } from "./menus.js";
-import { CLOTHES, FURNITURE, MATERIALS, HOUSE_LEVELS } from "../progress.js";
+import {
+  createBase,
+  camera,
+  pieceRect,
+  tileAt,
+  OUTSIDE,
+  ROOM,
+  ROOM_DOOR,
+  TILE,
+  VIEW,
+} from "./game.js";
+import { baseRows, MENUS } from "./menus.js";
+import {
+  CLOTHES,
+  FIXES,
+  FURNITURE,
+  GHOST_STATS,
+  HORROR_ITEMS,
+  HOUSE_LEVELS,
+  MATERIALS,
+  ROOM_GRID,
+  fits,
+  tilesOf,
+} from "../progress.js";
 import { drawPlayer, drawGhost, drawMaterial } from "../shooter/view.js";
 
 const BINDINGS = Object.freeze({
@@ -22,14 +45,18 @@ const BINDINGS = Object.freeze({
   ArrowDown: "down",
   ArrowRight: "right",
   KeyE: "use",
+  KeyB: "bag",
   Space: "action",
   ...Object.fromEntries([1, 2, 3, 4, 5, 6].map((n) => [`Digit${n}`, `row${n}`])),
 });
 
 const COLORS = Object.freeze({
-  floor: ["#5b4636", "#634c3a"],
+  grass: ["#4f8a3c", "#4a8338"],
+  path: "#b99a6b",
+  floor: ["#6b5240", "#634b3a"],
   wall: "#2c2230",
-  station: "#3a2f45",
+  wood: "#8b5a33",
+  woodLight: "#a8703f",
   text: "#fff8e7",
   muted: "#c9c0a8",
   panel: "rgba(24, 20, 30, 0.96)",
@@ -41,15 +68,41 @@ const COLORS = Object.freeze({
 
 // Below the top-centre donation alerts (effects.js), clear of the facecam.
 const MENU = { x: 230, y: 130, width: 500, rowHeight: 52 };
+const BAG_BUTTON = { x: VIEW.width - 116, y: 6, width: 104, height: 28 };
+const BAG = { x: VIEW.width - 300, y: 44, width: 288, rowHeight: 40 };
+const CONTEXT = { width: 130, rowHeight: 30, rows: ["Move", "Put in bag"] };
+const PET_COOLDOWN_MS = 3000;
+
+const inside = (r, x, y) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
+
+/** Trees around the yard (fixed spots, drawn only). */
+const TREES = Object.freeze(
+  [
+    [120, 120],
+    [300, 260],
+    [180, 520],
+    [620, 140],
+    [1240, 120],
+    [1780, 140],
+    [1820, 520],
+    [1700, 900],
+    [980, 960],
+    [560, 940],
+    [140, 960],
+    [1100, 620],
+    [700, 760],
+  ].map(([x, y]) => Object.freeze({ x, y })),
+);
 
 export const justChatting = Object.freeze({
   id: "just-chatting",
   title: "Just Chatting",
-  blurb: "Your base. Spend wood, rock and dark matter on furniture, clothes and upgrades.",
+  blurb: "Your base. Fix things up, build and decorate your house, visit your ghost.",
   controls: Object.freeze([
     ["WASD", "walk"],
-    ["E", "use a station / close"],
-    ["1-6 / Space / click", "choose in a menu"],
+    ["E", "use / go in or out"],
+    ["B / bag button", "your bag: place furniture"],
+    ["Right-click", "move or pack furniture"],
   ]),
   bindings: BINDINGS,
   drawThumbnail,
@@ -59,39 +112,50 @@ export const justChatting = Object.freeze({
    * @param {{width: number, height: number}} opts.world
    * @param {{donations: () => number}} opts.stream
    * @param {object} [opts.perks] - main.js: `progress` (the store; in the study one that
-   *   remembers nothing) and `ghost()` (the badge).
+   *   remembers nothing) and `ghost()` (the badge: the ghost lives in the house).
    */
   create({ world, stream, perks = {} }) {
-    const room = { x: 0, y: BASE.top, width: world.width, height: world.height - BASE.top };
-    const base = createBase(room);
+    const base = createBase();
     const progress = perks.progress;
+    const ghostOut = () => perks.ghost?.() ?? false;
     let events = [];
     let notice = null;
+    let petMs = 0;
     // Dollars spent on materials whose events haven't reached the stats yet (as the coin store).
     let unsettled = 0;
+    /** The bag panel, a piece being placed ({id, from: index or null}), the right-click menu. */
+    const ui = { bag: false, placing: null, context: null };
 
+    const room = () => progress.get().room;
     const donations = () => stream.donations() - unsettled;
     const rows = () =>
       base.state.menu
-        ? baseRows(base.state.menu.station.id, {
-            progress: progress.get(),
-            ghost: perks.ghost?.() ?? false,
-            donations: donations(),
-          })
+        ? baseRows(base.state.menu.target, { progress: progress.get(), donations: donations() })
         : [];
 
     function say(text) {
-      notice = { text, ms: 2200 };
+      notice = { text, ms: 2400 };
     }
 
     function choose(row) {
       if (!row?.action) return;
-      if (!row.ok) return say(row.detail);
       const { action } = row;
+      if (action.kind === "pet") {
+        if (petMs > 0) return say("The ghost is still happy from the last one");
+        petMs = PET_COOLDOWN_MS;
+        events.push({ name: "ghost_pet", data: {} });
+        return say("The ghost wiggles happily 👻");
+      }
+      if (!row.ok) return say(row.detail);
       if (action.kind === "wear") {
         const { name, slot } = CLOTHES[action.id];
         const on = progress.toggleWear(action.id).clothes.worn[slot] === action.id;
         return say(on ? `Wearing the ${name.toLowerCase()}` : `Took off the ${name.toLowerCase()}`);
+      }
+      if (action.kind === "carry") {
+        const carried = progress.toggleCarry(action.id).carry === action.id;
+        const { name } = HORROR_ITEMS[action.id];
+        return say(carried ? `You'll bring the ${name.toLowerCase()}` : "You'll bring no item");
       }
       if (action.kind === "materials") {
         const { pack } = action;
@@ -104,12 +168,72 @@ export const justChatting = Object.freeze({
         });
         return say(`+${pack.amount} ${MATERIALS[pack.material].icon}`);
       }
-      const p = base.state.player;
-      const result = progress.buy(action, { x: Math.round(p.x), y: Math.round(p.y + 30) });
+      const result = progress.buy(action);
       if (!result.ok) return say(result.reason);
-      const item = itemName(action);
+      const item = action.kind === "craft" ? FURNITURE[action.id].name : itemName(action);
       events.push({ name: "crafted", data: { item } });
-      say(`Done: ${item}`);
+      say(action.kind === "craft" ? `${item} is in your bag (B)` : `Done: ${item}`);
+    }
+
+    /** The placed piece under a screen point, as its index in the room, or -1. */
+    function pieceAt(point) {
+      const tile = tileAt(point.x, point.y);
+      if (!tile) return -1;
+      return room().findIndex((f) => tilesOf(f).some((t) => t.gx === tile.gx && t.gy === tile.gy));
+    }
+
+    /** Where the piece being placed would go: its top-left tile under the pointer. */
+    function placeAt(pointer) {
+      if (!ui.placing || !pointer) return null;
+      const { w, h } = FURNITURE[ui.placing.id];
+      const tile = tileAt(pointer.x - ((w - 1) * TILE) / 2, pointer.y - ((h - 1) * TILE) / 2);
+      if (!tile) return null;
+      const skip = ui.placing.from ?? -1;
+      const ok =
+        fits(room(), ui.placing.id, tile.gx, tile.gy, skip) &&
+        !base.standsOn(ui.placing.id, tile.gx, tile.gy);
+      return { ...tile, ok };
+    }
+
+    function drop(point) {
+      const at = placeAt(point);
+      if (!at?.ok) return say("It doesn't fit there");
+      const { id, from } = ui.placing;
+      if (from === null) progress.place(id, at.gx, at.gy);
+      else progress.move(from, at.gx, at.gy);
+      ui.placing = null;
+      say(`${FURNITURE[id].name} placed`);
+    }
+
+    function bagRows() {
+      return Object.entries(progress.get().bag).filter(([, n]) => n > 0);
+    }
+
+    function clickBag(point) {
+      const index = Math.floor((point.y - (BAG.y + 44)) / BAG.rowHeight);
+      const list = bagRows();
+      if (index < 0 || index >= list.length) return;
+      if (base.state.scene !== "inside") return say("Go inside your house to place furniture");
+      ui.placing = { id: list[index][0], from: null };
+      ui.bag = false;
+    }
+
+    function clickContext(point) {
+      const c = ui.context;
+      ui.context = null;
+      const index = Math.floor((point.y - c.y) / CONTEXT.rowHeight);
+      if (point.x < c.x || point.x > c.x + CONTEXT.width) return;
+      if (index === 0) ui.placing = { id: room()[c.index].id, from: c.index };
+      else if (index === 1) {
+        const { name } = FURNITURE[room()[c.index].id];
+        progress.pickUp(c.index);
+        say(`${name} is in your bag`);
+      }
+    }
+
+    function closeAll() {
+      base.close();
+      Object.assign(ui, { bag: false, placing: null, context: null });
     }
 
     return {
@@ -119,10 +243,17 @@ export const justChatting = Object.freeze({
 
       update(dt, { input }) {
         if (notice && (notice.ms -= dt) <= 0) notice = null;
+        petMs = Math.max(0, petMs - dt);
         const s = base.state;
-        if (input.wasPressed("use")) {
+        if (input.wasPressed("bag")) ui.bag = !ui.bag;
+        if (input.wasPressed("use") && !ui.placing) {
+          ui.context = null;
           if (s.menu) base.close();
-          else if (!base.open()) say("Walk up to a station to use it");
+          else {
+            const what = base.use(room(), ghostOut());
+            if (what === "enter") say("Home sweet home");
+            else if (!what) say("Nothing to use here");
+          }
         }
         if (s.menu) {
           const list = rows();
@@ -137,38 +268,69 @@ export const justChatting = Object.freeze({
           if (input.wasPressed("action")) choose(list[s.menu.index]);
         }
         const axis = (minus, plus) => (input.isDown(plus) ? 1 : 0) - (input.isDown(minus) ? 1 : 0);
-        base.update(dt, { moveX: axis("left", "right"), moveY: axis("up", "down") });
+        base.update(dt, { moveX: axis("left", "right"), moveY: axis("up", "down") }, room());
       },
 
-      pointerDown(point) {
+      /** Left click: bag, placing, menus. Right click: a piece's Move / Put in bag menu. */
+      pointerDown(point, { button = 0 } = {}) {
         const s = base.state;
-        if (!s.menu) {
-          const station = STATIONS.find((st) => Math.hypot(st.x - point.x, st.y - point.y) < 40);
-          if (station && base.near() === station) base.open();
+        if (button === 2) {
+          ui.context = null;
+          if (s.scene !== "inside" || ui.placing || s.menu) return;
+          const index = pieceAt(point);
+          if (index >= 0) ui.context = { index, x: point.x, y: point.y };
           return;
         }
-        const list = rows();
-        const index = Math.floor((point.y - (MENU.y + 70)) / MENU.rowHeight);
-        const insideX = point.x > MENU.x && point.x < MENU.x + MENU.width;
-        if (insideX && index >= 0 && index < list.length) {
-          base.point(index, list.length);
-          choose(list[index]);
-        } else base.close();
+        if (inside(BAG_BUTTON, point.x, point.y)) {
+          ui.bag = !ui.bag;
+          return;
+        }
+        if (ui.context) return clickContext(point);
+        const bagArea = { ...BAG, height: 60 + bagRows().length * BAG.rowHeight };
+        if (ui.bag && inside(bagArea, point.x, point.y)) return clickBag(point);
+        ui.bag = false;
+        if (ui.placing) return drop(point);
+        if (s.menu) {
+          const list = rows();
+          const index = Math.floor((point.y - (MENU.y + 70)) / MENU.rowHeight);
+          const onMenu = point.x > MENU.x && point.x < MENU.x + MENU.width;
+          if (onMenu && index >= 0 && index < list.length) {
+            base.point(index, list.length);
+            choose(list[index]);
+          } else base.close();
+        }
       },
 
-      /** Escape closes a menu before the hub pauses. */
+      /** Escape closes the right-click menu, placing, the bag, then a menu, before pausing. */
       back() {
-        return base.close();
+        if (ui.context) ui.context = null;
+        else if (ui.placing) ui.placing = null;
+        else if (ui.bag) ui.bag = false;
+        else return base.close();
+        return true;
       },
 
-      render(ctx, { alpha, clock }) {
-        drawRoom(ctx, world, base, progress.get(), {
-          alpha,
-          clock,
-          ghost: perks.ghost?.() ?? false,
-        });
-        drawHud(ctx, world, progress.get(), donations());
-        if (base.state.menu) drawMenu(ctx, base.state, rows());
+      render(ctx, { alpha, clock, pointer }) {
+        const p = progress.get();
+        const s = base.state;
+        const looks = { hat: p.clothes.worn.hat, shirt: p.clothes.worn.shirt };
+        const target = s.menu || ui.placing ? null : base.near(p.room, ghostOut());
+        if (s.scene === "outside") drawOutside(ctx, s, p, { alpha, clock, looks, target });
+        else {
+          drawInside(ctx, s, p, {
+            alpha,
+            clock,
+            looks,
+            target,
+            ghost: ghostOut(),
+            placing: ui.placing,
+            at: placeAt(pointer),
+          });
+        }
+        drawHud(ctx, world, p, donations());
+        if (ui.bag) drawBag(ctx, bagRows(), s.scene === "inside");
+        if (ui.context) drawContext(ctx, ui.context);
+        if (s.menu) drawMenu(ctx, s, rows());
         if (notice) drawNotice(ctx, world, notice.text);
       },
 
@@ -179,13 +341,8 @@ export const justChatting = Object.freeze({
         return out;
       },
 
-      restart() {
-        base.close();
-      },
-
-      quit() {
-        base.close();
-      },
+      restart: closeAll,
+      quit: closeAll,
 
       /** Chat knows when you're in a menu, like the shooter's shop. */
       chatScene() {
@@ -196,10 +353,11 @@ export const justChatting = Object.freeze({
 });
 
 function itemName({ kind, id }) {
-  if (kind === "furniture") return FURNITURE[id].name;
   if (kind === "clothes") return CLOTHES[id].name;
-  if (kind === "ghost") return "a stronger ghost";
+  if (kind === "ghost") return `${GHOST_STATS[id].name} up`;
+  if (kind === "fix") return `the ${FIXES[id].name} fixed`;
   if (kind === "house") return "a scarier Haunted House";
+  if (kind === "item") return HORROR_ITEMS[id].name;
   if (kind === "boost") return "a shooter boost";
   return id;
 }
@@ -218,81 +376,303 @@ function text(
   ctx.fillText(value, x, y);
 }
 
-function drawRoom(ctx, world, base, progress, { alpha, clock, ghost }) {
-  const s = base.state;
-  // Floorboards and a back wall.
-  for (let y = BASE.top; y < world.height; y += 30) {
-    ctx.fillStyle = COLORS.floor[((y / 30) % 2) | 0];
-    ctx.fillRect(0, y, world.width, 30);
-  }
-  ctx.fillStyle = COLORS.wall;
-  ctx.fillRect(0, BASE.top, world.width, 36);
-
-  for (const f of progress.furniture) drawFurniture(ctx, f);
-  const near = base.near();
-  for (const st of STATIONS) drawStation(ctx, st, progress, st === near && !s.menu, clock);
-
-  const p = s.player;
-  drawPlayer(ctx, { ...p, invulnerableMs: 0 }, alpha, clock, {
-    hat: progress.clothes.worn.hat,
-    shirt: progress.clothes.worn.shirt,
-  });
-  if (ghost) {
-    const t = clock / 900;
-    drawGhost(ctx, { x: p.x + Math.cos(t) * 40, y: p.y - 20 + Math.sin(t) * 12 }, clock);
-  }
-}
-
-function drawFurniture(ctx, { id, x, y }) {
-  ctx.fillStyle = "#8b5a33";
-  if (id === "table") {
-    ctx.fillRect(x - 26, y - 14, 52, 28);
-    ctx.fillStyle = "#a8703f";
-    ctx.fillRect(x - 24, y - 12, 48, 18);
-  } else {
-    ctx.fillRect(x - 12, y - 18, 24, 8); // back
-    ctx.fillRect(x - 12, y - 10, 24, 18); // seat
-    ctx.fillStyle = "#a8703f";
-    ctx.fillRect(x - 10, y - 8, 20, 12);
-  }
-}
-
-const STATION_ICONS = Object.freeze({
-  workbench: "🔨",
-  wardrobe: "👕",
-  shrine: "👻",
-  haunted: "🏚️",
-  training: "🎯",
-  trader: "💰",
-});
-
-function drawStation(ctx, st, progress, highlighted, clock) {
-  ctx.fillStyle = highlighted ? "#5a3f7a" : COLORS.station;
+function roundRect(ctx, x, y, width, height, r) {
   ctx.beginPath();
-  ctx.roundRect(st.x - 34, st.y - 30, 68, 60, 10);
+  ctx.roundRect(x, y, width, height, r);
   ctx.fill();
-  if (highlighted) {
-    ctx.strokeStyle = "#c9a7ff";
-    ctx.lineWidth = 2;
+}
+
+/** "E" bobbing over what's in reach. */
+function prompt(ctx, x, y, clock, label) {
+  const bob = Math.sin(clock / 200) * 2;
+  text(ctx, `E  ${label}`, x, y + bob, {
+    size: 13,
+    weight: 800,
+    align: "center",
+    color: "#ffd34e",
+  });
+}
+
+// --- outside --------------------------------------------------------------------------
+
+function drawOutside(ctx, s, p, { alpha, clock, looks, target }) {
+  const cam = camera(s.player);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, VIEW.top, VIEW.width, VIEW.height);
+  ctx.clip();
+  ctx.translate(-cam.x, VIEW.top - cam.y);
+
+  // Grass in big checks, only what's on screen.
+  const size = 64;
+  for (let y = Math.floor(cam.y / size) * size; y < cam.y + VIEW.height; y += size) {
+    for (let x = Math.floor(cam.x / size) * size; x < cam.x + VIEW.width; x += size) {
+      ctx.fillStyle = COLORS.grass[(x / size + y / size) % 2 === 0 ? 0 : 1];
+      ctx.fillRect(x, y, size, size);
+    }
+  }
+  // Paths from the front door to each place.
+  ctx.strokeStyle = COLORS.path;
+  ctx.lineWidth = 34;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  for (const spot of OUTSIDE.spots.slice(1)) {
+    ctx.moveTo(OUTSIDE.spots[0].x, OUTSIDE.spots[0].y);
+    ctx.lineTo(spot.x, spot.y);
+  }
+  ctx.stroke();
+
+  for (const t of TREES) drawTree(ctx, t.x, t.y);
+  const solid = (id) => OUTSIDE.solids.find((r) => r.id === id);
+  drawHome(ctx, solid("home"));
+  drawHaunted(ctx, solid("haunted"), p.fixed.haunted, p.house, clock);
+  drawBoard(ctx, solid("training"), p.fixed.training);
+  drawTrader(ctx, solid("trader"));
+
+  // The player is in yard coordinates; drawPlayer works in screen ones.
+  drawPlayer(ctx, { ...s.player, invulnerableMs: 0 }, alpha, clock, looks);
+  if (target) {
+    const spot = OUTSIDE.spots.find((sp) => sp.id === target.id);
+    const labels = {
+      door: "go inside",
+      haunted: p.fixed.haunted ? "Haunted House" : "fix it",
+      training: p.fixed.training ? "Training Board" : "fix it",
+      trader: "Trader",
+    };
+    prompt(ctx, spot.x, spot.y - 46, clock, labels[target.id]);
+  }
+  ctx.restore();
+}
+
+function drawTree(ctx, x, y) {
+  ctx.fillStyle = "#6b4226";
+  ctx.fillRect(x - 6, y, 12, 22);
+  ctx.fillStyle = "#2f6b2a";
+  ctx.beginPath();
+  ctx.arc(x, y - 6, 26, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#3d8236";
+  ctx.beginPath();
+  ctx.arc(x - 8, y - 14, 14, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawHome(ctx, r) {
+  // A cosy house seen from the front: roof, wall, two windows, the door.
+  ctx.fillStyle = "#c9a27a";
+  ctx.fillRect(r.x, r.y + r.height * 0.27, r.width, r.height * 0.73);
+  ctx.fillStyle = "#9b3f3a";
+  ctx.beginPath();
+  ctx.moveTo(r.x - r.width * 0.05, r.y + r.height * 0.31);
+  ctx.lineTo(r.x + r.width / 2, r.y);
+  ctx.lineTo(r.x + r.width * 1.05, r.y + r.height * 0.31);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ffe6a3";
+  ctx.fillRect(r.x + r.width * 0.12, r.y + r.height * 0.46, r.width * 0.18, r.height * 0.2);
+  ctx.fillRect(r.x + r.width * 0.7, r.y + r.height * 0.46, r.width * 0.18, r.height * 0.2);
+  ctx.fillStyle = "#5a3520";
+  const door = { w: r.width * 0.15, h: r.height * 0.35 };
+  ctx.fillRect(r.x + r.width / 2 - door.w / 2, r.y + r.height - door.h, door.w, door.h);
+}
+
+function drawHaunted(ctx, r, fixed, level, clock) {
+  ctx.fillStyle = fixed ? "#3b2a4a" : "#4a4a4a";
+  ctx.fillRect(r.x, r.y + 50, r.width, r.height - 50);
+  ctx.fillStyle = fixed ? "#24182e" : "#333";
+  ctx.beginPath();
+  ctx.moveTo(r.x - 10, r.y + 60);
+  ctx.lineTo(r.x + r.width / 2, r.y);
+  ctx.lineTo(r.x + r.width + 10, r.y + 60);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = fixed ? `rgba(160, 90, 255, ${0.6 + Math.sin(clock / 300) * 0.3})` : "#222";
+  ctx.fillRect(r.x + 30, r.y + 80, 40, 36);
+  ctx.fillRect(r.x + r.width - 70, r.y + 80, 40, 36);
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fillRect(r.x + r.width / 2 - 22, r.y + r.height - 60, 44, 60);
+  if (!fixed) {
+    // Boarded up.
+    ctx.fillStyle = "#8b6a44";
+    for (const [dy, tilt] of [
+      [-50, 0.3],
+      [-30, -0.3],
+    ]) {
+      ctx.save();
+      ctx.translate(r.x + r.width / 2, r.y + r.height + dy);
+      ctx.rotate(tilt);
+      ctx.fillRect(-36, -5, 72, 10);
+      ctx.restore();
+    }
+  }
+  const label = fixed ? `Haunted House Lv ${level}` : "Haunted House (broken)";
+  text(ctx, label, r.x + r.width / 2, r.y + r.height + 14, {
+    size: 13,
+    weight: 800,
+    align: "center",
+  });
+}
+
+function drawBoard(ctx, r, fixed) {
+  ctx.fillStyle = "#6b4226";
+  ctx.fillRect(r.x + 8, r.y - 40, 8, 70);
+  ctx.fillRect(r.x + r.width - 16, r.y - 40, 8, 70);
+  ctx.fillStyle = fixed ? "#e8d9b5" : "#9a9a8a";
+  ctx.fillRect(r.x, r.y - 50, r.width, 46);
+  if (fixed) {
+    for (const [rad, color] of [
+      [18, "#d8343a"],
+      [12, "#fff"],
+      [6, "#d8343a"],
+    ]) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(r.x + r.width / 2, r.y - 27, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(r.x + 10, r.y - 46);
+    ctx.lineTo(r.x + 40, r.y - 24);
+    ctx.lineTo(r.x + 30, r.y - 8);
     ctx.stroke();
   }
-  text(ctx, STATION_ICONS[st.id], st.x, st.y - 4, { size: 26, align: "center" });
-  const label = st.id === "haunted" ? `${st.name} Lv ${progress.house}` : st.name;
-  text(ctx, label, st.x, st.y + 42, { size: 12, weight: 700, align: "center" });
-  if (highlighted) {
-    const bob = Math.sin(clock / 200) * 2;
-    text(ctx, "E", st.x, st.y - 44 + bob, {
-      size: 14,
-      weight: 800,
+  const label = fixed ? "Training Board" : "Training Board (broken)";
+  text(ctx, label, r.x + r.width / 2, r.y + 46, { size: 13, weight: 800, align: "center" });
+}
+
+function drawTrader(ctx, r) {
+  ctx.fillStyle = "#8b5a33";
+  ctx.fillRect(r.x, r.y, r.width, r.height);
+  ctx.fillStyle = "#d8343a";
+  ctx.fillRect(r.x - 6, r.y - 30, r.width + 12, 16);
+  ctx.fillStyle = "#fff";
+  for (let x = r.x; x < r.x + r.width; x += 24) ctx.fillRect(x, r.y - 30, 12, 16);
+  drawMaterial(ctx, "wood", r.x + 26, r.y + 18);
+  drawMaterial(ctx, "rock", r.x + 70, r.y + 18);
+  text(ctx, "Trader", r.x + r.width / 2, r.y + r.height + 14, {
+    size: 13,
+    weight: 800,
+    align: "center",
+  });
+}
+
+// --- inside ---------------------------------------------------------------------------
+
+function drawInside(ctx, s, p, { alpha, clock, looks, target, ghost, placing, at }) {
+  ctx.fillStyle = COLORS.wall;
+  ctx.fillRect(0, VIEW.top, VIEW.width, VIEW.height);
+  for (let gy = 0; gy < ROOM_GRID.rows; gy++) {
+    for (let gx = 0; gx < ROOM_GRID.cols; gx++) {
+      ctx.fillStyle = COLORS.floor[(gx + gy) % 2];
+      ctx.fillRect(ROOM.x + gx * TILE, ROOM.y + gy * TILE, TILE, TILE);
+    }
+  }
+  // The door: a gap in the bottom wall with a mat.
+  ctx.fillStyle = "#5a3520";
+  ctx.fillRect(ROOM_DOOR.x - 40, ROOM_DOOR.y, 80, 12);
+  ctx.fillStyle = "#9b3f3a";
+  ctx.fillRect(ROOM_DOOR.x - 34, ROOM_DOOR.y - 20, 68, 16);
+
+  if (placing) {
+    // The grid, while placing.
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    for (let gx = 0; gx <= ROOM_GRID.cols; gx++) {
+      ctx.beginPath();
+      ctx.moveTo(ROOM.x + gx * TILE, ROOM.y);
+      ctx.lineTo(ROOM.x + gx * TILE, ROOM.y + ROOM.height);
+      ctx.stroke();
+    }
+    for (let gy = 0; gy <= ROOM_GRID.rows; gy++) {
+      ctx.beginPath();
+      ctx.moveTo(ROOM.x, ROOM.y + gy * TILE);
+      ctx.lineTo(ROOM.x + ROOM.width, ROOM.y + gy * TILE);
+      ctx.stroke();
+    }
+  }
+
+  p.room.forEach((f, i) => {
+    if (placing?.from === i) return; // being moved: drawn at the pointer instead
+    drawPiece(ctx, f, pieceRect(f));
+  });
+  if (placing && at) {
+    const rect = pieceRect({ id: placing.id, gx: at.gx, gy: at.gy });
+    ctx.globalAlpha = 0.6;
+    drawPiece(ctx, { id: placing.id }, rect);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = at.ok ? "rgba(126,224,138,0.35)" : "rgba(255,80,80,0.4)";
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+  }
+
+  drawPlayer(ctx, { ...s.player, invulnerableMs: 0 }, alpha, clock, looks);
+  if (ghost) drawGhost(ctx, { x: s.ghost.x, y: s.ghost.y + Math.sin(clock / 300) * 3 }, clock);
+
+  if (target) {
+    if (target.kind === "ghost") prompt(ctx, s.ghost.x, s.ghost.y - 30, clock, "pet / talk");
+    else if (target.kind === "spot") {
+      prompt(ctx, ROOM_DOOR.x, ROOM_DOOR.y - 50, clock, "go outside");
+    } else {
+      const r = pieceRect(p.room[target.index]);
+      prompt(ctx, r.x + r.width / 2, r.y - 12, clock, MENUS[target.use].title);
+    }
+  }
+  if (placing) {
+    text(ctx, "Click to place · Esc to stop", VIEW.width / 2, VIEW.top + 22, {
+      size: 13,
+      weight: 700,
       align: "center",
-      color: "#ffd34e",
+      color: COLORS.muted,
     });
   }
 }
 
+/** A piece of furniture, top-down, filling its tiles. */
+function drawPiece(ctx, { id }, r) {
+  const { x, y, width: w, height: h } = r;
+  if (id === "workbench") {
+    ctx.fillStyle = "#6b4226";
+    ctx.fillRect(x + 4, y + 6, w - 8, h - 10);
+    ctx.fillStyle = COLORS.woodLight;
+    ctx.fillRect(x + 6, y + 8, w - 12, h - 18);
+    ctx.fillStyle = "#777";
+    ctx.fillRect(x + w * 0.12, y + h * 0.25, w * 0.19, h * 0.21); // vise
+    ctx.fillStyle = "#c8c8c8";
+    ctx.fillRect(x + w * 0.64, y + h * 0.3, w * 0.23, h * 0.08); // saw
+    ctx.fillStyle = "#3a3a46";
+    ctx.fillRect(x + w / 2 - 3, y + h * 0.25, 6, h * 0.38); // hammer
+    ctx.fillStyle = "#6b4226";
+    ctx.fillRect(x + w / 2 - 8, y + h * 0.25, 16, 6);
+  } else if (id === "table") {
+    ctx.fillStyle = COLORS.wood;
+    ctx.fillRect(x + 4, y + 8, w - 8, h - 14);
+    ctx.fillStyle = COLORS.woodLight;
+    ctx.fillRect(x + 6, y + 10, w - 12, h - 20);
+  } else if (id === "wardrobe") {
+    ctx.fillStyle = "#5a3520";
+    ctx.fillRect(x + 4, y + 2, w - 8, h - 6);
+    ctx.fillStyle = "#7a4a2a";
+    ctx.fillRect(x + 7, y + 5, (w - 17) / 2, h - 12);
+    ctx.fillRect(x + w / 2 + 1.5, y + 5, (w - 17) / 2, h - 12);
+    ctx.fillStyle = "#ffd34e";
+    ctx.fillRect(x + w / 2 - 4, y + h / 2, 2, 6);
+    ctx.fillRect(x + w / 2 + 2, y + h / 2, 2, 6);
+  } else {
+    ctx.fillStyle = COLORS.wood;
+    ctx.fillRect(x + w * 0.2, y + h * 0.12, w * 0.6, h * 0.17); // back
+    ctx.fillRect(x + w * 0.2, y + h * 0.29, w * 0.6, h * 0.54); // seat
+    ctx.fillStyle = COLORS.woodLight;
+    ctx.fillRect(x + w * 0.27, y + h * 0.35, w * 0.46, h * 0.42);
+  }
+}
+
+// --- HUD, bag, menus ------------------------------------------------------------------
+
 function drawHud(ctx, world, progress, donations) {
-  ctx.fillStyle = "rgba(16, 12, 20, 0.9)";
-  ctx.fillRect(0, 0, world.width, BASE.top);
+  ctx.fillStyle = "rgba(16, 12, 20, 0.92)";
+  ctx.fillRect(0, 0, world.width, VIEW.top);
   let x = 16;
   for (const [id, m] of Object.entries(MATERIALS)) {
     if (id !== "darkMatter") drawMaterial(ctx, id, x + 8, 20);
@@ -301,25 +681,68 @@ function drawHud(ctx, world, progress, donations) {
     x += 74;
   }
   text(ctx, `$${donations} donations`, x + 10, 20, { size: 14, weight: 700, color: "#ffd34e" });
-  const reward = HOUSE_LEVELS[progress.house - 1].reward;
-  text(ctx, `Haunted House Lv ${progress.house} · escape pays ${reward} 🌑`, world.width - 16, 20, {
+  if (progress.fixed.haunted) {
+    const reward = HOUSE_LEVELS[progress.house - 1].reward;
+    text(ctx, `Haunted House Lv ${progress.house} · pays ${reward} 🌑`, BAG_BUTTON.x - 14, 20, {
+      size: 12,
+      align: "right",
+      color: COLORS.muted,
+    });
+  }
+  const count = Object.values(progress.bag).reduce((a, b) => a + b, 0);
+  ctx.fillStyle = "#3a2f45";
+  roundRect(ctx, BAG_BUTTON.x, BAG_BUTTON.y, BAG_BUTTON.width, BAG_BUTTON.height, 6);
+  text(ctx, `🎒 Bag (${count})`, BAG_BUTTON.x + BAG_BUTTON.width / 2, 20, {
     size: 13,
+    weight: 700,
+    align: "center",
+  });
+}
+
+function drawBag(ctx, list, isInside) {
+  const height = 60 + Math.max(1, list.length) * BAG.rowHeight;
+  ctx.fillStyle = COLORS.panel;
+  roundRect(ctx, BAG.x, BAG.y, BAG.width, height, 10);
+  text(ctx, "🎒 Bag", BAG.x + 16, BAG.y + 22, { size: 16, weight: 800 });
+  const hint = isInside ? "click one to place it" : "place furniture inside";
+  text(ctx, hint, BAG.x + BAG.width - 14, BAG.y + 22, {
+    size: 11,
     align: "right",
     color: COLORS.muted,
+  });
+  if (list.length === 0) {
+    text(ctx, "Empty. Craft at the workbench.", BAG.x + 16, BAG.y + 62, {
+      size: 13,
+      color: COLORS.muted,
+    });
+    return;
+  }
+  list.forEach(([id, n], i) => {
+    const y = BAG.y + 44 + i * BAG.rowHeight;
+    ctx.fillStyle = COLORS.row;
+    roundRect(ctx, BAG.x + 10, y, BAG.width - 20, BAG.rowHeight - 6, 6);
+    drawPiece(ctx, { id }, { x: BAG.x + 14, y: y + 1, width: 32, height: 32 });
+    text(ctx, `${FURNITURE[id].name} ×${n}`, BAG.x + 56, y + 17, { size: 13, weight: 700 });
+  });
+}
+
+function drawContext(ctx, c) {
+  ctx.fillStyle = COLORS.panel;
+  roundRect(ctx, c.x, c.y, CONTEXT.width, CONTEXT.rows.length * CONTEXT.rowHeight, 6);
+  CONTEXT.rows.forEach((label, i) => {
+    text(ctx, label, c.x + 12, c.y + i * CONTEXT.rowHeight + CONTEXT.rowHeight / 2, {
+      size: 13,
+      weight: 700,
+    });
   });
 }
 
 function drawMenu(ctx, s, list) {
   const height = 90 + list.length * MENU.rowHeight;
   ctx.fillStyle = COLORS.panel;
-  ctx.beginPath();
-  ctx.roundRect(MENU.x, MENU.y, MENU.width, height, 10);
-  ctx.fill();
-  const st = s.menu.station;
-  text(ctx, `${STATION_ICONS[st.id]}  ${st.name}`, MENU.x + 20, MENU.y + 32, {
-    size: 20,
-    weight: 800,
-  });
+  roundRect(ctx, MENU.x, MENU.y, MENU.width, height, 10);
+  const { title, icon } = MENUS[s.menu.target];
+  text(ctx, `${icon}  ${title}`, MENU.x + 20, MENU.y + 32, { size: 20, weight: 800 });
   text(ctx, "E or Esc to close", MENU.x + MENU.width - 20, MENU.y + 32, {
     size: 12,
     align: "right",
@@ -328,11 +751,8 @@ function drawMenu(ctx, s, list) {
   list.forEach((row, i) => {
     const y = MENU.y + 70 + i * MENU.rowHeight;
     ctx.fillStyle = i === s.menu.index ? COLORS.rowActive : COLORS.row;
-    ctx.beginPath();
-    ctx.roundRect(MENU.x + 14, y, MENU.width - 28, MENU.rowHeight - 8, 6);
-    ctx.fill();
-    const key = row.action ? `${i + 1}  ` : "";
-    text(ctx, `${key}${row.label}`, MENU.x + 26, y + 15, { size: 13, weight: 700 });
+    roundRect(ctx, MENU.x + 14, y, MENU.width - 28, MENU.rowHeight - 8, 6);
+    text(ctx, `${i + 1}  ${row.label}`, MENU.x + 26, y + 15, { size: 13, weight: 700 });
     text(ctx, row.detail, MENU.x + 26, y + 32, {
       size: 12,
       color: row.ok ? COLORS.ok : COLORS.no,
@@ -344,26 +764,25 @@ function drawNotice(ctx, world, value) {
   ctx.font = "700 15px system-ui, sans-serif";
   const width = ctx.measureText(value).width + 32;
   ctx.fillStyle = "rgba(0,0,0,0.75)";
-  ctx.beginPath();
-  ctx.roundRect(world.width / 2 - width / 2, world.height - 70, width, 34, 8);
-  ctx.fill();
+  roundRect(ctx, world.width / 2 - width / 2, world.height - 70, width, 34, 8);
   text(ctx, value, world.width / 2, world.height - 53, { size: 15, weight: 700, align: "center" });
 }
 
-/** The hub card: a cosy room with a table, a chair and a ghost. */
+/** The hub card: a little house on the grass, and a ghost. */
 function drawThumbnail(ctx, { x, y, width, height }, clock) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(x, y, width, height);
   ctx.clip();
-  for (let row = 0; row * 16 < height; row++) {
-    ctx.fillStyle = COLORS.floor[row % 2];
-    ctx.fillRect(x, y + row * 16, width, 16);
-  }
-  ctx.fillStyle = COLORS.wall;
-  ctx.fillRect(x, y, width, 22);
-  drawFurniture(ctx, { id: "table", x: x + width * 0.35, y: y + height * 0.55 });
-  drawFurniture(ctx, { id: "chair", x: x + width * 0.35, y: y + height * 0.55 + 34 });
-  drawGhost(ctx, { x: x + width * 0.72, y: y + height * 0.45 + Math.sin(clock / 400) * 4 }, clock);
+  ctx.fillStyle = COLORS.grass[0];
+  ctx.fillRect(x, y, width, height);
+  const home = {
+    x: x + width * 0.22,
+    y: y + height * 0.12,
+    width: width * 0.56,
+    height: height * 0.7,
+  };
+  drawHome(ctx, home);
+  drawGhost(ctx, { x: x + width * 0.86, y: y + height * 0.3 + Math.sin(clock / 400) * 4 }, clock);
   ctx.restore();
 }

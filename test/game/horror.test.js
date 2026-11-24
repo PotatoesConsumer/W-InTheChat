@@ -54,22 +54,28 @@ test("higher levels: more keys, a bigger house, a faster monster, less stamina",
   }
 });
 
-test("items: sonar once a run, energy runs without stamina, the gun freezes the monster", () => {
+test("items: the sonar is on all run; energy and the gun work, then wait out a cooldown", () => {
+  const withSonar = createHorror({ random: seededRandom(1) });
+  withSonar.start({ sonar: true });
+  assert.equal(withSonar.state.sonar, true);
+  assert.equal(started().state.sonar, false);
+
   const game = started();
   const s = game.state;
   parkMonster(game);
-  assert.equal(game.sonar(), true);
-  assert.equal(game.sonar(), false);
-
   assert.equal(game.energy(), true);
+  assert.equal(game.energy(), false, "cooling down");
   s.player.angle = 0;
   for (let i = 0; i < 60; i++) game.update(STEP, { forward: 1, run: true });
   assert.equal(s.player.stamina, HOUSES[0].stamina);
   assert.equal(s.player.running, true);
+  game.update(ITEM_EFFECTS.energyCooldownMs, {});
+  assert.equal(s.cooldownMs, 0);
 
   Object.assign(s.monster, { x: s.player.x + 2, y: s.player.y, mode: "chase" });
   s.elapsedMs = HORROR.graceMs;
-  game.freeze();
+  assert.equal(game.freeze(), true);
+  assert.equal(game.freeze(), false, "cooling down");
   const at = { x: s.monster.x, y: s.monster.y };
   for (let i = 0; i < 60; i++) game.update(STEP);
   assert.deepEqual({ x: s.monster.x, y: s.monster.y }, at);

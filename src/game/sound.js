@@ -59,6 +59,15 @@ export const SOUNDS = Object.freeze({
     [1319, 70, "sine"],
     [1760, 160, "sine"],
   ],
+  // The Dark House monster's footsteps, played by distance and side (playAt).
+  monster_step: [
+    [55, 140, "triangle", 2.5],
+    [45, 160, "triangle", 2],
+  ],
+  ghost_pet: [
+    [784, 90, "sine"],
+    [1175, 180, "sine"],
+  ],
   monster_near: [
     [62, 600, "sawtooth"],
     [58, 700, "sawtooth"],
@@ -100,17 +109,30 @@ export function createSound(win = globalThis.window) {
   return {
     /** @param {string} name - Key of SOUNDS; anything else is silent. */
     play(name) {
-      if (muted || !Object.hasOwn(SOUNDS, name) || !win.AudioContext) return;
+      this.playAt(name);
+    },
+
+    /**
+     * A sound from somewhere: `volume` 0-1 scales it, `pan` -1 (left) to 1 (right).
+     * The Dark House plays the monster's footsteps this way.
+     */
+    playAt(name, { volume: level = 1, pan = 0 } = {}) {
+      if (muted || !Object.hasOwn(SOUNDS, name) || !win.AudioContext || level <= 0) return;
       const ac = audio();
+      const out = ac.createStereoPanner ? ac.createStereoPanner() : null;
+      if (out) {
+        out.pan.value = Math.max(-1, Math.min(1, pan));
+        out.connect(ac.destination);
+      }
       let at = ac.currentTime;
       for (const [hz, ms, type, volume = 1] of SOUNDS[name]) {
         const osc = ac.createOscillator();
         const gain = ac.createGain();
         osc.type = type;
         osc.frequency.value = hz;
-        gain.gain.setValueAtTime(VOLUME * volume, at);
+        gain.gain.setValueAtTime(VOLUME * volume * level, at);
         gain.gain.exponentialRampToValueAtTime(0.0001, at + ms / 1000);
-        osc.connect(gain).connect(ac.destination);
+        osc.connect(gain).connect(out ?? ac.destination);
         osc.start(at);
         osc.stop(at + ms / 1000);
         at += (ms * 0.8) / 1000; // notes overlap a little

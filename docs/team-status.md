@@ -147,16 +147,23 @@ Don't change these without talking to the team first. The reasons are in the lin
    - **Just Chatting, the base (`feature/just-chatting`)**, a third game that ties the
      other two together (`src/game/base/`, `src/game/progress.js`). Wave Survival kills
      drop wood (slimes, bats) and rock (brutes); escaping The Dark House pays dark matter
-     (1 / 3 / 5 by Haunted House level). In the base you walk to a station and press E:
-     Workbench (chair, table), Wardrobe (clothes worn in Wave Survival, looks only),
-     Ghost Shrine (ghost damage, flying speed, hit speed; dark matter only), Haunted
-     House (its level: level 2 is 5 keys in a bigger house with a monster as fast as
-     your walk, level 3 is 8 keys, bigger again, a faster monster and less stamina; and
-     items for the house on keys 1-3: sonar, energy boost, freeze gun), Training Board
-     (boosts: Power shot +1 a level becomes +2, then +3), Trader (materials for
-     donations, dearer than coins because they stay). The ghost no longer shoots: it
-     flies to an enemy and hurts it while on top of it. Two new minor, optional events,
-     `crafted` and `material_purchase` (spends donations like `coin_purchase`).
+     (1 / 3 / 5 by Haunted House level). You start outside, in a yard the camera
+     follows: fix the Haunted House (1 dark matter) to raise its level and buy horror
+     items, fix the Training Board (5 wood + 5 rock) for shooter boosts (Power shot +1 a
+     level becomes +2, then +3), and the Trader sells materials for donations (dearer
+     than coins, because they stay). Inside your house: a workbench in the top-right
+     corner crafts chairs, tables and wardrobes into the bag (button top right); place
+     them on the grid, right-click to move or pack them. A wardrobe makes clothes (looks
+     only, worn in Wave Survival). With the badge the ghost lives in the house: pet it or
+     talk to it for its upgrades (damage, flying speed, hit speed; dark matter only).
+     In Wave Survival the ghost flies to an enemy and hurts it: 0.4 a hit at level 0, so
+     5 hits for a slime. Haunted House levels: 2 is 5 keys in a bigger house with a
+     monster as fast as your walk, 3 is 8 keys, bigger again, a faster monster and less
+     stamina. Horror items are bought once and kept; you carry one into a run: the sonar
+     is always on, energy (5 s) and the freeze gun (10 s) then cool down (20 s / 40 s).
+     The monster's footsteps play louder when it's near, from its side. Donations can now
+     come on a key, an escape and (rarely) petting the ghost. New minor, optional events:
+     `crafted`, `material_purchase` (spends donations like `coin_purchase`), `ghost_pet`.
      **None of it reaches the study or the bot**: `perks.shooter()` is null there and
      drops are off, so the shooter makes the same random draws and events as before.
      Prices are a first guess; tune them after playing.

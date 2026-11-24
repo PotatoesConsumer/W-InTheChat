@@ -74,6 +74,7 @@ export const GAME_EVENTS = Object.freeze({
     phrase: "spent chat's donations on materials",
     optional: true,
   },
+  ghost_pet: { importance: IMPORTANCE.MINOR, phrase: "petted their ghost", optional: true },
 });
 
 /**

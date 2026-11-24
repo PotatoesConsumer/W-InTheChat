@@ -160,11 +160,18 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     `index.js` the hub module (keys, pointer-lock mouse look, HUD). Its events are
     minor and `optional`, so chat answers with fixed lines. Escaping earns the Ghost
     Friend badge (`BADGES` in `src/ui/profile.js`) and dark matter. Three house sizes by
-    Haunted House level (`HOUSES`); items on keys 1-3 (sonar, energy, freeze gun).
-  - `base/`: Just Chatting, the base, an extra outside the study: walk a room, E at a
-    station (`STATIONS`) opens its menu (`menus.js`, pure): furniture, clothes, ghost
-    levels, Haunted House levels and horror items, shooter boosts, materials for
-    donations. `game.js` movement and menus (tested), `index.js` the hub module.
+    Haunted House level (`HOUSES`). One item from the base is carried (bought once):
+    the sonar is always on; energy and the freeze gun use 1 or Q, then cool down. The
+    monster's footsteps play by distance and side (`sound.playAt`).
+  - `base/`: Just Chatting, the base, an extra outside the study. You start outside in
+    a yard bigger than the screen (the camera follows): the Haunted House and Training
+    Board start broken and must be fixed, and the Trader sells materials for donations.
+    Inside your house, furniture sits on a grid (`ROOM_GRID`): the workbench crafts into
+    the bag (button top right, or B), pieces are placed from the bag, and right-click
+    moves one or packs it away. The wardrobe (craftable) makes and wears clothes. With
+    the badge the ghost flies about the house: pet it (`ghost_pet`, a tiny donation
+    chance) or talk to it for its upgrades. `game.js` scenes, walking and collisions
+    (tested), `menus.js` the menus (pure), `index.js` drawing, the bag and placing.
   - `progress.js`: what carries between games, in this browser (DOM-free store,
     tested): wood and rock (shooter drops), dark matter (escapes), and everything the
     base sells, with prices. Games get it through `perks` (main.js): `shooter()` gives

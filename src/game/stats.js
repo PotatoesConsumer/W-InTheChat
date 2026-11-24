@@ -40,6 +40,7 @@ export const STAT_RULES = Object.freeze({
   // Just Chatting
   crafted: { hype: 3, followers: 0 },
   material_purchase: { hype: 0, followers: 0, spends: true },
+  ghost_pet: { hype: 2, followers: 0 },
 });
 
 /** The streamer talking to chat keeps the room warm. */

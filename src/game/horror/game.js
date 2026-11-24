@@ -85,8 +85,16 @@ export const HOUSES = Object.freeze([
   Object.freeze({ level: 3, rows: HOUSE_3, keys: 8, chaseSpeed: 3.8, stamina: 60 }),
 ]);
 
-/** Items from the base (progress.js HORROR_ITEMS). */
-export const ITEM_EFFECTS = Object.freeze({ energyMs: 5000, freezeMs: 10_000 });
+/**
+ * Items from the base (progress.js HORROR_ITEMS): bought once, one carried into a run.
+ * The sonar is always on; the others last a while, then wait out a cooldown.
+ */
+export const ITEM_EFFECTS = Object.freeze({
+  energyMs: 5000,
+  energyCooldownMs: 20_000,
+  freezeMs: 10_000,
+  freezeCooldownMs: 40_000,
+});
 
 export const CELL = 2;
 
@@ -168,6 +176,8 @@ export function createHorror({ random = Math.random, level = () => 1 } = {}) {
       elapsedMs: 0,
       nearCooldownMs: 0,
       sonar: false,
+      /** ms until the carried item can be used again. */
+      cooldownMs: 0,
     });
   }
 
@@ -309,32 +319,29 @@ export function createHorror({ random = Math.random, level = () => 1 } = {}) {
       return s;
     },
 
-    start() {
+    /** @param {{sonar?: boolean}} [carry] - The sonar is on for the whole run if carried. */
+    start({ sonar = false } = {}) {
       house = HOUSES[Math.min(HOUSES.length, Math.max(1, level())) - 1];
       reset();
       s.phase = "playing";
+      s.sonar = sonar;
       emit("horror_start", { keys: s.keys.length, level: house.level });
     },
 
-    /** The sonar: points to the nearest key for the rest of the run. */
-    sonar() {
-      if (s.phase !== "playing" || s.sonar) return false;
-      s.sonar = true;
-      return true;
-    },
-
-    /** The energy boost: running costs no stamina for a while. */
+    /** The energy boost: running costs no stamina for a while; then a cooldown. */
     energy() {
-      if (s.phase !== "playing") return false;
+      if (s.phase !== "playing" || s.cooldownMs > 0) return false;
       s.player.energyMs = ITEM_EFFECTS.energyMs;
       s.player.tired = false;
+      s.cooldownMs = ITEM_EFFECTS.energyCooldownMs;
       return true;
     },
 
-    /** The freeze gun: the monster stops where it is. */
+    /** The freeze gun: the monster stops where it is; then a cooldown. */
     freeze() {
-      if (s.phase !== "playing") return false;
+      if (s.phase !== "playing" || s.cooldownMs > 0) return false;
       s.monster.frozenMs = ITEM_EFFECTS.freezeMs;
+      s.cooldownMs = ITEM_EFFECTS.freezeCooldownMs;
       return true;
     },
 
@@ -348,6 +355,7 @@ export function createHorror({ random = Math.random, level = () => 1 } = {}) {
     update(dt, { forward = 0, strafe = 0, turn = 0, run = false } = {}) {
       if (s.phase !== "playing") return;
       s.elapsedMs += dt;
+      s.cooldownMs = Math.max(0, s.cooldownMs - dt);
       const p = s.player;
       p.angle += turn;
       const len = Math.hypot(forward, strafe);

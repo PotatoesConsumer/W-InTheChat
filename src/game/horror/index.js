@@ -22,9 +22,8 @@ const BINDINGS = Object.freeze({
   Space: "action",
   ShiftLeft: "run",
   ShiftRight: "run",
-  Digit1: "sonar",
-  Digit2: "energy",
-  Digit3: "gun",
+  Digit1: "item",
+  KeyQ: "item",
 });
 
 /** Mouse sensitivity 1-10, kept in this browser; radians per pixel = level x TURN_PER_LEVEL. */
@@ -51,7 +50,7 @@ export const darkHouse = Object.freeze({
   controls: Object.freeze([
     ["WASD", "move"],
     ["Shift", "run (stamina)"],
-    ["1 2 3", "items from the base"],
+    ["1 / Q", "use your item"],
     ["Mouse / drag / ← →", "look around"],
     ["Click", "start, lock the mouse"],
     ["Esc", "free the mouse, pause"],
@@ -78,9 +77,10 @@ export const darkHouse = Object.freeze({
    * @param {{width: number, height: number}} opts.world
    * @param {() => number} [opts.random]
    * @param {object} [opts.perks] - From the Just Chatting base (main.js): `horror()` is
-   *   null in the study, else {level, items}; `useItem(id)` spends one.
+   *   null in the study, else {level, item}: the house level and the one item carried.
+   * @param {{playAt: Function}} [opts.sound] - For the monster's footsteps.
    */
-  create({ world, random, perks = {} }) {
+  create({ world, random, perks = {}, sound }) {
     const base = () => perks.horror?.() ?? null;
     const game = createHorror({ random, level: () => base()?.level ?? 1 });
     let three = null;
@@ -112,17 +112,30 @@ export const darkHouse = Object.freeze({
       return views.get(house.level);
     }
 
-    /** Keys 1-3: an item from the base, if you have one left. */
-    function useItems(input) {
-      const effects = {
-        sonar: () => game.sonar(),
-        energy: () => game.energy(),
-        gun: () => game.freeze(),
-      };
-      for (const id of Object.keys(HORROR_ITEMS)) {
-        if (!input.wasPressed(id) || !(base()?.items[id] > 0)) continue;
-        if (effects[id]()) perks.useItem?.(id);
-      }
+    const start = () => game.start({ sonar: base()?.item === "sonar" });
+
+    /** 1 or Q: the carried item (the sonar needs no key: it's always on). */
+    function useItem(input) {
+      if (!input.wasPressed("item")) return;
+      const item = base()?.item;
+      if (item === "energy") game.energy();
+      else if (item === "gun") game.freeze();
+    }
+
+    // The monster's footsteps: louder when it's close, from its side; faster on a chase.
+    let stepMs = 0;
+    function footsteps(dt) {
+      const s = game.state;
+      const m = s.monster;
+      if (!sound || m.frozenMs > 0 || s.elapsedMs < HORROR.graceMs) return;
+      stepMs -= dt;
+      if (stepMs > 0) return;
+      stepMs = m.mode === "chase" ? 330 : 620;
+      const dx = m.x - s.player.x;
+      const dy = m.y - s.player.y;
+      const volume = Math.max(0, 1 - Math.hypot(dx, dy) / 18) ** 2;
+      const pan = Math.sin(Math.atan2(dy, dx) - s.player.angle);
+      sound.playAt("monster_step", { volume, pan });
     }
 
     function lockMouse() {
@@ -142,10 +155,11 @@ export const darkHouse = Object.freeze({
         const s = game.state;
         if (s.phase !== "playing") {
           look = 0;
-          if (input.wasPressed("action") && three) game.start();
+          if (input.wasPressed("action") && three) start();
           return;
         }
-        useItems(input);
+        useItem(input);
+        footsteps(dt);
         const axis = (minus, plus) => (input.isDown(plus) ? 1 : 0) - (input.isDown(minus) ? 1 : 0);
         const keyTurn = (axis("turnLeft", "turnRight") * HORROR.turnSpeed * dt) / 1000;
         game.update(dt, {
@@ -159,7 +173,7 @@ export const darkHouse = Object.freeze({
 
       pointerDown() {
         if (!three) return;
-        if (game.state.phase !== "playing") game.start();
+        if (game.state.phase !== "playing") start();
         lockMouse();
       },
 
@@ -191,7 +205,7 @@ export const darkHouse = Object.freeze({
 
       restart() {
         game.abandon();
-        game.start();
+        start();
       },
 
       quit() {
@@ -293,7 +307,7 @@ function drawStamina(ctx, p, max) {
   ctx.fillRect(16, 40, (width * p.stamina) / max, 6);
 }
 
-/** Bottom left: the items you carry (keys 1-3), what's active, and the sonar's radar. */
+/** Bottom left: the item you carry (1 or Q), what's active, and the sonar's radar. */
 function drawItems(ctx, { height }, s, base) {
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
@@ -304,12 +318,16 @@ function drawItems(ctx, { height }, s, base) {
     status.push(`❄ monster frozen ${Math.ceil(s.monster.frozenMs / 1000)} s`);
   ctx.fillStyle = "#9fe7ff";
   ctx.fillText(status.join("   "), 16, 54);
-  if (base) {
-    const line = Object.entries(HORROR_ITEMS)
-      .map(([id, item]) => `${item.key} ${item.name} ×${base.items[id]}`)
-      .join("   ");
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    ctx.fillText(line, 16, height - 26);
+  const item = base?.item && HORROR_ITEMS[base.item];
+  if (item) {
+    const ready =
+      base.item === "sonar"
+        ? "always on"
+        : s.cooldownMs > 0
+          ? `ready in ${Math.ceil(s.cooldownMs / 1000)} s`
+          : "1 / Q to use";
+    ctx.fillStyle = s.cooldownMs > 0 ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.8)";
+    ctx.fillText(`${item.name}: ${ready}`, 16, height - 26);
   }
   if (!s.sonar) return;
   // Sonar: a disc whose dot is the nearest key, relative to where you face (up = ahead).

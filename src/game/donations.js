@@ -13,7 +13,19 @@
 import { seededRandom, hashString } from "./random.js";
 
 /** Game events that can bring a donation. */
-export const DONATION_EVENTS = Object.freeze(["win", "streak", "close_call", "new_best"]);
+export const DONATION_EVENTS = Object.freeze([
+  "win",
+  "streak",
+  "close_call",
+  "new_best",
+  // The Dark House and the Just Chatting base (extras outside the study).
+  "key_found",
+  "escaped",
+  "ghost_pet",
+]);
+
+/** Events with their own flat chance, whatever the hype: petting the ghost is a tiny one. */
+export const FLAT_CHANCES = Object.freeze({ ghost_pet: 0.04 });
 
 export const DONATION_RULES = Object.freeze({
   /** No donations below this hype. */
@@ -60,6 +72,9 @@ export const DONATION_MESSAGES = Object.freeze({
   streak: Object.freeze(["that streak tho", "untouchable!!"]),
   close_call: Object.freeze(["my heart cant take this", "1 hp hero"]),
   new_best: Object.freeze(["new record!! here's a little something", "PB money"]),
+  key_found: Object.freeze(["key money 🔑", "found it!! here"]),
+  escaped: Object.freeze(["YOU MADE IT OUT, take this", "my nerves are gone, gg"]),
+  ghost_pet: Object.freeze(["for the ghost 👻", "the ghost deserves this"]),
   big: Object.freeze([
     "HOLY that was insane, take my money",
     "best stream on the site fr",
@@ -76,10 +91,11 @@ export const DONATION_MESSAGES = Object.freeze({
 export function donationFor(event, hype) {
   if (event?.kind !== "game" || !DONATION_EVENTS.includes(event.name)) return null;
   const { minHype, minChance, maxChance, tiers, bigAmount } = DONATION_RULES;
-  if (hype < minHype) return null;
+  const flat = FLAT_CHANCES[event.name];
+  if (flat === undefined && hype < minHype) return null;
 
   const random = seededRandom(hashString(event.id));
-  const chance = minChance + ((maxChance - minChance) * (hype - minHype)) / (100 - minHype);
+  const chance = flat ?? minChance + ((maxChance - minChance) * (hype - minHype)) / (100 - minHype);
   if (random() >= chance) return null;
 
   const tier = pickWeighted(tiers, random());

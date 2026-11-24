@@ -345,10 +345,9 @@ const hub = createHub({
           };
         },
         loot: (material) => progress.add({ [material]: 1 }),
-        horror: () =>
-          locked ? null : { level: progress.get().house, items: progress.get().items },
-        useItem: (id) => progress.useItem(id),
+        horror: () => (locked ? null : { level: progress.get().house, item: progress.get().carry }),
       },
+      sound,
     });
   },
 });
@@ -501,7 +500,13 @@ canvas.addEventListener("pointermove", (event) => {
   const index = hubHit(hub, mouse.pointer.x, mouse.pointer.y);
   if (index >= 0) hub.point(index);
 });
+// Right-click goes to the game (Just Chatting moves furniture with it), not the browser.
+canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 canvas.addEventListener("pointerdown", (event) => {
+  if (event.button === 2 && live && hub.screen === "playing") {
+    hub.current.instance.pointerDown(toWorld(event), { button: 2 });
+    return;
+  }
   if (event.button !== 0) return;
   sound.unlock();
   // Clicking the game takes the keyboard back from the chat box.

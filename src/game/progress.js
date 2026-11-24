@@ -11,13 +11,15 @@
  *   Donations ($)   buy any material, at a higher price than coins (they stay with you)
  *
  * In the base:
- *   - furniture (chair, table): placed in the room, looks only
- *   - clothing: looks only, worn in Wave Survival (one hat, one shirt)
- *   - the ghost (needs the Ghost Friend badge): damage, flying speed, hit speed; dark
- *     matter only
- *   - the Haunted House: its level makes The Dark House bigger and harder and pays more
- *   - horror items to take into The Dark House: sonar, energy boost, freeze gun
- *   - shooter boosts: each level multiplies what one shop upgrade gives (+1 -> +2 -> +3)
+ *   - outside, the Haunted House and the Training Board start broken: fix them first
+ *   - inside your house, furniture on a grid: the workbench crafts into the bag, and
+ *     what's in the bag can be placed, moved or put back; looks only, except the
+ *     workbench and the wardrobe (clothes: looks only, worn in Wave Survival)
+ *   - the ghost (needs the Ghost Friend badge) lives in the house: damage, flying speed,
+ *     hit speed; dark matter only
+ *   - the Haunted House: its level makes The Dark House bigger and harder and pays more,
+ *     and it sells the horror items: bought once, kept, one carried into a run
+ *   - the Training Board: boosts multiply what one shop upgrade gives (+1 -> +2 -> +3)
  */
 
 export const MATERIALS = Object.freeze({
@@ -33,11 +35,30 @@ export const MATERIAL_PACKS = Object.freeze([
   Object.freeze({ id: "darkMatter", material: "darkMatter", amount: 1, dollars: 40 }),
 ]);
 
+/** The house's floor: a grid of tiles. The two tiles in front of the door stay clear. */
+export const ROOM_GRID = Object.freeze({ cols: 16, rows: 8 });
+export const DOOR_TILES = Object.freeze([
+  Object.freeze({ gx: 7, gy: 7 }),
+  Object.freeze({ gx: 8, gy: 7 }),
+]);
+
+/**
+ * Furniture: its size in tiles, and its price at the workbench (null: not craftable; the
+ * house starts with a workbench). `use` is what E does next to it.
+ */
 export const FURNITURE = Object.freeze({
-  chair: Object.freeze({ name: "Chair", cost: { wood: 5 } }),
-  table: Object.freeze({ name: "Table", cost: { wood: 8, rock: 2 } }),
+  workbench: Object.freeze({ name: "Workbench", w: 2, h: 1, cost: null, use: "workbench" }),
+  chair: Object.freeze({ name: "Chair", w: 1, h: 1, cost: { wood: 5 } }),
+  table: Object.freeze({ name: "Table", w: 2, h: 1, cost: { wood: 8, rock: 2 } }),
+  wardrobe: Object.freeze({
+    name: "Wardrobe",
+    w: 1,
+    h: 2,
+    cost: { wood: 12, rock: 4 },
+    use: "wardrobe",
+  }),
 });
-export const MAX_FURNITURE = 12;
+export const MAX_BAG = 20;
 
 export const CLOTHES = Object.freeze({
   cap: Object.freeze({ name: "Red cap", slot: "hat", cost: { wood: 6 } }),
@@ -53,6 +74,12 @@ export const GHOST_STATS = Object.freeze({
 });
 export const GHOST_MAX_LEVEL = 5;
 
+/** Outside: what fixing each broken place costs. */
+export const FIXES = Object.freeze({
+  haunted: Object.freeze({ name: "Haunted House", cost: { darkMatter: 1 } }),
+  training: Object.freeze({ name: "Training Board", cost: { wood: 5, rock: 5 } }),
+});
+
 /** The Haunted House's levels; level 1 is the start. How each plays: horror/game.js. */
 export const HOUSE_LEVELS = Object.freeze([
   Object.freeze({ level: 1, reward: 1, cost: null }),
@@ -60,27 +87,24 @@ export const HOUSE_LEVELS = Object.freeze([
   Object.freeze({ level: 3, reward: 5, cost: { darkMatter: 6, wood: 40, rock: 25 } }),
 ]);
 
+/** Bought once and kept; one is carried into a run (horror/game.js ITEM_EFFECTS). */
 export const HORROR_ITEMS = Object.freeze({
   sonar: Object.freeze({
     name: "Sonar",
-    text: "Bottom left: points to the nearest key, for a whole run",
-    key: "1",
+    text: "Always on: points to the nearest key",
     cost: { darkMatter: 1, rock: 5 },
   }),
   energy: Object.freeze({
     name: "Energy boost",
-    text: "Run without using stamina for 5 s",
-    key: "2",
+    text: "Run free for 5 s, then 20 s cooldown",
     cost: { darkMatter: 1, wood: 5 },
   }),
   gun: Object.freeze({
     name: "Freeze gun",
-    text: "Stops the monster for 10 s",
-    key: "3",
+    text: "Stops the monster 10 s, then 40 s cooldown",
     cost: { darkMatter: 2, rock: 8 },
   }),
 });
-export const MAX_ITEMS = 9;
 
 /** Shop upgrades a boost can multiply, and what a boost level costs (level 1, level 2). */
 export const BOOSTABLE = Object.freeze(["heart", "rapid", "power", "boots", "medkit"]);
@@ -94,23 +118,60 @@ export function emptyProgress() {
     materials: { wood: 0, rock: 0, darkMatter: 0 },
     ghost: { damage: 0, speed: 0, rate: 0 },
     house: 1,
-    items: { sonar: 0, energy: 0, gun: 0 },
+    fixed: { haunted: false, training: false },
+    items: { sonar: false, energy: false, gun: false },
+    /** The one horror item taken into a run, or null. */
+    carry: null,
     boosts: {},
     clothes: { owned: [], worn: { hat: null, shirt: null } },
-    furniture: [],
+    /** Furniture in the house: {id, gx, gy} by its top-left tile. */
+    room: [{ id: "workbench", gx: ROOM_GRID.cols - 2, gy: 0 }],
+    /** Furniture not placed: {id: count}. */
+    bag: {},
   };
 }
 
-/** The ghost's numbers for its levels (shooter/game.js uses them). */
+/**
+ * The ghost's numbers for its levels (shooter/game.js uses them). At level 0 a hit does
+ * 0.4 damage, so a slime (2 HP) takes 5 hits; each damage level adds 0.2.
+ */
 export function ghostStats(levels = {}) {
   return {
-    damage: 1 + (levels.damage ?? 0),
+    damage: 0.4 + 0.2 * (levels.damage ?? 0),
     flySpeed: 150 * (1 + 0.25 * (levels.speed ?? 0)),
     hitDelayMs: 700 * 0.8 ** (levels.rate ?? 0),
   };
 }
 
 const int = (n, max = Infinity) => (Number.isInteger(n) && n >= 0 ? Math.min(n, max) : 0);
+
+/** The tiles a piece covers. */
+export function tilesOf({ id, gx, gy }) {
+  const { w, h } = FURNITURE[id];
+  const tiles = [];
+  for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) tiles.push({ gx: x, gy: y });
+  return tiles;
+}
+
+/**
+ * Whether a piece fits at (gx, gy): on the grid, off the door's tiles, and not on another
+ * piece (`skip` is an index in `room` to ignore, for moving).
+ */
+export function fits(room, id, gx, gy, skip = -1) {
+  if (!Object.hasOwn(FURNITURE, id)) return false;
+  const taken = new Set(
+    room.flatMap((f, i) => (i === skip ? [] : tilesOf(f).map((t) => `${t.gx},${t.gy}`))),
+  );
+  for (const d of DOOR_TILES) taken.add(`${d.gx},${d.gy}`);
+  return tilesOf({ id, gx, gy }).every(
+    (t) =>
+      t.gx >= 0 &&
+      t.gy >= 0 &&
+      t.gx < ROOM_GRID.cols &&
+      t.gy < ROOM_GRID.rows &&
+      !taken.has(`${t.gx},${t.gy}`),
+  );
+}
 
 /** Repairs anything read back from storage, so a bad save can't break a game. */
 export function checkProgress(raw) {
@@ -119,7 +180,9 @@ export function checkProgress(raw) {
   for (const m of Object.keys(p.materials)) p.materials[m] = int(raw.materials?.[m]);
   for (const g of Object.keys(p.ghost)) p.ghost[g] = int(raw.ghost?.[g], GHOST_MAX_LEVEL);
   p.house = Math.max(1, int(raw.house, HOUSE_LEVELS.length));
-  for (const i of Object.keys(p.items)) p.items[i] = int(raw.items?.[i], MAX_ITEMS);
+  for (const f of Object.keys(p.fixed)) p.fixed[f] = raw.fixed?.[f] === true;
+  for (const i of Object.keys(p.items)) p.items[i] = raw.items?.[i] === true;
+  p.carry = p.items[raw.carry] ? raw.carry : null;
   for (const b of BOOSTABLE) {
     const level = int(raw.boosts?.[b], BOOST_COSTS.length);
     if (level) p.boosts[b] = level;
@@ -130,11 +193,18 @@ export function checkProgress(raw) {
     const id = raw.clothes?.worn?.[slot];
     if (p.clothes.owned.includes(id) && CLOTHES[id].slot === slot) p.clothes.worn[slot] = id;
   }
-  const furniture = Array.isArray(raw.furniture) ? raw.furniture : [];
-  p.furniture = furniture
-    .filter((f) => Object.hasOwn(FURNITURE, f?.id) && Number.isFinite(f.x) && Number.isFinite(f.y))
-    .slice(0, MAX_FURNITURE)
-    .map(({ id, x, y }) => ({ id, x, y }));
+  if (Array.isArray(raw.room)) {
+    p.room = [];
+    for (const f of raw.room) {
+      if (Number.isInteger(f?.gx) && Number.isInteger(f?.gy) && fits(p.room, f.id, f.gx, f.gy)) {
+        p.room.push({ id: f.id, gx: f.gx, gy: f.gy });
+      }
+    }
+  }
+  for (const id of Object.keys(FURNITURE)) {
+    const n = int(raw.bag?.[id], MAX_BAG);
+    if (n) p.bag[id] = n;
+  }
   return p;
 }
 
@@ -150,15 +220,17 @@ export function formatCost(cost) {
     .join(" + ");
 }
 
+const bagCount = (p) => Object.values(p.bag).reduce((a, b) => a + b, 0);
+
 /**
  * The price of the next step of something in the base, or why it can't be bought.
  * @returns {{ok: true, cost: object} | {ok: false, reason: string}}
  */
 export function priceFor(p, action) {
   const { kind, id } = action;
-  if (kind === "furniture") {
-    if (!Object.hasOwn(FURNITURE, id)) return { ok: false, reason: "unknown furniture" };
-    if (p.furniture.length >= MAX_FURNITURE) return { ok: false, reason: "the room is full" };
+  if (kind === "craft") {
+    if (!FURNITURE[id]?.cost) return { ok: false, reason: "can't be crafted" };
+    if (bagCount(p) >= MAX_BAG) return { ok: false, reason: "your bag is full" };
     return { ok: true, cost: FURNITURE[id].cost };
   }
   if (kind === "clothes") {
@@ -172,17 +244,25 @@ export function priceFor(p, action) {
     if (level >= GHOST_MAX_LEVEL) return { ok: false, reason: "max level" };
     return { ok: true, cost: { darkMatter: level + 1 } };
   }
+  if (kind === "fix") {
+    if (!Object.hasOwn(FIXES, id)) return { ok: false, reason: "nothing to fix" };
+    if (p.fixed[id]) return { ok: false, reason: "already fixed" };
+    return { ok: true, cost: FIXES[id].cost };
+  }
   if (kind === "house") {
+    if (!p.fixed.haunted) return { ok: false, reason: "fix it first" };
     const next = HOUSE_LEVELS[p.house];
     return next ? { ok: true, cost: next.cost } : { ok: false, reason: "max level" };
   }
   if (kind === "item") {
     if (!Object.hasOwn(HORROR_ITEMS, id)) return { ok: false, reason: "unknown item" };
-    if (p.items[id] >= MAX_ITEMS) return { ok: false, reason: "you can't carry more" };
+    if (!p.fixed.haunted) return { ok: false, reason: "fix it first" };
+    if (p.items[id]) return { ok: false, reason: "already yours" };
     return { ok: true, cost: HORROR_ITEMS[id].cost };
   }
   if (kind === "boost") {
     if (!BOOSTABLE.includes(id)) return { ok: false, reason: "can't be boosted" };
+    if (!p.fixed.training) return { ok: false, reason: "fix it first" };
     const level = p.boosts[id] ?? 0;
     if (level >= BOOST_COSTS.length) return { ok: false, reason: "max level" };
     return { ok: true, cost: BOOST_COSTS[level] };
@@ -192,24 +272,26 @@ export function priceFor(p, action) {
 
 /**
  * Buys one thing in the base: pays its price and applies it. Pure: returns a new state.
- * `at` is where a new piece of furniture goes.
  * @returns {{ok: true, progress: object} | {ok: false, reason: string}}
  */
-export function buy(p, action, at = { x: 0, y: 0 }) {
+export function buy(p, action) {
   const price = priceFor(p, action);
   if (!price.ok) return price;
   if (!canAfford(p.materials, price.cost)) return { ok: false, reason: "not enough materials" };
   const next = structuredClone(p);
   for (const [m, n] of Object.entries(price.cost)) next.materials[m] -= n;
   const { kind, id } = action;
-  if (kind === "furniture") next.furniture.push({ id, x: at.x, y: at.y });
+  if (kind === "craft") next.bag[id] = (next.bag[id] ?? 0) + 1;
   else if (kind === "clothes") {
     next.clothes.owned.push(id);
     next.clothes.worn[CLOTHES[id].slot] = id;
   } else if (kind === "ghost") next.ghost[id]++;
+  else if (kind === "fix") next.fixed[id] = true;
   else if (kind === "house") next.house++;
-  else if (kind === "item") next.items[id]++;
-  else if (kind === "boost") next.boosts[id] = (next.boosts[id] ?? 0) + 1;
+  else if (kind === "item") {
+    next.items[id] = true;
+    next.carry = id;
+  } else if (kind === "boost") next.boosts[id] = (next.boosts[id] ?? 0) + 1;
   return { ok: true, progress: next };
 }
 
@@ -219,6 +301,40 @@ export function toggleWear(p, id) {
   const next = structuredClone(p);
   const slot = CLOTHES[id].slot;
   next.clothes.worn[slot] = next.clothes.worn[slot] === id ? null : id;
+  return next;
+}
+
+/** Takes an owned horror item into runs (only one), or leaves it if it's the one carried. */
+export function toggleCarry(p, id) {
+  if (!p.items[id]) return p;
+  return { ...p, carry: p.carry === id ? null : id };
+}
+
+/** Places a piece from the bag. @returns the new state, or null if it can't go there. */
+export function place(p, id, gx, gy) {
+  if (!(p.bag[id] > 0) || !fits(p.room, id, gx, gy)) return null;
+  const next = structuredClone(p);
+  if (--next.bag[id] === 0) delete next.bag[id];
+  next.room.push({ id, gx, gy });
+  return next;
+}
+
+/** Moves a placed piece. @returns the new state, or null if it can't go there. */
+export function move(p, index, gx, gy) {
+  const f = p.room[index];
+  if (!f || !fits(p.room, f.id, gx, gy, index)) return null;
+  const next = structuredClone(p);
+  next.room[index] = { id: f.id, gx, gy };
+  return next;
+}
+
+/** Puts a placed piece back in the bag. */
+export function pickUp(p, index) {
+  const f = p.room[index];
+  if (!f) return p;
+  const next = structuredClone(p);
+  next.room.splice(index, 1);
+  next.bag[f.id] = (next.bag[f.id] ?? 0) + 1;
   return next;
 }
 
@@ -236,6 +352,7 @@ export function createProgressStore(storage = browserStorage()) {
     p = emptyProgress();
   }
   function save(next) {
+    if (!next) return null;
     p = next;
     try {
       storage.setItem(KEY, JSON.stringify(p));
@@ -256,20 +373,17 @@ export function createProgressStore(storage = browserStorage()) {
       }
       return save(next);
     },
-    buy(action, at) {
-      const result = buy(p, action, at);
+    buy(action) {
+      const result = buy(p, action);
       if (result.ok) save(result.progress);
       return result;
     },
     toggleWear: (id) => save(toggleWear(p, id)),
-    /** Uses up one horror item; false if there's none. */
-    useItem(id) {
-      if (!(p.items[id] > 0)) return false;
-      const next = structuredClone(p);
-      next.items[id]--;
-      save(next);
-      return true;
-    },
+    toggleCarry: (id) => save(toggleCarry(p, id)),
+    /** Each returns the new progress, or null if the piece can't go there. */
+    place: (id, gx, gy) => save(place(p, id, gx, gy)),
+    move: (index, gx, gy) => save(move(p, index, gx, gy)),
+    pickUp: (index) => save(pickUp(p, index)),
   };
 }
 

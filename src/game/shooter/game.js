@@ -326,7 +326,8 @@ export function createShooter({
     }
     g.hitMs = Math.max(0, g.hitMs - dt);
     if (target && Math.hypot(target.x - g.x, target.y - g.y) < target.r + 8 && g.hitMs === 0) {
-      target.hp -= g.stats.damage;
+      // Rounded: 0.4 x 5 must leave exactly 0, not 3e-16.
+      target.hp = Math.round((target.hp - g.stats.damage) * 1000) / 1000;
       target.hitMs = 100;
       g.hitMs = g.stats.hitDelayMs;
     }

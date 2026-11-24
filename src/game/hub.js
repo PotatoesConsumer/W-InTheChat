@@ -21,7 +21,7 @@
  * An instance:
  *
  *   update(dt, {input, mouse})   one fixed step; reads its own input
- *   pointerDown(point)           a click, in world coordinates
+ *   pointerDown(point, {button}) a click, in world coordinates (button 2: right-click)
  *   back()                       Escape: close something of its own (true) or let the
  *                                hub pause (false)
  *   render(ctx, {alpha, pointer, clock})

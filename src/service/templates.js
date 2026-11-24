@@ -50,6 +50,7 @@ export const EVENT_LINES = Object.freeze({
     "big spender 💰",
     "investing in the base",
   ]),
+  ghost_pet: Object.freeze(["aww 👻", "the ghost is so cute", "pet the ghost again"]),
 });
 
 /** Answers to a typed player message when no model reply is used. */

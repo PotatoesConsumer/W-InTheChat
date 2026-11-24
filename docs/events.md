@@ -107,6 +107,7 @@ else `new_best` the first time a run passes the best wave of earlier runs, else 
 | `caught` | minor | got caught by the monster (optional: `{keys, total}`) |
 | `crafted` | minor | built something in their base (Just Chatting, optional: `{item}`) |
 | `material_purchase` | minor | spent chat's donations on materials (optional: `{material, amount, dollars}`; spends `dollars`) |
+| `ghost_pet` | minor | petted their ghost (optional; a tiny flat donation chance) |
 | `win` | major | cleared a wave |
 | `loss` | major | died and lost the run |
 | `streak` | major | went on a kill streak without getting hit |
