@@ -2,7 +2,8 @@
  * index.js
  *
  * The Dark House as a hub game module (interface in src/game/hub.js): its keymap, mouse
- * look (pointer lock after a click), the 3D view, and the 2D HUD drawn over it.
+ * look (pointer lock after a click; dragging with the button held works without it), the
+ * mouse sensitivity (a pause menu setting), the 3D view, and the 2D HUD drawn over it.
  */
 
 import { createHorror, HORROR } from "./game.js";
@@ -18,9 +19,26 @@ const BINDINGS = Object.freeze({
   ArrowLeft: "turnLeft",
   ArrowRight: "turnRight",
   Space: "action",
+  ShiftLeft: "run",
+  ShiftRight: "run",
 });
 
-const MOUSE_TURN = 0.0025; // radians per pixel of mouse movement
+/** Mouse sensitivity 1-10, kept in this browser; radians per pixel = level x TURN_PER_LEVEL. */
+export const SENSITIVITY = Object.freeze({ min: 1, max: 10, start: 5, turnPerLevel: 0.0005 });
+const SENSITIVITY_KEY = "witc.mouseSensitivity";
+let sensitivity = loadSensitivity();
+
+function loadSensitivity() {
+  try {
+    const saved = Number(globalThis.localStorage?.getItem(SENSITIVITY_KEY));
+    if (Number.isInteger(saved) && saved >= SENSITIVITY.min && saved <= SENSITIVITY.max) {
+      return saved;
+    }
+  } catch {
+    // Storage blocked: the default for this page.
+  }
+  return SENSITIVITY.start;
+}
 
 export const darkHouse = Object.freeze({
   id: "dark-house",
@@ -28,12 +46,27 @@ export const darkHouse = Object.freeze({
   blurb: "3D horror. Find the keys by flashlight and get out before the monster finds you.",
   controls: Object.freeze([
     ["WASD", "move"],
-    ["Mouse / ← →", "look around"],
+    ["Shift", "run (stamina)"],
+    ["Mouse / drag / ← →", "look around"],
     ["Click", "start, lock the mouse"],
     ["Esc", "free the mouse, pause"],
   ]),
   bindings: BINDINGS,
   drawThumbnail,
+
+  /** Shown as a row of the pause menu (hub.js); ← → change it. */
+  setting: Object.freeze({
+    label: "Mouse sensitivity",
+    value: () => sensitivity,
+    change(delta) {
+      sensitivity = Math.min(SENSITIVITY.max, Math.max(SENSITIVITY.min, sensitivity + delta));
+      try {
+        globalThis.localStorage?.setItem(SENSITIVITY_KEY, String(sensitivity));
+      } catch {
+        // Not saved; it lasts until the page reloads.
+      }
+    },
+  }),
 
   /**
    * @param {object} opts
@@ -56,8 +89,12 @@ export const darkHouse = Object.freeze({
     );
 
     const locked = () => canvas && document.pointerLockElement === canvas;
-    document.addEventListener("mousemove", (event) => {
-      if (locked()) look += event.movementX * MOUSE_TURN;
+    // Locked, any movement turns; without the lock (refused, or freed with Esc), dragging
+    // with the left button held does.
+    document.addEventListener("pointermove", (event) => {
+      if (locked() || (canvas && event.target === canvas && event.buttons & 1)) {
+        look += event.movementX * sensitivity * SENSITIVITY.turnPerLevel;
+      }
     });
 
     function lockMouse() {
@@ -86,6 +123,7 @@ export const darkHouse = Object.freeze({
           forward: axis("back", "forward"),
           strafe: axis("left", "right"),
           turn: keyTurn + look,
+          run: input.isDown("run"),
         });
         look = 0;
       },
@@ -172,13 +210,14 @@ function drawHud(ctx, world, s, { locked, ghost }) {
   ctx.fillText(s.door.open ? `${keys}  The door is open!` : keys, 16, 14);
 
   if (s.phase === "playing") {
+    drawStamina(ctx, s.player);
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.fillRect(width / 2 - 1.5, height / 2 - 1.5, 3, 3);
     if (!locked)
       drawCentre(
         ctx,
         { width, height: height * 0.6 },
-        "Click to look around with the mouse",
+        "Click to look around (or hold the button and drag)",
         16,
         "#aaa",
       );
@@ -205,6 +244,15 @@ function drawHud(ctx, world, s, { locked, ghost }) {
       "#9fe7ff",
     );
   }
+}
+
+/** The stamina bar, top left under the keys; it blinks red while too tired to run. */
+function drawStamina(ctx, p) {
+  const width = 140;
+  ctx.fillStyle = "rgba(255,255,255,0.15)";
+  ctx.fillRect(16, 40, width, 6);
+  ctx.fillStyle = p.tired ? "#ff4d4d" : p.running ? "#ffd34e" : "#e8e8e8";
+  ctx.fillRect(16, 40, (width * p.stamina) / HORROR.stamina, 6);
 }
 
 /** The hub card: darkness, a flashlight cone, two eyes that blink. */

@@ -191,3 +191,37 @@ test("Wave Survival module: coin packs spend the stream's donations only once", 
   instance.quit();
   assert.equal(instance.state.phase, "ready");
 });
+
+test("a game's setting is an extra pause row: ← → change it, the other games don't get it", () => {
+  let level = 5;
+  const tuned = fakeGame("tuned");
+  tuned.module.setting = {
+    label: "Mouse sensitivity",
+    value: () => level,
+    change: (delta) => (level += delta),
+  };
+  const plain = fakeGame("plain");
+  const hub = createHub({ games: [tuned.module, plain.module], makeGame: (g) => g.create() });
+
+  hub.confirm({ canPlay: true });
+  hub.pause();
+  assert.equal(hub.pauseOptions.length, PAUSE_OPTIONS.length + 1);
+  assert.equal(hub.adjust(1), false); // "Resume" is selected
+  hub.move(-1); // wraps to the setting row
+  assert.equal(hub.pauseOptions[hub.pauseIndex].id, "setting");
+  assert.equal(hub.adjust(1), true);
+  assert.equal(hub.adjust(-1), true);
+  hub.adjust(-1);
+  assert.equal(level, 4);
+  hub.confirm({ canPlay: true }); // Space on the row raises it, and stays paused
+  assert.equal(level, 5);
+  assert.equal(hub.screen, "paused");
+  assert.equal(pauseLayout(hub.pauseOptions.length).length, 4);
+
+  hub.back();
+  hub.quit();
+  hub.move(1);
+  hub.confirm({ canPlay: true });
+  hub.pause();
+  assert.deepEqual(hub.pauseOptions, PAUSE_OPTIONS);
+});

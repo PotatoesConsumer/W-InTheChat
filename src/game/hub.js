@@ -14,6 +14,7 @@
  *     controls: [[keys, what], ...],      // shown in the hub and the pause menu
  *     bindings: {KeyboardEvent.code: action},  // its own keymap (input.js)
  *     drawThumbnail?(ctx, rect, clock),    // the hub card's picture
+ *     setting?: {label, value(), change(delta)},  // an extra pause menu row (← → change it)
  *     create({world, obstacles, random, stream, perks}) -> instance
  *   }
  *
@@ -74,9 +75,16 @@ export function createHub({ games, makeGame }) {
     return true;
   }
 
+  /** The pause menu's rows: the fixed options, then the game's setting if it has one. */
+  function pauseOptions() {
+    const setting = current?.game.setting;
+    return setting ? [...PAUSE_OPTIONS, { id: "setting", label: setting.label }] : PAUSE_OPTIONS;
+  }
+
   function choosePause(id) {
     if (screen !== "paused") return false;
-    if (id === "resume") screen = "playing";
+    if (id === "setting") current.game.setting.change(1);
+    else if (id === "resume") screen = "playing";
     else if (id === "restart") {
       current.instance.restart();
       screen = "playing";
@@ -98,6 +106,9 @@ export function createHub({ games, makeGame }) {
     get pauseIndex() {
       return pauseIndex;
     },
+    get pauseOptions() {
+      return pauseOptions();
+    },
     get games() {
       return games;
     },
@@ -109,13 +120,20 @@ export function createHub({ games, makeGame }) {
     /** Moves the hub selection (left/right) or the pause menu's (up/down), wrapping. */
     move(delta) {
       if (screen === "hub") selected = wrap(selected + delta, games.length);
-      else if (screen === "paused") pauseIndex = wrap(pauseIndex + delta, PAUSE_OPTIONS.length);
+      else if (screen === "paused") pauseIndex = wrap(pauseIndex + delta, pauseOptions().length);
+    },
+
+    /** ← →: changes the game's setting while its pause row is selected. */
+    adjust(delta) {
+      if (screen !== "paused" || pauseOptions()[pauseIndex]?.id !== "setting") return false;
+      current.game.setting.change(delta);
+      return true;
     },
 
     /** Points the selection at an index (mouse hover). */
     point(index) {
       if (screen === "hub" && index >= 0 && index < games.length) selected = index;
-      else if (screen === "paused" && index >= 0 && index < PAUSE_OPTIONS.length)
+      else if (screen === "paused" && index >= 0 && index < pauseOptions().length)
         pauseIndex = index;
     },
 
@@ -126,7 +144,7 @@ export function createHub({ games, makeGame }) {
      */
     confirm({ canPlay }) {
       if (screen === "hub") return canPlay && play(selected);
-      if (screen === "paused") return choosePause(PAUSE_OPTIONS[pauseIndex].id);
+      if (screen === "paused") return choosePause(pauseOptions()[pauseIndex].id);
       return false;
     },
 

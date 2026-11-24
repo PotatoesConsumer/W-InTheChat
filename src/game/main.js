@@ -360,7 +360,11 @@ function update(dt) {
     if (step) hub.move(step);
     if (pressed("select")) hub.confirm({ canPlay: canPlay() });
   } else if (hub.screen === "paused") {
-    if (step) hub.move(step);
+    // Up/down choose a row; left/right change a game's setting row (or move, elsewhere).
+    const across = (pressed("right") ? 1 : 0) - (pressed("left") ? 1 : 0);
+    const down = (pressed("down") ? 1 : 0) - (pressed("up") ? 1 : 0);
+    if (down) hub.move(down);
+    if (across && !hub.adjust(across)) hub.move(across);
     if (pressed("select")) hub.confirm({ canPlay: true });
     else if (pressed("back") || pressed("pause")) hub.resume();
   } else if (pressed("back")) {
@@ -489,7 +493,9 @@ canvas.addEventListener("pointerdown", (event) => {
     const index = hubHit(hub, mouse.pointer.x, mouse.pointer.y);
     if (index >= 0) {
       hub.point(index);
-      hub.confirm({ canPlay: canPlay() });
+      // A setting row: the left half lowers it, the right half raises it.
+      const left = mouse.pointer.x < WORLD.width / 2;
+      if (!hub.adjust(left ? -1 : 1)) hub.confirm({ canPlay: canPlay() });
     }
   }
   publishGameEvents();

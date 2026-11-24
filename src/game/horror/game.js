@@ -37,6 +37,12 @@ export const CELL = 2;
 export const HORROR = Object.freeze({
   keys: 3,
   playerSpeed: 3.2, // m/s; faster than the monster's chase, so it can be outrun
+  /** Running (Shift): faster, while stamina lasts. Empty, it must refill to `rerun`. */
+  runSpeed: 5,
+  stamina: 100,
+  staminaDrain: 30, // per second of running
+  staminaRegen: 18, // per second of not running
+  rerun: 30,
   turnSpeed: 2.4, // rad/s, arrow keys
   playerRadius: 0.3,
   wanderSpeed: 1.4,
@@ -85,7 +91,7 @@ export function createHorror({ random = Math.random } = {}) {
       keys.push({ ...spots.splice(Math.floor(random() * spots.length), 1)[0], taken: false });
     }
     Object.assign(s, {
-      player: { ...centre(cellsOf("P")[0]), angle: 0 },
+      player: { ...centre(cellsOf("P")[0]), angle: 0, stamina: HORROR.stamina, tired: false },
       monster: {
         ...centre(cellsOf("M")[0]),
         mode: "wander",
@@ -244,17 +250,26 @@ export function createHorror({ random = Math.random } = {}) {
     /**
      * One fixed step.
      * @param {number} dt - ms
-     * @param {{forward?: number, strafe?: number, turn?: number}} [controls] - forward and
-     *   strafe in -1..1; turn in radians (mouse look plus arrow keys).
+     * @param {{forward?: number, strafe?: number, turn?: number, run?: boolean}} [controls] -
+     *   forward and strafe in -1..1; turn in radians (mouse look plus arrow keys); run
+     *   while Shift is held.
      */
-    update(dt, { forward = 0, strafe = 0, turn = 0 } = {}) {
+    update(dt, { forward = 0, strafe = 0, turn = 0, run = false } = {}) {
       if (s.phase !== "playing") return;
       s.elapsedMs += dt;
       const p = s.player;
       p.angle += turn;
       const len = Math.hypot(forward, strafe);
+      const running = run && len > 0 && !p.tired;
+      p.stamina = running
+        ? Math.max(0, p.stamina - (HORROR.staminaDrain * dt) / 1000)
+        : Math.min(HORROR.stamina, p.stamina + (HORROR.staminaRegen * dt) / 1000);
+      if (p.stamina === 0) p.tired = true;
+      else if (p.tired && p.stamina >= HORROR.rerun) p.tired = false;
+      p.running = running;
       if (len > 0) {
-        const dist = (HORROR.playerSpeed * dt) / 1000 / Math.max(1, len);
+        const speed = running ? HORROR.runSpeed : HORROR.playerSpeed;
+        const dist = (speed * dt) / 1000 / Math.max(1, len);
         const cos = Math.cos(p.angle);
         const sin = Math.sin(p.angle);
         slide(

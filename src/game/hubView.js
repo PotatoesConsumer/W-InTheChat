@@ -36,8 +36,8 @@ export function hubLayout(count) {
 }
 
 /** @returns {Rect[]} one button per PAUSE_OPTIONS entry */
-export function pauseLayout() {
-  return PAUSE_OPTIONS.map((_, i) => ({
+export function pauseLayout(count = PAUSE_OPTIONS.length) {
+  return Array.from({ length: count }, (_, i) => ({
     x: PAUSE.x + 40,
     y: PAUSE.y + 84 + i * 56,
     width: PAUSE.width - 80,
@@ -106,7 +106,9 @@ export function drawOffline(ctx, { world, name, letter, color, last }) {
 /** The index of the card or button at (x, y) on the current screen, or -1. */
 export function hubHit(hub, x, y) {
   if (hub.screen === "hub") return hubLayout(hub.games.length).findIndex((r) => inside(r, x, y));
-  if (hub.screen === "paused") return pauseLayout().findIndex((r) => inside(r, x, y));
+  if (hub.screen === "paused") {
+    return pauseLayout(hub.pauseOptions.length).findIndex((r) => inside(r, x, y));
+  }
   return -1;
 }
 
@@ -172,8 +174,10 @@ export function drawHub(ctx, hub, { world, clock, hint }) {
 export function drawPause(ctx, hub, { world }) {
   ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
   ctx.fillRect(0, 0, world.width, world.height);
+  const options = hub.pauseOptions;
+  const extra = (options.length - PAUSE_OPTIONS.length) * 56; // a game's setting row
   ctx.fillStyle = UI.panel;
-  roundRect(ctx, PAUSE.x, PAUSE.y, PAUSE.width, PAUSE.height, 6);
+  roundRect(ctx, PAUSE.x, PAUSE.y, PAUSE.width, PAUSE.height + extra, 6);
   ctx.fill();
 
   text(ctx, "Paused", PAUSE.x + PAUSE.width / 2, PAUSE.y + 52, {
@@ -182,12 +186,17 @@ export function drawPause(ctx, hub, { world }) {
     align: "center",
     color: UI.text,
   });
-  pauseLayout().forEach((r, i) => {
+  pauseLayout(options.length).forEach((r, i) => {
     const active = i === hub.pauseIndex;
     ctx.fillStyle = active ? UI.accent : UI.raised;
     roundRect(ctx, r.x, r.y, r.width, r.height, 4);
     ctx.fill();
-    text(ctx, PAUSE_OPTIONS[i].label, r.x + r.width / 2, r.y + 28, {
+    const option = options[i];
+    const label =
+      option.id === "setting"
+        ? `◀   ${option.label}: ${hub.current.game.setting.value()}   ▶`
+        : option.label;
+    text(ctx, label, r.x + r.width / 2, r.y + 28, {
       size: 16,
       weight: 600,
       align: "center",
@@ -196,7 +205,7 @@ export function drawPause(ctx, hub, { world }) {
   });
   const game = hub.current?.game;
   if (game) {
-    text(ctx, game.title, PAUSE.x + PAUSE.width / 2, PAUSE.y + 290, {
+    text(ctx, game.title, PAUSE.x + PAUSE.width / 2, PAUSE.y + 290 + extra, {
       size: 13,
       weight: 600,
       align: "center",
@@ -205,9 +214,11 @@ export function drawPause(ctx, hub, { world }) {
   }
   text(
     ctx,
-    "↑ ↓ choose  ·  Space select  ·  Esc resume",
+    extra
+      ? "↑ ↓ choose  ·  ← → change  ·  Esc resume"
+      : "↑ ↓ choose  ·  Space select  ·  Esc resume",
     PAUSE.x + PAUSE.width / 2,
-    PAUSE.y + 330,
+    PAUSE.y + 330 + extra,
     {
       size: 13,
       align: "center",

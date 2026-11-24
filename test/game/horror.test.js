@@ -105,3 +105,30 @@ test("abandon resets without an event", () => {
   assert.equal(game.state.phase, "ready");
   assert.deepEqual(game.takeEvents(), []);
 });
+
+test("running: faster while stamina lasts, then walking until it refills", () => {
+  const walk = started();
+  const run = started();
+  for (const g of [walk, run]) {
+    parkMonster(g);
+    g.state.player.angle = 0; // east, along the start room
+  }
+  for (let i = 0; i < 30; i++) {
+    walk.update(STEP, { forward: 1 });
+    run.update(STEP, { forward: 1, run: true });
+  }
+  assert.ok(run.state.player.x > walk.state.player.x);
+  assert.ok(run.state.player.stamina < HORROR.stamina);
+  assert.equal(walk.state.player.stamina, HORROR.stamina);
+
+  const p = run.state.player;
+  p.stamina = 1;
+  run.update(100, { forward: 1, run: true });
+  assert.equal(p.stamina, 0);
+  assert.equal(p.tired, true);
+  run.update(STEP, { forward: 1, run: true });
+  assert.equal(p.running, false); // too tired: walking
+  const seconds = HORROR.rerun / HORROR.staminaRegen;
+  run.update(seconds * 1000 + 10, {});
+  assert.equal(p.tired, false);
+});
