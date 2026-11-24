@@ -48,8 +48,8 @@ test("buildings are solid; E at the door goes in and back out", () => {
   assert.equal(base.state.scene, "outside");
 });
 
-test("outside: the Haunted House, Training Board and Trader open their menus", () => {
-  for (const id of ["haunted", "training", "trader"]) {
+test("outside: the Haunted House and Training Board open their menus", () => {
+  for (const id of ["haunted", "training"]) {
     const base = createBase();
     const spot = OUTSIDE.spots.find((sp) => sp.id === id);
     Object.assign(base.state.player, { x: spot.x, y: spot.y });
@@ -104,7 +104,7 @@ test("tiles: screen points map to grid tiles, off the floor to null", () => {
 });
 
 test("every menu has rows; broken places only offer the fix; the ghost can be petted", () => {
-  const ctx = { progress: emptyProgress(), donations: 0 };
+  const ctx = { progress: emptyProgress() };
   for (const target of Object.keys(MENUS)) {
     const rows = baseRows(target, ctx);
     assert.ok(rows.length > 0, target);

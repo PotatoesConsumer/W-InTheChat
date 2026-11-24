@@ -3,7 +3,7 @@
  *
  * Just Chatting, the base. Two scenes:
  *   - outside: a yard bigger than the screen (the camera follows you) with your house,
- *     the Haunted House, the Training Board and the Trader
+ *     the Haunted House and the Training Board
  *   - inside your house: furniture on a grid (progress.js ROOM_GRID), and the ghost
  *     flying about once it's unlocked
  * Walking, collisions, what's in reach and the open menu only, no DOM (tested in Node);
@@ -24,14 +24,12 @@ export const OUTSIDE = Object.freeze({
     Object.freeze({ id: "home", x: 760, y: 220, width: 400, height: 260 }),
     Object.freeze({ id: "haunted", x: 1420, y: 170, width: 220, height: 170 }),
     Object.freeze({ id: "training", x: 380, y: 680, width: 90, height: 30 }),
-    Object.freeze({ id: "trader", x: 1290, y: 740, width: 110, height: 50 }),
   ]),
   /** Where you stand to use each place (E). */
   spots: Object.freeze([
     Object.freeze({ id: "door", x: 960, y: 500 }),
     Object.freeze({ id: "haunted", x: 1530, y: 365 }),
     Object.freeze({ id: "training", x: 425, y: 735 }),
-    Object.freeze({ id: "trader", x: 1345, y: 815 }),
   ]),
 });
 

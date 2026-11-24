@@ -5,8 +5,9 @@
  * E uses what's in reach (a door, a place, a piece of furniture, the ghost). Crafted
  * furniture goes in the bag (the button top right, or B); from the bag you place it on
  * the house's grid. Right-click a piece to move it or put it back in the bag. What's
- * bought is saved in progress (src/game/progress.js). Buying materials spends the
- * stream's donations through a `material_purchase` event, like the coin store.
+ * bought is saved in progress (src/game/progress.js). The Store button (top left)
+ * sells materials for the stream's donations, like Wave Survival's coin store, through a
+ * `material_purchase` event that spends them.
  */
 
 import {
@@ -22,6 +23,7 @@ import {
 } from "./game.js";
 import { baseRows, MENUS } from "./menus.js";
 import {
+  MATERIAL_PACKS,
   CLOTHES,
   FIXES,
   FURNITURE,
@@ -68,6 +70,14 @@ const COLORS = Object.freeze({
 
 // Below the top-centre donation alerts (effects.js), clear of the facecam.
 const MENU = { x: 230, y: 130, width: 500, rowHeight: 52 };
+const STORE_BUTTON = { x: 8, y: 6, width: 86, height: 28 };
+const STORE = {
+  x: 150,
+  y: 76,
+  width: 660,
+  height: 330,
+  card: { y: 176, width: 190, height: 200, gap: 25 },
+};
 const BAG_BUTTON = { x: VIEW.width - 116, y: 6, width: 104, height: 28 };
 const BAG = { x: VIEW.width - 300, y: 44, width: 288, rowHeight: 40 };
 const CONTEXT = { width: 130, rowHeight: 30, rows: ["Move", "Put in bag"] };
@@ -124,14 +134,12 @@ export const justChatting = Object.freeze({
     // Dollars spent on materials whose events haven't reached the stats yet (as the coin store).
     let unsettled = 0;
     /** The bag panel, a piece being placed ({id, from: index or null}), the right-click menu. */
-    const ui = { bag: false, placing: null, context: null };
+    const ui = { bag: false, placing: null, context: null, store: false };
 
     const room = () => progress.get().room;
     const donations = () => stream.donations() - unsettled;
     const rows = () =>
-      base.state.menu
-        ? baseRows(base.state.menu.target, { progress: progress.get(), donations: donations() })
-        : [];
+      base.state.menu ? baseRows(base.state.menu.target, { progress: progress.get() }) : [];
 
     function say(text) {
       notice = { text, ms: 2400 };
@@ -157,22 +165,23 @@ export const justChatting = Object.freeze({
         const { name } = HORROR_ITEMS[action.id];
         return say(carried ? `You'll bring the ${name.toLowerCase()}` : "You'll bring no item");
       }
-      if (action.kind === "materials") {
-        const { pack } = action;
-        if (donations() < pack.dollars) return say("Not enough donations");
-        unsettled += pack.dollars;
-        progress.add({ [pack.material]: pack.amount });
-        events.push({
-          name: "material_purchase",
-          data: { material: pack.material, amount: pack.amount, dollars: pack.dollars },
-        });
-        return say(`+${pack.amount} ${MATERIALS[pack.material].icon}`);
-      }
       const result = progress.buy(action);
       if (!result.ok) return say(result.reason);
       const item = action.kind === "craft" ? FURNITURE[action.id].name : itemName(action);
       events.push({ name: "crafted", data: { item } });
       say(action.kind === "craft" ? `${item} is in your bag (B)` : `Done: ${item}`);
+    }
+
+    /** The Store: one pack of a material for donation dollars. */
+    function buyPack(pack) {
+      if (donations() < pack.dollars) return say("Not enough donations");
+      unsettled += pack.dollars;
+      progress.add({ [pack.material]: pack.amount });
+      events.push({
+        name: "material_purchase",
+        data: { material: pack.material, amount: pack.amount, dollars: pack.dollars },
+      });
+      say(`+${pack.amount} ${MATERIALS[pack.material].icon}`);
     }
 
     /** The placed piece under a screen point, as its index in the room, or -1. */
@@ -233,7 +242,7 @@ export const justChatting = Object.freeze({
 
     function closeAll() {
       base.close();
-      Object.assign(ui, { bag: false, placing: null, context: null });
+      Object.assign(ui, { bag: false, placing: null, context: null, store: false });
     }
 
     return {
@@ -246,6 +255,7 @@ export const justChatting = Object.freeze({
         petMs = Math.max(0, petMs - dt);
         const s = base.state;
         if (input.wasPressed("bag")) ui.bag = !ui.bag;
+        if (ui.store) return; // the store is open: no walking
         if (input.wasPressed("use") && !ui.placing) {
           ui.context = null;
           if (s.menu) base.close();
@@ -285,6 +295,16 @@ export const justChatting = Object.freeze({
           ui.bag = !ui.bag;
           return;
         }
+        if (inside(STORE_BUTTON, point.x, point.y)) {
+          ui.store = !ui.store;
+          return;
+        }
+        if (ui.store) {
+          const card = storeCards().findIndex((c) => inside(c, point.x, point.y));
+          if (card >= 0) buyPack(MATERIAL_PACKS[card]);
+          else if (!inside(STORE, point.x, point.y)) ui.store = false;
+          return;
+        }
         if (ui.context) return clickContext(point);
         const bagArea = { ...BAG, height: 60 + bagRows().length * BAG.rowHeight };
         if (ui.bag && inside(bagArea, point.x, point.y)) return clickBag(point);
@@ -303,7 +323,8 @@ export const justChatting = Object.freeze({
 
       /** Escape closes the right-click menu, placing, the bag, then a menu, before pausing. */
       back() {
-        if (ui.context) ui.context = null;
+        if (ui.store) ui.store = false;
+        else if (ui.context) ui.context = null;
         else if (ui.placing) ui.placing = null;
         else if (ui.bag) ui.bag = false;
         else return base.close();
@@ -331,6 +352,7 @@ export const justChatting = Object.freeze({
         if (ui.bag) drawBag(ctx, bagRows(), s.scene === "inside");
         if (ui.context) drawContext(ctx, ui.context);
         if (s.menu) drawMenu(ctx, s, rows());
+        if (ui.store) drawStore(ctx, donations(), p, pointer);
         if (notice) drawNotice(ctx, world, notice.text);
       },
 
@@ -427,7 +449,6 @@ function drawOutside(ctx, s, p, { alpha, clock, looks, target }) {
   drawHome(ctx, solid("home"));
   drawHaunted(ctx, solid("haunted"), p.fixed.haunted, p.house, clock);
   drawBoard(ctx, solid("training"), p.fixed.training);
-  drawTrader(ctx, solid("trader"));
 
   // The player is in yard coordinates; drawPlayer works in screen ones.
   drawPlayer(ctx, { ...s.player, invulnerableMs: 0 }, alpha, clock, looks);
@@ -437,7 +458,6 @@ function drawOutside(ctx, s, p, { alpha, clock, looks, target }) {
       door: "go inside",
       haunted: p.fixed.haunted ? "Haunted House" : "fix it",
       training: p.fixed.training ? "Training Board" : "fix it",
-      trader: "Trader",
     };
     prompt(ctx, spot.x, spot.y - 46, clock, labels[target.id]);
   }
@@ -541,22 +561,6 @@ function drawBoard(ctx, r, fixed) {
   }
   const label = fixed ? "Training Board" : "Training Board (broken)";
   text(ctx, label, r.x + r.width / 2, r.y + 46, { size: 13, weight: 800, align: "center" });
-}
-
-function drawTrader(ctx, r) {
-  ctx.fillStyle = "#8b5a33";
-  ctx.fillRect(r.x, r.y, r.width, r.height);
-  ctx.fillStyle = "#d8343a";
-  ctx.fillRect(r.x - 6, r.y - 30, r.width + 12, 16);
-  ctx.fillStyle = "#fff";
-  for (let x = r.x; x < r.x + r.width; x += 24) ctx.fillRect(x, r.y - 30, 12, 16);
-  drawMaterial(ctx, "wood", r.x + 26, r.y + 18);
-  drawMaterial(ctx, "rock", r.x + 70, r.y + 18);
-  text(ctx, "Trader", r.x + r.width / 2, r.y + r.height + 14, {
-    size: 13,
-    weight: 800,
-    align: "center",
-  });
 }
 
 // --- inside ---------------------------------------------------------------------------
@@ -687,7 +691,14 @@ function drawPiece(ctx, { id }, r) {
 function drawHud(ctx, world, progress, donations) {
   ctx.fillStyle = "rgba(16, 12, 20, 0.92)";
   ctx.fillRect(0, 0, world.width, VIEW.top);
-  let x = 16;
+  ctx.fillStyle = "#c9932b";
+  roundRect(ctx, STORE_BUTTON.x, STORE_BUTTON.y, STORE_BUTTON.width, STORE_BUTTON.height, 6);
+  text(ctx, "🛒 Store", STORE_BUTTON.x + STORE_BUTTON.width / 2, 20, {
+    size: 13,
+    weight: 800,
+    align: "center",
+  });
+  let x = STORE_BUTTON.x + STORE_BUTTON.width + 16;
   for (const [id, m] of Object.entries(MATERIALS)) {
     if (id !== "darkMatter") drawMaterial(ctx, id, x + 8, 20);
     else text(ctx, m.icon, x, 20, { size: 16 });
@@ -737,6 +748,107 @@ function drawBag(ctx, list, isInside) {
     roundRect(ctx, BAG.x + 10, y, BAG.width - 20, BAG.rowHeight - 6, 6);
     drawPiece(ctx, { id }, { x: BAG.x + 14, y: y + 1, width: 32, height: 32 });
     text(ctx, `${FURNITURE[id].name} ×${n}`, BAG.x + 56, y + 17, { size: 13, weight: 700 });
+  });
+}
+
+/** The Store's cards, one per pack, centred in the panel. */
+function storeCards() {
+  const { card } = STORE;
+  const total = MATERIAL_PACKS.length * card.width + (MATERIAL_PACKS.length - 1) * card.gap;
+  const x0 = STORE.x + (STORE.width - total) / 2;
+  return MATERIAL_PACKS.map((_, i) => ({
+    x: x0 + i * (card.width + card.gap),
+    y: card.y,
+    width: card.width,
+    height: card.height,
+  }));
+}
+
+/** The resource store, drawn like Wave Survival's coin store. */
+function drawStore(ctx, donations, progress, pointer) {
+  ctx.fillStyle = "rgba(18, 24, 48, 0.97)";
+  roundRect(ctx, STORE.x, STORE.y, STORE.width, STORE.height, 12);
+  ctx.strokeStyle = "#ffd34e";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  text(ctx, "RESOURCE STORE", STORE.x + 20, STORE.y + 36, {
+    size: 24,
+    weight: 800,
+    color: "#ffd34e",
+  });
+  text(
+    ctx,
+    "Spend chat's donations on materials. They stay with you.",
+    STORE.x + 20,
+    STORE.y + 62,
+    {
+      size: 13,
+      color: "#b9c4e8",
+    },
+  );
+  text(ctx, `Donations: $${donations}`, STORE.x + STORE.width - 20, STORE.y + 36, {
+    size: 18,
+    weight: 800,
+    align: "right",
+    color: "#7ee08a",
+  });
+  text(ctx, "Esc or the button to close", STORE.x + STORE.width - 20, STORE.y + 62, {
+    size: 12,
+    align: "right",
+    color: "#b9c4e8",
+  });
+
+  storeCards().forEach((card, i) => {
+    const pack = MATERIAL_PACKS[i];
+    const { name } = MATERIALS[pack.material];
+    const affordable = donations >= pack.dollars;
+    const hover = affordable && pointer && inside(card, pointer.x, pointer.y);
+    const y = card.y + (hover ? -4 : 0);
+    const gradient = ctx.createLinearGradient(0, y, 0, y + card.height);
+    gradient.addColorStop(0, affordable ? "#3d5fb8" : "#2a3350");
+    gradient.addColorStop(1, affordable ? "#1f2f66" : "#1a2036");
+    ctx.fillStyle = gradient;
+    roundRect(ctx, card.x, y, card.width, card.height, 10);
+    ctx.strokeStyle = hover ? "#ffd34e" : "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // A little pile of the material.
+    const cx = card.x + card.width / 2;
+    if (pack.material === "darkMatter") {
+      text(ctx, MATERIALS.darkMatter.icon, cx, y + 62, { size: 42, align: "center" });
+    } else {
+      for (const [dx, dy] of [
+        [-18, 10],
+        [18, 10],
+        [0, 10],
+        [-9, -4],
+        [9, -4],
+        [0, -18],
+      ]) {
+        drawMaterial(ctx, pack.material, cx + dx, y + 62 + dy);
+      }
+    }
+    text(ctx, `${pack.amount}`, cx, y + 112, {
+      size: 26,
+      weight: 800,
+      align: "center",
+      color: "#ffd34e",
+    });
+    text(ctx, name, cx, y + 134, { size: 13, align: "center", color: "#dfe6ff" });
+    text(ctx, `you have ${progress.materials[pack.material]}`, cx, y + 152, {
+      size: 11,
+      align: "center",
+      color: "#9aa6cc",
+    });
+    ctx.fillStyle = affordable ? "#2e9e4f" : "#3a4157";
+    roundRect(ctx, card.x + 20, y + card.height - 38, card.width - 40, 28, 6);
+    text(ctx, `$${pack.dollars}`, cx, y + card.height - 24, {
+      size: 15,
+      weight: 800,
+      align: "center",
+      color: affordable ? "#fff" : "#8a93ad",
+    });
   });
 }
 

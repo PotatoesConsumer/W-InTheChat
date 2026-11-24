@@ -15,8 +15,6 @@ import {
   GHOST_STATS,
   HORROR_ITEMS,
   HOUSE_LEVELS,
-  MATERIAL_PACKS,
-  MATERIALS,
   canAfford,
   formatCost,
   priceFor,
@@ -30,7 +28,6 @@ export const MENUS = Object.freeze({
   ghost: Object.freeze({ title: "Your ghost", icon: "👻" }),
   haunted: Object.freeze({ title: "Haunted House", icon: "🏚️" }),
   training: Object.freeze({ title: "Training Board", icon: "🎯" }),
-  trader: Object.freeze({ title: "Trader", icon: "💰" }),
 });
 
 /** A row that buys something from progress.js (`buy`). */
@@ -49,10 +46,9 @@ function fixRow(progress, id) {
 
 /**
  * @param {string} target - A MENUS key.
- * @param {{progress: object, donations: number}} ctx - `donations`: the stream's balance
- *   ($) to spend at the Trader.
+ * @param {{progress: object}} ctx
  */
-export function baseRows(target, { progress, donations }) {
+export function baseRows(target, { progress }) {
   if (target === "workbench") {
     return Object.entries(FURNITURE)
       .filter(([, f]) => f.cost)
@@ -115,18 +111,6 @@ export function baseRows(target, { progress, donations }) {
       const name = `${shopItem(id).name} boost ×${boost + 1}`;
       const label = boost < BOOST_COSTS.length ? `${name} → ×${boost + 2}` : name;
       return buyRow(progress, { kind: "boost", id }, label);
-    });
-  }
-  if (target === "trader") {
-    return MATERIAL_PACKS.map((pack) => {
-      const { icon, name } = MATERIALS[pack.material];
-      const ok = donations >= pack.dollars;
-      return {
-        label: `${pack.amount} ${icon} ${name}`,
-        detail: ok ? `$${pack.dollars} of donations` : `$${pack.dollars} (not enough donations)`,
-        ok,
-        action: { kind: "materials", pack },
-      };
     });
   }
   return [];

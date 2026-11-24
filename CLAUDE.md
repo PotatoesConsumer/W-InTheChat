@@ -165,7 +165,8 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     monster's footsteps play by distance and side (`sound.playAt`).
   - `base/`: Just Chatting, the base, an extra outside the study. You start outside in
     a yard bigger than the screen (the camera follows): the Haunted House and Training
-    Board start broken and must be fixed, and the Trader sells materials for donations.
+    Board start broken and must be fixed. The Store button (top left) sells materials for
+    donations, like the coin store.
     Inside your house, furniture sits on a grid (`ROOM_GRID`): the workbench crafts into
     the bag (button top right, or B), pieces are placed from the bag, and right-click
     moves one or packs it away. The wardrobe (craftable) makes and wears clothes. With

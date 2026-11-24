@@ -150,7 +150,7 @@ Don't change these without talking to the team first. The reasons are in the lin
      (1 / 3 / 5 by Haunted House level). You start outside, in a yard the camera
      follows: fix the Haunted House (1 dark matter) to raise its level and buy horror
      items, fix the Training Board (5 wood + 5 rock) for shooter boosts (Power shot +1 a
-     level becomes +2, then +3), and the Trader sells materials for donations (dearer
+     level becomes +2, then +3), and the Store button (top left) sells materials for donations (dearer
      than coins, because they stay). Inside your house: a workbench in the top-right
      corner crafts chairs, tables and wardrobes into the bag (button top right); place
      them on the grid, right-click to move or pack them. A wardrobe makes clothes (looks
