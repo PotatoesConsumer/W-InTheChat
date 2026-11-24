@@ -28,7 +28,6 @@ const COLORS = Object.freeze({
   brute: "#c8553d",
   bullet: "#ffe9a3",
   ghost: "#eef4ff",
-  ghostBullet: "#9fe7ff",
   store: "#2d6cdf",
   ribbon: "#e5323b",
 });
@@ -114,12 +113,10 @@ export function drawShooter(ctx, game, { arena, alpha, donations, pointer, start
   for (const c of s.coins) drawCoin(ctx, c, clock);
   for (const b of s.bursts) drawBurst(ctx, b);
   for (const e of s.enemies) drawEnemy(ctx, e, alpha, clock);
-  if (s.phase !== "ready") drawPlayer(ctx, s.player, alpha, clock);
+  if (s.phase !== "ready") drawPlayer(ctx, s.player, alpha, clock, s.extras?.outfit);
   if (s.ghost && s.phase !== "ready") drawGhost(ctx, s.ghost, clock);
-  for (const b of s.bullets) {
-    ctx.fillStyle = b.ghost ? COLORS.ghostBullet : COLORS.bullet;
-    circle(ctx, lerp(b.prevX, b.x, alpha), lerp(b.prevY, b.y, alpha), b.r);
-  }
+  ctx.fillStyle = COLORS.bullet;
+  for (const b of s.bullets) circle(ctx, lerp(b.prevX, b.x, alpha), lerp(b.prevY, b.y, alpha), b.r);
   ctx.restore();
 
   drawHud(ctx, s, arena);
@@ -154,7 +151,7 @@ function drawGrass(ctx, arena) {
 }
 
 /** The Ghost Friend: a see-through sheet with a wavy hem and two dark eyes. */
-function drawGhost(ctx, g, clock) {
+export function drawGhost(ctx, g, clock) {
   const x = g.x;
   const y = g.y + Math.sin(clock / 300) * 3;
   ctx.save();
@@ -175,7 +172,10 @@ function drawGhost(ctx, g, clock) {
   ctx.restore();
 }
 
-function drawPlayer(ctx, p, alpha, clock) {
+/** What clothes look like (progress.js CLOTHES): looks only. */
+const OUTFIT = Object.freeze({ hoodie: "#8a4fd8", cap: "#d8343a", crown: "#a7a7b3" });
+
+export function drawPlayer(ctx, p, alpha, clock, outfit = {}) {
   if (p.invulnerableMs > 0 && Math.floor(clock / 80) % 2 === 0) return;
   const x = lerp(p.prevX, p.x, alpha);
   const y = lerp(p.prevY, p.y, alpha);
@@ -188,15 +188,36 @@ function drawPlayer(ctx, p, alpha, clock) {
   ctx.fillStyle = "#3a3a46";
   ctx.fillRect(4, -3, p.r + 6, 6);
   ctx.restore();
-  // Overalls, face, straw hat.
-  ctx.fillStyle = "#3b6fd1";
+  // Overalls (or the hoodie), face, straw hat (or the cap or crown).
+  ctx.fillStyle = OUTFIT[outfit.shirt] ?? "#3b6fd1";
   circle(ctx, 0, 3, p.r - 2);
   ctx.fillStyle = "#f2c6a0";
   circle(ctx, 0, -4, p.r - 6);
-  ctx.fillStyle = "#e8c15a";
-  ellipse(ctx, 0, -9, p.r + 2, 5);
-  ctx.fillStyle = "#d4a63e";
-  ellipse(ctx, 0, -12, p.r - 6, 5);
+  if (outfit.hat === "cap") {
+    ctx.fillStyle = OUTFIT.cap;
+    ellipse(ctx, 0, -11, p.r - 5, 5);
+    ellipse(ctx, 5, -8, 7, 2.5);
+  } else if (outfit.hat === "crown") {
+    ctx.fillStyle = OUTFIT.crown;
+    ctx.beginPath();
+    ctx.moveTo(-8, -9);
+    for (const [x, y] of [
+      [-8, -17],
+      [-4, -12],
+      [0, -18],
+      [4, -12],
+      [8, -17],
+      [8, -9],
+    ])
+      ctx.lineTo(x, y);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.fillStyle = "#e8c15a";
+    ellipse(ctx, 0, -9, p.r + 2, 5);
+    ctx.fillStyle = "#d4a63e";
+    ellipse(ctx, 0, -12, p.r - 6, 5);
+  }
   ctx.fillStyle = "#2b2233";
   circle(ctx, -3 + p.aimX * 2, -4 + p.aimY * 2, 1.6);
   circle(ctx, 3 + p.aimX * 2, -4 + p.aimY * 2, 1.6);
@@ -261,6 +282,7 @@ function drawCoin(ctx, c, clock) {
   // Blink in the last two seconds before it disappears.
   if (c.lifeMs < 2000 && Math.floor(clock / 120) % 2 === 0) return;
   const bob = Math.sin(clock / 200 + c.x) * 2;
+  if (c.material) return drawMaterial(ctx, c.material, c.x, c.y + bob);
   ctx.fillStyle = "#b8860b";
   circle(ctx, c.x, c.y + bob + 1, COIN.radius);
   ctx.fillStyle = COLORS.gold;
@@ -412,7 +434,12 @@ function drawShop(ctx, s, donations, pointer) {
       weight: 700,
       color,
     });
-    text(ctx, item.text, card.x + 12, card.y + 50, { size: 13, color: COLORS.muted });
+    const boost = s.extras?.boosts?.[item.id] ?? 0;
+    const blurb = boost ? `${item.text} · boost ×${boost + 1}` : item.text;
+    text(ctx, blurb, card.x + 12, card.y + 50, {
+      size: 13,
+      color: boost ? COLORS.gold : COLORS.muted,
+    });
     const price = soldOut ? "SOLD OUT" : `${priceOf(item, level)} coins`;
     text(ctx, price, card.x + 12, card.y + 84, {
       size: 15,
@@ -548,6 +575,21 @@ function drawStore(ctx, s, donations, pointer, clock) {
 }
 
 /** A heap of coins; bigger packs get taller heaps. */
+/** A dropped log (wood) or stone (rock); also used by the Just Chatting base. */
+export function drawMaterial(ctx, material, x, y) {
+  if (material === "wood") {
+    ctx.fillStyle = "#7a4a26";
+    ctx.fillRect(x - 9, y - 4, 18, 8);
+    ctx.fillStyle = "#c89b6a";
+    ellipse(ctx, x + 9, y, 3, 4);
+  } else {
+    ctx.fillStyle = "#6e6e78";
+    ellipse(ctx, x, y + 1, 9, 7);
+    ctx.fillStyle = "#9a9aa6";
+    ellipse(ctx, x - 2, y - 1, 5, 4);
+  }
+}
+
 function drawCoinPile(ctx, x, y, size, clock) {
   const rows = size + 1;
   for (let row = 0; row < rows; row++) {

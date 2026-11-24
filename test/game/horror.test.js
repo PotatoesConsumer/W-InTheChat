@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createHorror, HORROR, HOUSE, CELL } from "../../src/game/horror/game.js";
+import { createHorror, HORROR, HOUSES, CELL, ITEM_EFFECTS } from "../../src/game/horror/game.js";
 import { seededRandom } from "../../src/game/random.js";
 import { GAME_EVENTS, createGameEvent } from "../../src/events/schema.js";
 import { EVENT_LINES } from "../../src/service/templates.js";
@@ -8,8 +8,10 @@ import { EVENT_LINES } from "../../src/service/templates.js";
 const STEP = 1000 / 60;
 const names = (game) => game.takeEvents().map((e) => e.name);
 
-function started(seed = 1) {
-  const game = createHorror({ random: seededRandom(seed) });
+const KEYS = HOUSES[0].keys;
+
+function started(seed = 1, level = 1) {
+  const game = createHorror({ random: seededRandom(seed), level: () => level });
   game.start();
   return game;
 }
@@ -19,21 +21,67 @@ function parkMonster(game) {
   Object.assign(game.state.monster, { x: 1e6, y: 1e6 });
 }
 
-test("the house is a closed rectangle with one door, a start, a monster and enough key spots", () => {
-  const width = HOUSE[0].length;
-  assert.ok(HOUSE.every((row) => row.length === width));
-  const all = HOUSE.join("");
-  assert.equal(all.split("D").length - 1, 1);
-  assert.equal(all.split("P").length - 1, 1);
-  assert.equal(all.split("M").length - 1, 1);
-  assert.ok(all.split("K").length - 1 >= HORROR.keys);
+test("every house is a closed rectangle with one door, a start, a monster and enough key spots", () => {
+  for (const { rows, keys } of HOUSES) {
+    const width = rows[0].length;
+    assert.ok(rows.every((row) => row.length === width));
+    rows.forEach((row, r) =>
+      [...row].forEach((ch, c) => {
+        const edge = r === 0 || r === rows.length - 1 || c === 0 || c === width - 1;
+        if (edge) assert.ok("#D".includes(ch), `edge at ${c},${r}`);
+      }),
+    );
+    const all = rows.join("");
+    assert.equal(all.split("D").length - 1, 1);
+    assert.equal(all.split("P").length - 1, 1);
+    assert.equal(all.split("M").length - 1, 1);
+    assert.ok(all.split("K").length - 1 >= keys);
+  }
+});
+
+test("higher levels: more keys, a bigger house, a faster monster, less stamina", () => {
+  const [one, two, three] = HOUSES;
+  assert.ok(one.chaseSpeed < HORROR.playerSpeed);
+  assert.equal(two.chaseSpeed, HORROR.playerSpeed);
+  assert.ok(three.chaseSpeed > HORROR.playerSpeed);
+  assert.ok(three.stamina < one.stamina);
+  assert.ok(two.rows.length > one.rows.length && three.rows.length > two.rows.length);
+  for (const level of [1, 2, 3]) {
+    const game = started(4, level);
+    assert.deepEqual(game.takeEvents()[0].data, { keys: HOUSES[level - 1].keys, level });
+    assert.equal(game.state.keys.length, HOUSES[level - 1].keys);
+    assert.equal(game.state.player.stamina, HOUSES[level - 1].stamina);
+  }
+});
+
+test("items: sonar once a run, energy runs without stamina, the gun freezes the monster", () => {
+  const game = started();
+  const s = game.state;
+  parkMonster(game);
+  assert.equal(game.sonar(), true);
+  assert.equal(game.sonar(), false);
+
+  assert.equal(game.energy(), true);
+  s.player.angle = 0;
+  for (let i = 0; i < 60; i++) game.update(STEP, { forward: 1, run: true });
+  assert.equal(s.player.stamina, HOUSES[0].stamina);
+  assert.equal(s.player.running, true);
+
+  Object.assign(s.monster, { x: s.player.x + 2, y: s.player.y, mode: "chase" });
+  s.elapsedMs = HORROR.graceMs;
+  game.freeze();
+  const at = { x: s.monster.x, y: s.monster.y };
+  for (let i = 0; i < 60; i++) game.update(STEP);
+  assert.deepEqual({ x: s.monster.x, y: s.monster.y }, at);
+  assert.equal(s.phase, "playing");
+  assert.ok(s.monster.frozenMs > 0 && s.monster.frozenMs < ITEM_EFFECTS.freezeMs);
 });
 
 test("start places the keys and announces the run; same seed, same keys", () => {
   const a = started(7);
   const b = started(7);
-  assert.deepEqual(a.takeEvents(), [{ name: "horror_start", data: { keys: HORROR.keys } }]);
-  assert.equal(a.state.keys.length, HORROR.keys);
+  assert.deepEqual(a.takeEvents(), [{ name: "horror_start", data: { keys: KEYS, level: 1 } }]);
+  assert.equal(a.state.keys.length, KEYS);
   assert.deepEqual(a.state.keys, b.state.keys);
 });
 
@@ -62,7 +110,7 @@ test("the door stays shut until every key is found, then walking out wins", () =
     game.update(STEP);
     parkMonster(game);
   }
-  assert.deepEqual(names(game), Array(HORROR.keys).fill("key_found"));
+  assert.deepEqual(names(game), Array(KEYS).fill("key_found"));
   assert.equal(s.door.open, true);
 
   Object.assign(s.player, { x: s.door.x - CELL, y: s.door.y, angle: 0 });
@@ -79,10 +127,6 @@ test("the monster hunts down a player who stands still, warning first", () => {
   const seen = names(game);
   assert.equal(seen.at(-1), "caught");
   assert.ok(seen.includes("monster_near"));
-});
-
-test("a player running away is faster than the monster", () => {
-  assert.ok(HORROR.playerSpeed > HORROR.chaseSpeed);
 });
 
 test("every event it sends is valid, minor, optional and has chat lines", () => {
@@ -118,8 +162,8 @@ test("running: faster while stamina lasts, then walking until it refills", () =>
     run.update(STEP, { forward: 1, run: true });
   }
   assert.ok(run.state.player.x > walk.state.player.x);
-  assert.ok(run.state.player.stamina < HORROR.stamina);
-  assert.equal(walk.state.player.stamina, HORROR.stamina);
+  assert.ok(run.state.player.stamina < HOUSES[0].stamina);
+  assert.equal(walk.state.player.stamina, HOUSES[0].stamina);
 
   const p = run.state.player;
   p.stamina = 1;

@@ -44,6 +44,12 @@ export const EVENT_LINES = Object.freeze({
   monster_near: Object.freeze(["BEHIND YOU", "RUN RUN RUN", "its right there 😱"]),
   escaped: Object.freeze(["YOU MADE IT OUT", "ESCAPED!! GG", "my heart cant take this"]),
   caught: Object.freeze(["NOOOO", "it got you 💀", "i screamed"]),
+  crafted: Object.freeze(["base glow up 🔨", "interior designer arc", "ok that looks clean"]),
+  material_purchase: Object.freeze([
+    "our money became rocks??",
+    "big spender 💰",
+    "investing in the base",
+  ]),
 });
 
 /** Answers to a typed player message when no model reply is used. */

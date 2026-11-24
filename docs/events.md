@@ -105,6 +105,8 @@ else `new_best` the first time a run passes the best wave of earlier runs, else 
 | `monster_near` | minor | has the monster right behind them (optional) |
 | `escaped` | minor | escaped the dark house (optional: `{keys, seconds}`) |
 | `caught` | minor | got caught by the monster (optional: `{keys, total}`) |
+| `crafted` | minor | built something in their base (Just Chatting, optional: `{item}`) |
+| `material_purchase` | minor | spent chat's donations on materials (optional: `{material, amount, dollars}`; spends `dollars`) |
 | `win` | major | cleared a wave |
 | `loss` | major | died and lost the run |
 | `streak` | major | went on a kill streak without getting hit |

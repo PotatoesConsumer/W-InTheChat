@@ -12,7 +12,7 @@
  * file.
  */
 
-import { HOUSE, CELL } from "./game.js";
+import { CELL } from "./game.js";
 
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 const WALL_HEIGHT = 2.6;
@@ -28,8 +28,9 @@ export function loadThree() {
 /**
  * @param {typeof import("three")} THREE
  * @param {{width: number, height: number}} size
+ * @param {readonly string[]} house - The house map (game.js HOUSES[].rows).
  */
-export function createHorrorView(THREE, { width, height }) {
+export function createHorrorView(THREE, { width, height }, house) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
   renderer.setPixelRatio(1);
   renderer.setSize(width, height, false);
@@ -55,8 +56,8 @@ export function createHorrorView(THREE, { width, height }) {
   camera.add(flashlight.target);
 
   // Floor and ceiling.
-  const rows = HOUSE.length;
-  const cols = HOUSE[0].length;
+  const rows = house.length;
+  const cols = house[0].length;
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(cols * CELL, rows * CELL),
     new THREE.MeshStandardMaterial({ color: 0x3b2f26, roughness: 0.95 }),
@@ -73,7 +74,7 @@ export function createHorrorView(THREE, { width, height }) {
 
   // Walls: one instanced mesh, so the whole house is a single draw call.
   const wallCells = [];
-  HOUSE.forEach((row, r) => [...row].forEach((ch, c) => ch === "#" && wallCells.push({ c, r })));
+  house.forEach((row, r) => [...row].forEach((ch, c) => ch === "#" && wallCells.push({ c, r })));
   const walls = new THREE.InstancedMesh(
     new THREE.BoxGeometry(CELL, WALL_HEIGHT, CELL),
     new THREE.MeshStandardMaterial({ color: 0x6b6258, roughness: 0.9 }),

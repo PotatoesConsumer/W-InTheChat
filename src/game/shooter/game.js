@@ -53,17 +53,28 @@ const SPREAD_ANGLE = 0.22; // radians between spread shot bullets
 const BURST_MS = 400;
 const NOTICE_MS = 2500;
 
-/** The player's numbers after shop upgrades. */
-export function playerStats(levels) {
-  const level = (id) => levels[id] ?? 0;
+/**
+ * The player's numbers after shop upgrades. A boost (the Just Chatting base,
+ * src/game/progress.js) multiplies what each level of one upgrade gives: boost 1 makes
+ * Power shot +2 a level instead of +1.
+ */
+export function playerStats(levels, boosts = {}) {
+  const level = (id) => (levels[id] ?? 0) * (1 + (boosts[id] ?? 0));
   return {
     maxHp: PLAYER.hp + level("heart"),
     speed: PLAYER.speed * (1 + 0.12 * level("boots")),
     fireDelayMs: PLAYER.fireDelayMs * 0.8 ** level("rapid"),
     damage: 1 + level("power"),
-    bullets: level("spread") > 0 ? 3 : 1,
+    bullets: (levels.spread ?? 0) > 0 ? 3 : 1,
   };
 }
+
+/** Wood and rock from kills, when drops are on: the chance per kill by enemy type. */
+export const DROPS = Object.freeze({
+  slime: Object.freeze({ material: "wood", chance: 0.3 }),
+  bat: Object.freeze({ material: "wood", chance: 0.3 }),
+  brute: Object.freeze({ material: "rock", chance: 0.6 }),
+});
 
 /**
  * @param {object} opts
@@ -73,28 +84,20 @@ export function playerStats(levels) {
  * @param {() => number} [opts.random] - In [0, 1); seed it for reproducible games.
  */
 /**
- * The Ghost Friend badge's ally (src/ui/profile.js, BADGES.ghost): it circles the
- * player and shoots the nearest enemy, about a third of the player's starting fire.
- */
-export const GHOST = Object.freeze({
-  orbit: 46,
-  orbitMs: 3000,
-  fireDelayMs: 900,
-  range: 260,
-  damage: 1,
-  bulletSpeed: 420,
-});
-
-/**
  * @param {object} opts
- * @param {() => boolean} [opts.ghost] - Asked at the start of each run: whether the
- *   Ghost Friend helps (the badge is earned and this isn't a study session).
+ * @param {() => null | {ghost?: object | null, boosts?: object, outfit?: object, drops?: boolean}} [opts.extras] -
+ *   Asked at the start of each run: what the Just Chatting base adds (progress.js). The
+ *   ghost's numbers (ghostStats) if it helps, boosts per shop upgrade, the clothes worn,
+ *   and whether kills drop wood and rock. Null in the study: the run is the plain game,
+ *   with the same random draws.
+ * @param {(material: string) => void} [opts.onLoot] - A dropped material was picked up.
  */
 export function createShooter({
   arena,
   obstacles = [],
   random = Math.random,
-  ghost = () => false,
+  extras = () => null,
+  onLoot = () => {},
 }) {
   const s = {
     phase: "ready",
@@ -114,6 +117,8 @@ export function createShooter({
     notice: null,
     /** The Ghost Friend, or null without the badge. */
     ghost: null,
+    /** This run's extras (see opts.extras): boosts, clothes, drops. */
+    extras: { boosts: {}, outfit: {}, drops: false },
   };
   let events = [];
   let nextId = 1;
@@ -121,7 +126,7 @@ export function createShooter({
   const emit = (name, data) => events.push({ name, data });
 
   function newRun() {
-    return { coins: 0, levels: {}, kills: 0, streakKills: 0, cleared: 0 };
+    return { coins: 0, levels: {}, kills: 0, streakKills: 0, cleared: 0, loot: {} };
   }
 
   function newPlayer() {
@@ -162,7 +167,7 @@ export function createShooter({
     const p = s.player;
     const len = Math.hypot(moveX, moveY);
     if (len > 0) {
-      const dist = (playerStats(s.run.levels).speed * dt) / 1000;
+      const dist = (playerStats(s.run.levels, s.extras.boosts).speed * dt) / 1000;
       p.x += (moveX / len) * dist;
       p.y += (moveY / len) * dist;
     }
@@ -179,7 +184,7 @@ export function createShooter({
     }
     if (!fire || len === 0 || p.fireCooldownMs > 0) return;
 
-    const { bullets, damage, fireDelayMs } = playerStats(s.run.levels);
+    const { bullets, damage, fireDelayMs } = playerStats(s.run.levels, s.extras.boosts);
     const angle = Math.atan2(p.aimY, p.aimX);
     for (let i = 0; i < bullets; i++) {
       const a = angle + (i - (bullets - 1) / 2) * SPREAD_ANGLE;
@@ -298,35 +303,33 @@ export function createShooter({
     for (const e of s.enemies) keepInside(e);
   }
 
+  /** The ghost floats to the nearest enemy and hurts it while it's on top of it. */
   function ghostAttack(dt) {
     const g = s.ghost;
     if (!g) return;
     const p = s.player;
-    g.angle += (2 * Math.PI * dt) / GHOST.orbitMs;
-    g.x = p.x + Math.cos(g.angle) * GHOST.orbit;
-    g.y = p.y + Math.sin(g.angle) * GHOST.orbit;
-    g.cooldownMs = Math.max(0, g.cooldownMs - dt);
-    if (g.cooldownMs > 0) return;
     let target = null;
-    let best = GHOST.range;
+    let best = Infinity;
     for (const e of s.enemies) {
       const d = Math.hypot(e.x - g.x, e.y - g.y);
       if (e.hp > 0 && d < best) [target, best] = [e, d];
     }
-    if (!target) return;
-    s.bullets.push({
-      x: g.x,
-      y: g.y,
-      prevX: g.x,
-      prevY: g.y,
-      vx: ((target.x - g.x) / best) * GHOST.bulletSpeed,
-      vy: ((target.y - g.y) / best) * GHOST.bulletSpeed,
-      r: PLAYER.bulletRadius,
-      damage: GHOST.damage,
-      lifeMs: PLAYER.bulletLifeMs,
-      ghost: true,
-    });
-    g.cooldownMs = GHOST.fireDelayMs;
+    // No enemy: drift back to the player's shoulder.
+    const goal = target ?? { x: p.x + 30, y: p.y - 24 };
+    const dx = goal.x - g.x;
+    const dy = goal.y - g.y;
+    const d = Math.hypot(dx, dy);
+    const step = Math.min(d, (g.stats.flySpeed * dt) / 1000);
+    if (d > 0) {
+      g.x += (dx / d) * step;
+      g.y += (dy / d) * step;
+    }
+    g.hitMs = Math.max(0, g.hitMs - dt);
+    if (target && Math.hypot(target.x - g.x, target.y - g.y) < target.r + 8 && g.hitMs === 0) {
+      target.hp -= g.stats.damage;
+      target.hitMs = 100;
+      g.hitMs = g.stats.hitDelayMs;
+    }
   }
 
   function moveBullets(dt) {
@@ -366,6 +369,20 @@ export function createShooter({
       s.run.kills++;
       s.run.streakKills++;
       s.coins.push({ x: e.x, y: e.y, prevX: e.x, prevY: e.y, value: e.coins, lifeMs: COIN.lifeMs });
+      // Only with drops on: the study's runs make no extra random draws.
+      const drop = s.extras.drops && DROPS[e.type];
+      if (drop && random() < drop.chance) {
+        const [x, y] = [e.x + 10, e.y + 6];
+        s.coins.push({
+          x,
+          y,
+          prevX: x,
+          prevY: y,
+          value: 0,
+          material: drop.material,
+          lifeMs: COIN.lifeMs,
+        });
+      }
       s.bursts.push({ x: e.x, y: e.y, type: e.type, ageMs: 0 });
       emit("kill", { enemy: e.type, wave: s.wave });
       if (s.run.streakKills % STREAK_KILLS === 0) emit("streak", { kills: s.run.streakKills });
@@ -408,6 +425,10 @@ export function createShooter({
       const d = Math.hypot(dx, dy);
       if (d < p.r + COIN.radius) {
         s.run.coins += c.value;
+        if (c.material) {
+          s.run.loot[c.material] = (s.run.loot[c.material] ?? 0) + 1;
+          onLoot(c.material);
+        }
         continue;
       }
       if (d < COIN.magnet) {
@@ -475,9 +496,9 @@ export function createShooter({
       s.newBestThisRun = false;
       s.notice = null;
       const p = s.player;
-      s.ghost = ghost()
-        ? { x: p.x + GHOST.orbit, y: p.y, angle: 0, cooldownMs: GHOST.fireDelayMs }
-        : null;
+      const extra = extras() ?? {};
+      s.extras = { boosts: extra.boosts ?? {}, outfit: extra.outfit ?? {}, drops: !!extra.drops };
+      s.ghost = extra.ghost ? { x: p.x + 30, y: p.y - 24, stats: extra.ghost, hitMs: 0 } : null;
       startWave(1);
       return true;
     },
@@ -504,10 +525,11 @@ export function createShooter({
       }
       s.run.coins -= check.price;
       s.run.levels = { ...s.run.levels, [id]: (s.run.levels[id] ?? 0) + 1 };
-      if (id === "medkit") p.hp = Math.min(p.maxHp, p.hp + MEDKIT_HEAL);
+      const boost = 1 + (s.extras.boosts[id] ?? 0);
+      if (id === "medkit") p.hp = Math.min(p.maxHp, p.hp + MEDKIT_HEAL * boost);
       if (id === "heart") {
-        p.maxHp += 1;
-        p.hp += 1;
+        p.maxHp += boost;
+        p.hp += boost;
       }
       const { name } = shopItem(id);
       notice(`Bought ${name}`);

@@ -37,6 +37,9 @@ export const STAT_RULES = Object.freeze({
   monster_near: { hype: 6, followers: 0 },
   escaped: { hype: 20, followers: 3 },
   caught: { hype: -10, followers: 0 },
+  // Just Chatting
+  crafted: { hype: 3, followers: 0 },
+  material_purchase: { hype: 0, followers: 0, spends: true },
 });
 
 /** The streamer talking to chat keeps the room warm. */

@@ -10,10 +10,10 @@
  *
  * Catalog events (src/events/schema.js), all minor and optional (an extra, not in the
  * study):
- *   horror_start  a run starts                    {keys}
+ *   horror_start  a run starts                    {keys, level}
  *   key_found     picked up a key                 {keys, total}
  *   monster_near  the monster came close           {}
- *   escaped       out through the door: a win     {keys, seconds}
+ *   escaped       out through the door: a win     {keys, seconds, level}
  *   caught        the monster got the player       {keys, total}
  */
 
@@ -32,21 +32,74 @@ export const HOUSE = Object.freeze([
   "###############",
 ]);
 
+/** Haunted House level 2: bigger, with room for 5 of 6 keys. */
+const HOUSE_2 = Object.freeze([
+  "#####################",
+  "#K....#.....#......K#",
+  "#.....#.....#.......#",
+  "#...........#..##...#",
+  "###.####.####..##...#",
+  "#......#.....#......#",
+  "#..K...#..M..#...K..#",
+  "#......####.##......#",
+  "##.#####........#####",
+  "#.....#..####.......#",
+  "#..P..#..#K.#...##..D",
+  "#.....#..#..#...##..#",
+  "#........#..........#",
+  "#K....#.............#",
+  "#####################",
+]);
+
+/** Haunted House level 3: bigger again, 8 of 9 keys. */
+const HOUSE_3 = Object.freeze([
+  "###########################",
+  "#K.....#.......#.........K#",
+  "#......#.......#..........#",
+  "#..............#...####...#",
+  "####.#####.#####...#..#...#",
+  "#........#.....#...#K.#...#",
+  "#...K....#..M..#...#..#...#",
+  "#........#.....#..........#",
+  "#####.######.###.######.###",
+  "#.....#...........#.......#",
+  "#..P..#..######...#...K...#",
+  "#.....#..#....#...#.......D",
+  "#........#.K..#...........#",
+  "###.######....#####.#######",
+  "#.........#...............#",
+  "#..K......#....######...K.#",
+  "#.........#....#K..#......#",
+  "#..............#..........#",
+  "###########################",
+]);
+
+/**
+ * How each Haunted House level plays (the base's HOUSE_LEVELS has its price and reward):
+ * more keys in a bigger house, and a faster monster. Level 1 it's slower than your walk,
+ * level 2 as fast, level 3 faster, and your stamina is smaller.
+ */
+export const HOUSES = Object.freeze([
+  Object.freeze({ level: 1, rows: HOUSE, keys: 3, chaseSpeed: 2.6, stamina: 100 }),
+  Object.freeze({ level: 2, rows: HOUSE_2, keys: 5, chaseSpeed: 3.2, stamina: 100 }),
+  Object.freeze({ level: 3, rows: HOUSE_3, keys: 8, chaseSpeed: 3.8, stamina: 60 }),
+]);
+
+/** Items from the base (progress.js HORROR_ITEMS). */
+export const ITEM_EFFECTS = Object.freeze({ energyMs: 5000, freezeMs: 10_000 });
+
 export const CELL = 2;
 
 export const HORROR = Object.freeze({
-  keys: 3,
   playerSpeed: 3.2, // m/s; faster than the monster's chase, so it can be outrun
   /** Running (Shift): faster, while stamina lasts. Empty, it must refill to `rerun`. */
   runSpeed: 5,
-  stamina: 100,
   staminaDrain: 30, // per second of running
   staminaRegen: 18, // per second of not running
   rerun: 30,
   turnSpeed: 2.4, // rad/s, arrow keys
   playerRadius: 0.3,
   wanderSpeed: 1.4,
-  chaseSpeed: 2.6,
   monsterRadius: 0.35,
   /** Sees the player this far with a clear line, and hears them this close through walls. */
   sightRange: 9,
@@ -63,48 +116,59 @@ export const HORROR = Object.freeze({
   repathMs: 300,
 });
 
-function cellsOf(char) {
+function cellsOf(rows, char) {
   const found = [];
-  HOUSE.forEach((row, r) => [...row].forEach((ch, c) => ch === char && found.push({ c, r })));
+  rows.forEach((row, r) => [...row].forEach((ch, c) => ch === char && found.push({ c, r })));
   return found;
 }
 
 const centre = ({ c, r }) => ({ x: (c + 0.5) * CELL, y: (r + 0.5) * CELL });
 const cellAt = (x, y) => ({ c: Math.floor(x / CELL), r: Math.floor(y / CELL) });
-const charAt = (c, r) => HOUSE[r]?.[c] ?? "#";
 
 /**
  * @param {object} [opts]
  * @param {() => number} [opts.random] - Seeded in tests; picks the key spots and the
  *   monster's wandering.
+ * @param {() => number} [opts.level] - The Haunted House level (1-3), asked at each start.
  */
-export function createHorror({ random = Math.random } = {}) {
-  const door = { ...centre(cellsOf("D")[0]), open: false };
+export function createHorror({ random = Math.random, level = () => 1 } = {}) {
   let events = [];
-  const s = { phase: "ready", door };
+  let house = HOUSES[0];
+  const s = { phase: "ready", house };
+  const charAt = (c, r) => house.rows[r]?.[c] ?? "#";
   reset();
 
   function reset() {
-    const spots = cellsOf("K").map(centre);
+    const at = (ch) => cellsOf(house.rows, ch);
+    const spots = at("K").map(centre);
     const keys = [];
-    while (keys.length < HORROR.keys && spots.length > 0) {
+    while (keys.length < house.keys && spots.length > 0) {
       keys.push({ ...spots.splice(Math.floor(random() * spots.length), 1)[0], taken: false });
     }
     Object.assign(s, {
-      player: { ...centre(cellsOf("P")[0]), angle: 0, stamina: HORROR.stamina, tired: false },
+      house,
+      door: { ...centre(at("D")[0]), open: false },
+      player: {
+        ...centre(at("P")[0]),
+        angle: 0,
+        stamina: house.stamina,
+        tired: false,
+        energyMs: 0,
+      },
       monster: {
-        ...centre(cellsOf("M")[0]),
+        ...centre(at("M")[0]),
         mode: "wander",
         path: [],
         repathMs: 0,
         lastSeenMs: 0,
+        frozenMs: 0,
       },
       keys,
       keysFound: 0,
       elapsedMs: 0,
       nearCooldownMs: 0,
+      sonar: false,
     });
-    door.open = false;
   }
 
   function emit(name, data = {}) {
@@ -114,7 +178,7 @@ export function createHorror({ random = Math.random } = {}) {
   // A door that's still locked is a wall.
   function solid(c, r) {
     const ch = charAt(c, r);
-    return ch === "#" || (ch === "D" && !door.open);
+    return ch === "#" || (ch === "D" && !s.door.open);
   }
 
   function hitsWall(x, y, radius) {
@@ -182,7 +246,7 @@ export function createHorror({ random = Math.random } = {}) {
 
   function randomFloor() {
     const floor = [];
-    HOUSE.forEach((row, r) =>
+    house.rows.forEach((row, r) =>
       [...row].forEach((ch, c) => ".KPM".includes(ch) && floor.push({ c, r })),
     );
     return centre(floor[Math.floor(random() * floor.length)]);
@@ -192,6 +256,10 @@ export function createHorror({ random = Math.random } = {}) {
     const m = s.monster;
     const p = s.player;
     if (s.elapsedMs < HORROR.graceMs) return;
+    if (m.frozenMs > 0) {
+      m.frozenMs = Math.max(0, m.frozenMs - dt); // the freeze gun: harmless while frozen
+      return;
+    }
     const dist = Math.hypot(p.x - m.x, p.y - m.y);
     const sees = (dist < HORROR.sightRange && clearLine(m, p)) || dist < HORROR.hearRange;
     if (sees) {
@@ -202,7 +270,7 @@ export function createHorror({ random = Math.random } = {}) {
       m.path = [];
     }
 
-    const speed = m.mode === "chase" ? HORROR.chaseSpeed : HORROR.wanderSpeed;
+    const speed = m.mode === "chase" ? house.chaseSpeed : HORROR.wanderSpeed;
     let target;
     if (m.mode === "chase" && clearLine(m, p)) {
       target = p;
@@ -242,9 +310,32 @@ export function createHorror({ random = Math.random } = {}) {
     },
 
     start() {
+      house = HOUSES[Math.min(HOUSES.length, Math.max(1, level())) - 1];
       reset();
       s.phase = "playing";
-      emit("horror_start", { keys: s.keys.length });
+      emit("horror_start", { keys: s.keys.length, level: house.level });
+    },
+
+    /** The sonar: points to the nearest key for the rest of the run. */
+    sonar() {
+      if (s.phase !== "playing" || s.sonar) return false;
+      s.sonar = true;
+      return true;
+    },
+
+    /** The energy boost: running costs no stamina for a while. */
+    energy() {
+      if (s.phase !== "playing") return false;
+      s.player.energyMs = ITEM_EFFECTS.energyMs;
+      s.player.tired = false;
+      return true;
+    },
+
+    /** The freeze gun: the monster stops where it is. */
+    freeze() {
+      if (s.phase !== "playing") return false;
+      s.monster.frozenMs = ITEM_EFFECTS.freezeMs;
+      return true;
     },
 
     /**
@@ -261,9 +352,11 @@ export function createHorror({ random = Math.random } = {}) {
       p.angle += turn;
       const len = Math.hypot(forward, strafe);
       const running = run && len > 0 && !p.tired;
+      p.energyMs = Math.max(0, p.energyMs - dt);
+      const drain = p.energyMs > 0 ? 0 : HORROR.staminaDrain;
       p.stamina = running
-        ? Math.max(0, p.stamina - (HORROR.staminaDrain * dt) / 1000)
-        : Math.min(HORROR.stamina, p.stamina + (HORROR.staminaRegen * dt) / 1000);
+        ? Math.max(0, p.stamina - (drain * dt) / 1000)
+        : Math.min(house.stamina, p.stamina + (HORROR.staminaRegen * dt) / 1000);
       if (p.stamina === 0) p.tired = true;
       else if (p.tired && p.stamina >= HORROR.rerun) p.tired = false;
       p.running = running;
@@ -285,12 +378,14 @@ export function createHorror({ random = Math.random } = {}) {
         k.taken = true;
         s.keysFound++;
         emit("key_found", { keys: s.keysFound, total: s.keys.length });
-        if (s.keysFound === s.keys.length) door.open = true;
+        if (s.keysFound === s.keys.length) s.door.open = true;
       }
 
+      const { door } = s;
       if (door.open && Math.hypot(door.x - p.x, door.y - p.y) < HORROR.doorRange) {
         s.phase = "escaped";
-        emit("escaped", { keys: s.keysFound, seconds: Math.round(s.elapsedMs / 1000) });
+        const seconds = Math.round(s.elapsedMs / 1000);
+        emit("escaped", { keys: s.keysFound, seconds, level: house.level });
         return;
       }
       updateMonster(dt);

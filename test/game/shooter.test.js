@@ -7,8 +7,9 @@ import {
   playerStats,
   PLAYER,
   STREAK_KILLS,
-  GHOST,
+  DROPS,
 } from "../../src/game/shooter/game.js";
+import { ghostStats } from "../../src/game/progress.js";
 import { waveConfig, pickEnemyType, FIRST_WAVE } from "../../src/game/shooter/waves.js";
 import {
   SHOP_ITEMS,
@@ -333,14 +334,14 @@ test("shop clicks hit the item cards and buttons", () => {
   assert.notEqual(shopHit(...centre(layout.cards[0]), true)?.kind, "item", "store covers the shop");
 });
 
-test("the Ghost Friend: only with the badge, asked each run, and it kills enemies on its own", () => {
-  let badge = false;
-  const game = createShooter({ arena: ARENA, random: seededRandom(1), ghost: () => badge });
+test("the Ghost Friend: only with extras, flies to an enemy and hurts it on top of it", () => {
+  let extras = null;
+  const game = createShooter({ arena: ARENA, random: seededRandom(1), extras: () => extras });
   game.start();
   assert.equal(game.state.ghost, null);
   game.abandon();
 
-  badge = true;
+  extras = { ghost: ghostStats({}) };
   game.start();
   game.takeEvents();
   const s = game.state;
@@ -349,8 +350,8 @@ test("the Ghost Friend: only with the badge, asked each run, and it kills enemie
   const enemy = { x: s.player.x, y: s.player.y - 150, id: 99, type: "slime", r: 14 };
   s.enemies.push({
     ...enemy,
-    hp: 1,
-    maxHp: 1,
+    hp: 2,
+    maxHp: 2,
     speed: 0,
     damage: 1,
     coins: 1,
@@ -359,10 +360,73 @@ test("the Ghost Friend: only with the badge, asked each run, and it kills enemie
     wobble: 0,
   });
 
-  // The player never shoots; the ghost fires within fireDelayMs and the bullet lands.
-  for (let t = 0; t < GHOST.fireDelayMs + 1000 && s.enemies.length > 0; t += STEP)
-    game.update(STEP, {});
+  // The player never shoots: the ghost flies over (150 px at 150 px/s) and hits twice.
+  for (let t = 0; t < 4000 && s.enemies.length > 0; t += STEP) game.update(STEP, {});
   assert.equal(s.enemies.length, 0);
   assert.ok(names(game.takeEvents()).includes("kill"));
   assert.equal(s.player.shots, 0);
+  assert.equal(s.bullets.length, 0);
+});
+
+test("boosts multiply what each shop level gives", () => {
+  assert.equal(playerStats({ power: 2 }).damage, 3);
+  assert.equal(playerStats({ power: 2 }, { power: 1 }).damage, 5);
+  assert.equal(playerStats({ heart: 1 }, { heart: 2 }).maxHp, PLAYER.hp + 3);
+  assert.ok(
+    playerStats({ rapid: 1 }, { rapid: 1 }).fireDelayMs < playerStats({ rapid: 1 }).fireDelayMs,
+  );
+
+  const game = createShooter({
+    arena: ARENA,
+    random: seededRandom(1),
+    extras: () => ({ boosts: { heart: 1 } }),
+  });
+  game.start();
+  const s = game.state;
+  s.phase = "shop";
+  s.run.coins = 1000;
+  game.buy("heart");
+  assert.equal(s.player.maxHp, PLAYER.hp + 2);
+});
+
+test("drops: wood and rock only with drops on, picked up like coins", () => {
+  const looted = [];
+  const run = (drops) => {
+    const game = createShooter({
+      arena: ARENA,
+      random: seededRandom(5),
+      extras: () => ({ drops }),
+      onLoot: (m) => looted.push(m),
+    });
+    game.start();
+    const s = game.state;
+    s.spawn.timerMs = Infinity;
+    for (let i = 0; i < 40; i++) {
+      s.enemies.push({
+        x: s.player.x,
+        y: s.player.y,
+        id: i,
+        type: "brute",
+        r: 14,
+        hp: 0,
+        maxHp: 1,
+        speed: 0,
+        damage: 0,
+        coins: 0,
+        hitMs: 0,
+        ageMs: 0,
+        wobble: 0,
+      });
+    }
+    s.player.invulnerableMs = 1e9;
+    for (let t = 0; t < 1000; t += STEP) game.update(STEP, {});
+    return s;
+  };
+  const off = run(false);
+  assert.deepEqual(off.run.loot, {});
+  assert.equal(looted.length, 0);
+  const on = run(true);
+  assert.ok(on.run.loot.rock > 0);
+  assert.equal(looted.length, on.run.loot.rock);
+  assert.ok(looted.every((m) => m === DROPS.brute.material));
 });

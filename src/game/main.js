@@ -74,6 +74,7 @@ import { showChannel } from "../ui/channel.js";
 import { createBot, createBotInput, BOT_CHAT } from "./shooter/bot.js";
 import { HUD_HEIGHT } from "./shooter/view.js";
 import { seededRandom } from "./random.js";
+import { createProgressStore, memoryProgressStore, ghostStats, HOUSE_LEVELS } from "./progress.js";
 
 /** Logical scene size. The canvas is scaled to fit, keeping 16:9. */
 const WORLD = { width: 960, height: 540 };
@@ -151,6 +152,9 @@ const bot = params.has("bot")
 const locked = bot !== null || params.has("session");
 if (locked) document.body.dataset.locked = "";
 const store = createProfileStore();
+// What carries between games (the Just Chatting base). Study and bot runs keep nothing.
+const progress = locked ? memoryProgressStore() : createProgressStore();
+const hasGhost = () => !locked && store.badges().includes("ghost");
 const profile = locked ? DEFAULT_PROFILE : store.profile();
 if (!locked) store.recover(); // a stream left open by a closed tab ends where it stopped
 const goLiveNow = location.hash === "#live"; // the home page's Go live button
@@ -170,7 +174,11 @@ const streamer = createStreamer();
 const effects = createEffects({ onAlert: () => sound.play("donation") });
 const sound = createSound();
 bus.subscribe("*", (event) => {
-  if (event.name === "escaped" && !locked) store.earnBadge("ghost");
+  if (event.name === "escaped" && !locked) {
+    store.earnBadge("ghost");
+    const level = HOUSE_LEVELS[(event.data.level ?? 1) - 1] ?? HOUSE_LEVELS[0];
+    progress.add({ darkMatter: level.reward });
+  }
   streamStats = stats.reduce(streamStats, event);
   hud.set(streamStats);
   streamer.react(event);
@@ -321,8 +329,26 @@ const hub = createHub({
     return game.create({
       world: WORLD,
       stream: { donations: () => streamStats.donations },
-      // Badges never apply in the study or the benchmark: everyone plays the same game.
-      perks: { ghost: () => !locked && store.badges().includes("ghost") },
+      // Badges and the base never apply in the study or the benchmark: everyone plays
+      // the same game. shooter() and horror() are null there.
+      perks: {
+        ghost: hasGhost,
+        progress,
+        shooter: () => {
+          if (locked) return null;
+          const p = progress.get();
+          return {
+            ghost: hasGhost() ? ghostStats(p.ghost) : null,
+            boosts: p.boosts,
+            outfit: p.clothes.worn,
+            drops: true,
+          };
+        },
+        loot: (material) => progress.add({ [material]: 1 }),
+        horror: () =>
+          locked ? null : { level: progress.get().house, items: progress.get().items },
+        useItem: (id) => progress.useItem(id),
+      },
     });
   },
 });

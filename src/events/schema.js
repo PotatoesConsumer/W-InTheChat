@@ -63,6 +63,17 @@ export const GAME_EVENTS = Object.freeze({
   },
   escaped: { importance: IMPORTANCE.MINOR, phrase: "escaped the dark house", optional: true },
   caught: { importance: IMPORTANCE.MINOR, phrase: "got caught by the monster", optional: true },
+  // Just Chatting, the base (src/game/base/): extras outside the study, fixed lines.
+  crafted: {
+    importance: IMPORTANCE.MINOR,
+    phrase: "built something in their base",
+    optional: true,
+  },
+  material_purchase: {
+    importance: IMPORTANCE.MINOR,
+    phrase: "spent chat's donations on materials",
+    optional: true,
+  },
 });
 
 /**

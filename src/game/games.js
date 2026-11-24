@@ -8,5 +8,6 @@
 
 import { waveSurvival } from "./shooter/index.js";
 import { darkHouse } from "./horror/index.js";
+import { justChatting } from "./base/index.js";
 
-export const GAMES = Object.freeze([waveSurvival, darkHouse]);
+export const GAMES = Object.freeze([waveSurvival, darkHouse, justChatting]);

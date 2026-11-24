@@ -6,8 +6,9 @@
  * mouse sensitivity (a pause menu setting), the 3D view, and the 2D HUD drawn over it.
  */
 
-import { createHorror, HORROR } from "./game.js";
+import { createHorror, HORROR, HOUSES } from "./game.js";
 import { loadThree, createHorrorView } from "./view3d.js";
+import { HORROR_ITEMS, HOUSE_LEVELS } from "../progress.js";
 
 const BINDINGS = Object.freeze({
   KeyW: "forward",
@@ -21,6 +22,9 @@ const BINDINGS = Object.freeze({
   Space: "action",
   ShiftLeft: "run",
   ShiftRight: "run",
+  Digit1: "sonar",
+  Digit2: "energy",
+  Digit3: "gun",
 });
 
 /** Mouse sensitivity 1-10, kept in this browser; radians per pixel = level x TURN_PER_LEVEL. */
@@ -47,6 +51,7 @@ export const darkHouse = Object.freeze({
   controls: Object.freeze([
     ["WASD", "move"],
     ["Shift", "run (stamina)"],
+    ["1 2 3", "items from the base"],
     ["Mouse / drag / ← →", "look around"],
     ["Click", "start, lock the mouse"],
     ["Esc", "free the mouse, pause"],
@@ -72,16 +77,20 @@ export const darkHouse = Object.freeze({
    * @param {object} opts
    * @param {{width: number, height: number}} opts.world
    * @param {() => number} [opts.random]
+   * @param {object} [opts.perks] - From the Just Chatting base (main.js): `horror()` is
+   *   null in the study, else {level, items}; `useItem(id)` spends one.
    */
   create({ world, random, perks = {} }) {
-    const game = createHorror({ random });
-    let view = null;
+    const base = () => perks.horror?.() ?? null;
+    const game = createHorror({ random, level: () => base()?.level ?? 1 });
+    let three = null;
+    const views = new Map(); // one per house level, built when first played
     let failed = null;
     let canvas = null;
     let look = 0;
 
     loadThree().then(
-      (THREE) => (view = createHorrorView(THREE, world)),
+      (THREE) => (three = THREE),
       (err) => {
         failed = err;
         console.warn("The Dark House could not load Three.js:", err);
@@ -96,6 +105,25 @@ export const darkHouse = Object.freeze({
         look += event.movementX * sensitivity * SENSITIVITY.turnPerLevel;
       }
     });
+
+    function viewFor(house) {
+      if (!views.has(house.level))
+        views.set(house.level, createHorrorView(three, world, house.rows));
+      return views.get(house.level);
+    }
+
+    /** Keys 1-3: an item from the base, if you have one left. */
+    function useItems(input) {
+      const effects = {
+        sonar: () => game.sonar(),
+        energy: () => game.energy(),
+        gun: () => game.freeze(),
+      };
+      for (const id of Object.keys(HORROR_ITEMS)) {
+        if (!input.wasPressed(id) || !(base()?.items[id] > 0)) continue;
+        if (effects[id]()) perks.useItem?.(id);
+      }
+    }
 
     function lockMouse() {
       try {
@@ -114,9 +142,10 @@ export const darkHouse = Object.freeze({
         const s = game.state;
         if (s.phase !== "playing") {
           look = 0;
-          if (input.wasPressed("action") && view) game.start();
+          if (input.wasPressed("action") && three) game.start();
           return;
         }
+        useItems(input);
         const axis = (minus, plus) => (input.isDown(plus) ? 1 : 0) - (input.isDown(minus) ? 1 : 0);
         const keyTurn = (axis("turnLeft", "turnRight") * HORROR.turnSpeed * dt) / 1000;
         game.update(dt, {
@@ -129,7 +158,7 @@ export const darkHouse = Object.freeze({
       },
 
       pointerDown() {
-        if (!view) return;
+        if (!three) return;
         if (game.state.phase !== "playing") game.start();
         lockMouse();
       },
@@ -143,7 +172,7 @@ export const darkHouse = Object.freeze({
         const { width, height } = world;
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, width, height);
-        if (!view) {
+        if (!three) {
           drawCentre(
             ctx,
             world,
@@ -152,8 +181,8 @@ export const darkHouse = Object.freeze({
           return;
         }
         const s = game.state;
-        ctx.drawImage(view.render(s, clock), 0, 0, width, height);
-        drawHud(ctx, world, s, { locked: locked(), ghost: perks.ghost?.() ?? false });
+        ctx.drawImage(viewFor(s.house).render(s, clock), 0, 0, width, height);
+        drawHud(ctx, world, s, { locked: locked(), ghost: perks.ghost?.() ?? false, base: base() });
       },
 
       takeEvents() {
@@ -181,7 +210,7 @@ function drawCentre(ctx, { width, height }, text, size = 22, color = "#ddd") {
   ctx.fillText(text, width / 2, height / 2);
 }
 
-function drawHud(ctx, world, s, { locked, ghost }) {
+function drawHud(ctx, world, s, { locked, ghost, base }) {
   const { width, height } = world;
 
   // The closer the monster, the redder the edges.
@@ -210,7 +239,8 @@ function drawHud(ctx, world, s, { locked, ghost }) {
   ctx.fillText(s.door.open ? `${keys}  The door is open!` : keys, 16, 14);
 
   if (s.phase === "playing") {
-    drawStamina(ctx, s.player);
+    drawStamina(ctx, s.player, s.house.stamina);
+    drawItems(ctx, world, s, base);
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.fillRect(width / 2 - 1.5, height / 2 - 1.5, 3, 3);
     if (!locked)
@@ -227,7 +257,10 @@ function drawHud(ctx, world, s, { locked, ghost }) {
   ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.fillRect(0, 0, width, height);
   const lines = {
-    ready: ["THE DARK HOUSE", `Find ${HORROR.keys} keys, then get out through the door.`],
+    ready: [
+      `THE DARK HOUSE${base ? ` · LEVEL ${base.level}` : ""}`,
+      `Find ${HOUSES[(base?.level ?? 1) - 1].keys} keys, then get out through the door.`,
+    ],
     escaped: ["YOU ESCAPED!", `${s.keysFound} keys in ${Math.round(s.elapsedMs / 1000)} s`],
     caught: ["CAUGHT", `${s.keysFound} of ${s.keys.length} keys`],
   }[s.phase];
@@ -235,6 +268,10 @@ function drawHud(ctx, world, s, { locked, ghost }) {
   drawCentre(ctx, { width, height: height - 70 }, lines[0], 40, color);
   drawCentre(ctx, { width, height: height + 10 }, lines[1], 18);
   drawCentre(ctx, { width, height: height + 70 }, "Click or press Space to play", 16, "#aaa");
+  if (s.phase === "escaped" && base) {
+    const reward = HOUSE_LEVELS[s.house.level - 1].reward;
+    drawCentre(ctx, { width, height: height + 110 }, `+${reward} 🌑 dark matter`, 18, "#c9a7ff");
+  }
   if (s.phase === "escaped" && ghost) {
     drawCentre(
       ctx,
@@ -246,13 +283,61 @@ function drawHud(ctx, world, s, { locked, ghost }) {
   }
 }
 
-/** The stamina bar, top left under the keys; it blinks red while too tired to run. */
-function drawStamina(ctx, p) {
+/** The stamina bar, top left under the keys: red while too tired, blue on an energy boost. */
+function drawStamina(ctx, p, max) {
   const width = 140;
   ctx.fillStyle = "rgba(255,255,255,0.15)";
   ctx.fillRect(16, 40, width, 6);
-  ctx.fillStyle = p.tired ? "#ff4d4d" : p.running ? "#ffd34e" : "#e8e8e8";
-  ctx.fillRect(16, 40, (width * p.stamina) / HORROR.stamina, 6);
+  ctx.fillStyle =
+    p.energyMs > 0 ? "#6fd3ff" : p.tired ? "#ff4d4d" : p.running ? "#ffd34e" : "#e8e8e8";
+  ctx.fillRect(16, 40, (width * p.stamina) / max, 6);
+}
+
+/** Bottom left: the items you carry (keys 1-3), what's active, and the sonar's radar. */
+function drawItems(ctx, { height }, s, base) {
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.font = "bold 13px system-ui, sans-serif";
+  const status = [];
+  if (s.player.energyMs > 0) status.push(`⚡ ${Math.ceil(s.player.energyMs / 1000)} s`);
+  if (s.monster.frozenMs > 0)
+    status.push(`❄ monster frozen ${Math.ceil(s.monster.frozenMs / 1000)} s`);
+  ctx.fillStyle = "#9fe7ff";
+  ctx.fillText(status.join("   "), 16, 54);
+  if (base) {
+    const line = Object.entries(HORROR_ITEMS)
+      .map(([id, item]) => `${item.key} ${item.name} ×${base.items[id]}`)
+      .join("   ");
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillText(line, 16, height - 26);
+  }
+  if (!s.sonar) return;
+  // Sonar: a disc whose dot is the nearest key, relative to where you face (up = ahead).
+  const key = s.keys
+    .filter((k) => !k.taken)
+    .sort(
+      (a, b) =>
+        Math.hypot(a.x - s.player.x, a.y - s.player.y) -
+        Math.hypot(b.x - s.player.x, b.y - s.player.y),
+    )[0];
+  const cx = 70;
+  const cy = height - 90;
+  ctx.strokeStyle = "rgba(111,211,255,0.8)";
+  ctx.fillStyle = "rgba(0,40,60,0.6)";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 46, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  const target = key ?? (s.door.open ? s.door : null);
+  if (!target) return;
+  const dx = target.x - s.player.x;
+  const dy = target.y - s.player.y;
+  const turn = Math.atan2(dy, dx) - s.player.angle;
+  const r = Math.min(40, Math.hypot(dx, dy) * 3);
+  ctx.fillStyle = key ? "#ffd34e" : "#7ee08a";
+  ctx.beginPath();
+  ctx.arc(cx + Math.sin(turn) * r, cy - Math.cos(turn) * r, 5, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** The hub card: darkness, a flashlight cone, two eyes that blink. */

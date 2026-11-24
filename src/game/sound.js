@@ -50,6 +50,11 @@ export const SOUNDS = Object.freeze({
     [330, 160, "triangle"],
     [196, 360, "triangle"],
   ],
+  crafted: [
+    [659, 60, "square"],
+    [988, 60, "square"],
+    [1319, 120, "square"],
+  ],
   key_found: [
     [1319, 70, "sine"],
     [1760, 160, "sine"],

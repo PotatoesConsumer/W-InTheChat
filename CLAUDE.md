@@ -159,8 +159,19 @@ Full guide for a new laptop: `docs/setup.md` (also the prompt versions table).
     opens; the flashlight is the only light; the monster is built from plain shapes);
     `index.js` the hub module (keys, pointer-lock mouse look, HUD). Its events are
     minor and `optional`, so chat answers with fixed lines. Escaping earns the Ghost
-    Friend badge (`BADGES` in `src/ui/profile.js`): games get `perks.ghost()`, and Wave
-    Survival adds a ghost that shoots for the player (`GHOST`). Off in study and bot runs.
+    Friend badge (`BADGES` in `src/ui/profile.js`) and dark matter. Three house sizes by
+    Haunted House level (`HOUSES`); items on keys 1-3 (sonar, energy, freeze gun).
+  - `base/`: Just Chatting, the base, an extra outside the study: walk a room, E at a
+    station (`STATIONS`) opens its menu (`menus.js`, pure): furniture, clothes, ghost
+    levels, Haunted House levels and horror items, shooter boosts, materials for
+    donations. `game.js` movement and menus (tested), `index.js` the hub module.
+  - `progress.js`: what carries between games, in this browser (DOM-free store,
+    tested): wood and rock (shooter drops), dark matter (escapes), and everything the
+    base sells, with prices. Games get it through `perks` (main.js): `shooter()` gives
+    Wave Survival the ghost (it flies to an enemy and hurts it), boosts (multiply a shop
+    upgrade), clothes (looks only) and drops; `horror()` the house level and items.
+    **Study and bot runs get none of it** (a store that remembers nothing, `shooter()`
+    null), so the study's shooter and its seeded random draws are unchanged.
   - `loop.js`: fixed-timestep loop (injectable clock/rAF for tests)
   - `input.js`: keyboard -> actions; ignores keys typed into the chat box
   - `donations.js`: viewer donations: which big moments bring one, the amount (mostly

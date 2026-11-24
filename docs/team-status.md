@@ -144,11 +144,26 @@ Don't change these without talking to the team first. The reasons are in the lin
    - **Team calls:** Three.js from a CDN is a second exception to "no runtime
      dependencies" (pinned 0.160.0, loaded only when the game opens, needs the internet
      the first time). Keep it out of the study: participants play Wave Survival only.
+   - **Just Chatting, the base (`feature/just-chatting`)**, a third game that ties the
+     other two together (`src/game/base/`, `src/game/progress.js`). Wave Survival kills
+     drop wood (slimes, bats) and rock (brutes); escaping The Dark House pays dark matter
+     (1 / 3 / 5 by Haunted House level). In the base you walk to a station and press E:
+     Workbench (chair, table), Wardrobe (clothes worn in Wave Survival, looks only),
+     Ghost Shrine (ghost damage, flying speed, hit speed; dark matter only), Haunted
+     House (its level: level 2 is 5 keys in a bigger house with a monster as fast as
+     your walk, level 3 is 8 keys, bigger again, a faster monster and less stamina; and
+     items for the house on keys 1-3: sonar, energy boost, freeze gun), Training Board
+     (boosts: Power shot +1 a level becomes +2, then +3), Trader (materials for
+     donations, dearer than coins because they stay). The ghost no longer shoots: it
+     flies to an enemy and hurts it while on top of it. Two new minor, optional events,
+     `crafted` and `material_purchase` (spends donations like `coin_purchase`).
+     **None of it reaches the study or the bot**: `perks.shooter()` is null there and
+     drops are off, so the shooter makes the same random draws and events as before.
+     Prices are a first guess; tune them after playing.
    - **Badges** carry a reward from one game to another. Escaping the house earns the
      **Ghost Friend** (`BADGES` in `src/ui/profile.js`, saved in this browser, listed on
-     the profile page): from the next Wave Survival run, a ghost circles the player and
-     shoots the nearest enemy (`GHOST` in `shooter/game.js`, about a third of the
-     starting fire). Games get it as `perks.ghost()`, asked when a run starts. **Never
+     the profile page): from the next Wave Survival run, a ghost helps the player
+     (it flies to an enemy and hurts it; levels in the base). Games get it as `perks.ghost()`, asked when a run starts. **Never
      in the study or the benchmark** (`?session=`, `?bot=`): no badge is earned there and
      the ghost stays off, so every participant plays the same shooter.
 
